@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: erp
       TZ: Asia/Tashkent
     ports:
-      - '5432:5432'
+      - '5442:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,7 +28,7 @@ services:
       POSTGRES_DB: erp_test
       TZ: Asia/Tashkent
     ports:
-      - '5433:5432'
+      - '5443:5432'
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
@@ -43,7 +43,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
-      - '6379:6379'
+      - '6389:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -61,8 +61,8 @@ services:
       MINIO_ROOT_USER: erp_minio
       MINIO_ROOT_PASSWORD: erp_minio_dev_password
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '9010:9000'
+      - '9011:9001'
     volumes:
       - minio_data:/data
     healthcheck:

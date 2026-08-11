@@ -27,9 +27,9 @@ npm run start:dev
 
 | Servis | Port | Kirish |
 |---|---|---|
-| Postgres | 5432 | erp / erp_dev_password |
-| Postgres (test) | 5433 | erp / erp_test_password |
-| Redis | 6379 | — |
-| MinIO API | 9000 | erp_minio / erp_minio_dev_password |
-| MinIO Console | 9001 | erp_minio / erp_minio_dev_password |
+| Postgres | 5442 | erp / erp_dev_password |
+| Postgres (test) | 5443 | erp / erp_test_password |
+| Redis | 6389 | — |
+| MinIO API | 9010 | erp_minio / erp_minio_dev_password |
+| MinIO Console | 9011 | erp_minio / erp_minio_dev_password |
 | Backend API | 3000 | http://localhost:3000/api |

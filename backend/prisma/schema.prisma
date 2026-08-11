@@ -1,0 +1,802 @@
+// Expense ERP — ma'lumot modeli
+// Manba: docs/TZ.md 5.3-band. Multi-tenant: bitta baza + companyId (shared DB, row-level isolation).
+//
+// TENANT QOIDASI: barcha biznes jadvallarida companyId mavjud va NOT NULL.
+// Istisnolar (ataylab platforma darajasida): Company, Plan, TelegramSession,
+// TelegramLoginAttempt — bular tenant middleware allow-list ida.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enumlar
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  PLATFORM_OWNER
+  ADMIN
+  DIRECTOR
+  WORKER
+}
+
+enum CompanyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum Language {
+  UZ
+  RU
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum BranchStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CategoryStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum Currency {
+  UZS
+  USD
+}
+
+enum RateSource {
+  AUTO
+  MANUAL
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+
+enum Channel {
+  WEB
+  TELEGRAM
+  SYSTEM
+}
+
+enum ExpenseStatus {
+  DRAFT
+  DIRECTOR_PENDING
+  ADMIN_PENDING
+  NEEDS_FIX
+  APPROVED
+  REJECTED
+  CANCELLED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum RefundStatus {
+  DIRECTOR_PENDING
+  ADMIN_PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EditRequestStatus {
+  PENDING
+  APPLIED
+  REJECTED
+}
+
+enum BudgetScope {
+  BRANCH
+  CATEGORY
+  EMPLOYEE
+}
+
+enum PeriodType {
+  MONTHLY
+}
+
+enum SequenceScope {
+  EXPENSE_GLOBAL
+  EXPENSE_BRANCH
+}
+
+enum ExportType {
+  E1
+  E2
+  E3
+  E4
+  E5
+  E6
+  E7
+  E8
+  E9
+  E10
+}
+
+enum ExportFormat {
+  XLSX
+  PDF
+}
+
+enum ExportStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum NotificationChannel {
+  WEB
+  TELEGRAM
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Platforma darajasi (tenant middleware dan tashqarida)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Company {
+  id                  String        @id @default(uuid())
+  name                String
+  slug                String        @unique
+  status              CompanyStatus @default(ACTIVE)
+  /// AES-256-GCM bilan shifrlangan; ochiq matnda saqlanmaydi (TZ 4.2)
+  telegramBotToken    String?
+  timezone            String        @default("Asia/Tashkent")
+  defaultLanguage     Language      @default(UZ)
+  /// Hisobot davri boshlanish kuni (1–28); TZ 3.13
+  reportPeriodStartDay Int          @default(1)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  users            User[]
+  branches         Branch[]
+  employees        Employee[]
+  categories       Category[]
+  expenses         Expense[]
+  expenseShares    ExpenseShare[]
+  expenseFiles     ExpenseFile[]
+  statusHistory    ExpenseStatusHistory[]
+  editRequests     EditRequest[]
+  refunds          Refund[]
+  refundFiles      RefundFile[]
+  budgets          Budget[]
+  budgetAlerts     BudgetAlert[]
+  currencyRates    CurrencyRate[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  settings         Setting[]
+  exportJobs       ExportJob[]
+  transfers        EmployeeTransfer[]
+  telegramLinks    TelegramAccountLink[]
+  subscriptions    CompanySubscription[]
+  sequences        NumberSequence[]
+
+  @@map("companies")
+}
+
+model Plan {
+  id                  String  @id @default(uuid())
+  code                String  @unique
+  name                String
+  /// null = cheksiz
+  maxBranches         Int?
+  maxEmployees        Int?
+  /// Hozir tekshirilmaydi — kelajak uchun joy (TZ 3.16.4)
+  maxExpensesPerMonth Int?
+  storageGb           Int?
+  createdAt           DateTime @default(now())
+
+  subscriptions CompanySubscription[]
+
+  @@map("plans")
+}
+
+model CompanySubscription {
+  id        String             @id @default(uuid())
+  companyId String
+  planId    String
+  startedAt DateTime           @default(now())
+  expiresAt DateTime?
+  status    SubscriptionStatus @default(ACTIVE)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan    Plan    @relation(fields: [planId], references: [id])
+
+  @@index([companyId, status])
+  @@map("company_subscriptions")
+}
+
+/// Bitta Telegram akkaunt + bot uchun sessiya. Platforma darajasida:
+/// bitta telegramId bir nechta kompaniya hisobiga bog'lanishi mumkin (TZ 3.12.2).
+model TelegramSession {
+  telegramId   BigInt
+  botId        String
+  activeLinkId String?
+  language     Language @default(UZ)
+  /// Sahna holati (scene state) — bot qayta ishga tushsa oqim yo'qolmaydi
+  flowState    Json?
+  updatedAt    DateTime @updatedAt
+
+  @@id([telegramId, botId])
+  @@map("telegram_sessions")
+}
+
+model TelegramLoginAttempt {
+  telegramId    BigInt    @id
+  failedCount   Int       @default(0)
+  lockedUntil   DateTime?
+  lastAttemptAt DateTime  @default(now())
+
+  @@map("telegram_login_attempts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Foydalanuvchilar va tashkiliy tuzilma
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String  @id @default(uuid())
+  /// PLATFORM_OWNER uchun null — u hech bir kompaniyaga tegishli emas.
+  /// Qolgan barcha rollar uchun majburiy (DB check constraint bilan majburlanadi).
+  companyId String?
+  email     String
+  /// Login sifatida email yoki username ishlatiladi (TZ 3.1)
+  username  String?
+  passwordHash String
+  role      Role
+  employeeId String? @unique
+  isActive  Boolean  @default(true)
+  lastLoginAt      DateTime?
+  failedLoginCount Int      @default(0)
+  lockedUntil      DateTime?
+  language  Language @default(UZ)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company  Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee Employee? @relation(fields: [employeeId], references: [id])
+
+  refreshTokens        RefreshToken[]
+  telegramLinks        TelegramAccountLink[]
+  createdExpenses      Expense[]             @relation("ExpenseCreatedBy")
+  directorApproved     Expense[]             @relation("ExpenseDirectorApprover")
+  adminApproved        Expense[]             @relation("ExpenseAdminApprover")
+  deletedExpenses      Expense[]             @relation("ExpenseDeletedBy")
+  uploadedExpenseFiles ExpenseFile[]
+  statusChanges        ExpenseStatusHistory[]
+  handledEditRequests  EditRequest[]         @relation("EditRequestHandler")
+  requestedRefunds     Refund[]              @relation("RefundRequester")
+  refundDirectorApproved Refund[]            @relation("RefundDirectorApprover")
+  refundAdminApproved  Refund[]              @relation("RefundAdminApprover")
+  movedEmployees       EmployeeTransfer[]
+  createdRates         CurrencyRate[]
+  notifications        Notification[]
+  auditLogs            AuditLog[]
+  updatedSettings      Setting[]
+  exportJobs           ExportJob[]
+
+  @@unique([companyId, email])
+  @@unique([companyId, username])
+  @@index([companyId, role])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  /// Token ochiq saqlanmaydi — faqat hash
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  userAgent String?
+  ip        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("refresh_tokens")
+}
+
+/// Bitta Telegram akkaunt ↔ bitta hisob bog'lanishi. Bir telegramId bir nechta
+/// userId ga (turli kompaniyalar/rollar) bog'lanishi mumkin — TZ 3.12.2.
+model TelegramAccountLink {
+  id         String    @id @default(uuid())
+  telegramId BigInt
+  userId     String
+  companyId  String
+  botId      String
+  linkedAt   DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  isRevoked  Boolean   @default(false)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([telegramId, userId])
+  @@index([telegramId, botId, isRevoked])
+  @@index([userId])
+  @@map("telegram_account_links")
+}
+
+model Branch {
+  id        String       @id @default(uuid())
+  companyId String
+  /// 2–5 lotin harfi, kompaniya doirasida unikal, yaratilgandan keyin o'zgarmas
+  code      String
+  name      String
+  address   String?
+  phone     String?
+  openedAt  DateTime?
+  status    BranchStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  company      Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees    Employee[]
+  expenses     Expense[]
+  transfersOut EmployeeTransfer[] @relation("TransferFrom")
+  transfersIn  EmployeeTransfer[] @relation("TransferTo")
+  sequences    NumberSequence[]
+
+  @@unique([companyId, code])
+  @@index([companyId, status])
+  @@map("branches")
+}
+
+model Employee {
+  id        String         @id @default(uuid())
+  companyId String
+  fullName  String
+  position  String?
+  branchId  String
+  /// Ma'lumot maydoni — autentifikatsiyada ishlatilmaydi (TZ 3.1)
+  phone     String?
+  hiredAt   DateTime?
+  status    EmployeeStatus @default(ACTIVE)
+  language  Language       @default(UZ)
+  botBlocked Boolean       @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  company   Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch    Branch             @relation(fields: [branchId], references: [id])
+  user      User?
+  shares    ExpenseShare[]
+  editRequests EditRequest[]
+  transfers EmployeeTransfer[]
+
+  @@unique([companyId, phone])
+  @@index([companyId, branchId, status])
+  @@map("employees")
+}
+
+model EmployeeTransfer {
+  id           String   @id @default(uuid())
+  companyId    String
+  employeeId   String
+  fromBranchId String
+  toBranchId   String
+  movedAt      DateTime @default(now())
+  movedByUserId String
+
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  fromBranch Branch   @relation("TransferFrom", fields: [fromBranchId], references: [id])
+  toBranch   Branch   @relation("TransferTo", fields: [toBranchId], references: [id])
+  movedBy    User     @relation(fields: [movedByUserId], references: [id])
+
+  @@index([companyId, employeeId])
+  @@map("employee_transfers")
+}
+
+model Category {
+  id                String         @id @default(uuid())
+  companyId         String
+  parentId          String?
+  nameUz            String
+  nameRu            String
+  receiptRequired   Boolean        @default(false)
+  commentRequired   Boolean        @default(false)
+  maxAmountPerEntry Decimal?       @db.Decimal(18, 2)
+  status            CategoryStatus @default(ACTIVE)
+  sortOrder         Int            @default(0)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  expenses Expense[]
+
+  @@index([companyId, status])
+  @@index([companyId, parentId])
+  @@map("categories")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Xarajatlar yadrosi
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Xarajat raqamlarini kollizyasiz berish uchun hisoblagich (TZ 3.6).
+/// Raqam berish tranzaksiya ichida `SELECT ... FOR UPDATE` bilan amalga oshiriladi.
+model NumberSequence {
+  id        String        @id @default(uuid())
+  companyId String
+  scope     SequenceScope
+  /// EXPENSE_BRANCH uchun filial; EXPENSE_GLOBAL uchun null
+  branchId  String?
+  /// EXPENSE_BRANCH uchun yil; EXPENSE_GLOBAL uchun 0 (yillik reset yo'q)
+  year      Int           @default(0)
+  lastValue Int           @default(0)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, scope, branchId, year])
+  @@map("number_sequences")
+}
+
+model Expense {
+  id            String   @id @default(uuid())
+  companyId     String
+  /// EXP-000123 — kompaniya doirasida uzluksiz
+  globalNumber  String
+  /// CHL-2026-0045 — filial kodi + yil + ketma-ketlik
+  branchNumber  String
+  branchSeqYear Int
+  branchSeq     Int
+
+  branchId   String
+  categoryId String
+
+  amount     Decimal       @db.Decimal(18, 2)
+  currency   Currency
+  /// Yaratilish paytidagi kurs snapshot i — keyin o'zgarmaydi (TZ 3.5)
+  rateUsed   Decimal       @db.Decimal(18, 6)
+  rateSource RateSource
+  amountUzs  Decimal       @db.Decimal(18, 2)
+
+  date          DateTime      @db.Date
+  comment       String?
+  paymentMethod PaymentMethod
+
+  createdByUserId String
+  channel         Channel
+
+  status                   ExpenseStatus @default(DIRECTOR_PENDING)
+  approvedAt               DateTime?
+  directorApprovedByUserId String?
+  adminApprovedByUserId    String?
+  /// Four-eyes qoidasidan istisno qilingan holat (TZ 3.7)
+  selfApproved             Boolean       @default(false)
+
+  refundedAmount Decimal @default(0) @db.Decimal(18, 2)
+
+  /// Optimistik blokirovka — ikki admin bir vaqtda tasdiqlashi uchun (TZ 3.7)
+  version Int @default(0)
+
+  deletedAt       DateTime?
+  deletedByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch           Branch    @relation(fields: [branchId], references: [id])
+  category         Category  @relation(fields: [categoryId], references: [id])
+  createdBy        User      @relation("ExpenseCreatedBy", fields: [createdByUserId], references: [id])
+  directorApprover User?     @relation("ExpenseDirectorApprover", fields: [directorApprovedByUserId], references: [id])
+  adminApprover    User?     @relation("ExpenseAdminApprover", fields: [adminApprovedByUserId], references: [id])
+  deletedBy        User?     @relation("ExpenseDeletedBy", fields: [deletedByUserId], references: [id])
+
+  shares        ExpenseShare[]
+  files         ExpenseFile[]
+  statusHistory ExpenseStatusHistory[]
+  refunds       Refund[]
+  editRequests  EditRequest[]
+
+  @@unique([companyId, globalNumber])
+  @@unique([companyId, branchId, branchSeqYear, branchSeq])
+  @@index([companyId, status, date])
+  @@index([companyId, branchId, date])
+  @@index([companyId, categoryId, date])
+  @@index([companyId, createdByUserId])
+  @@index([companyId, deletedAt])
+  @@map("expenses")
+}
+
+/// Xarajat taqsimoti: SUM(amount) == Expense.amount (tranzaksiyada tekshiriladi)
+model ExpenseShare {
+  id         String  @id @default(uuid())
+  companyId  String
+  expenseId  String
+  employeeId String
+  amount     Decimal @db.Decimal(18, 2)
+  amountUzs  Decimal @db.Decimal(18, 2)
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expense  Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([expenseId, employeeId])
+  @@index([companyId, employeeId])
+  @@map("expense_shares")
+}
+
+model ExpenseFile {
+  id               String   @id @default(uuid())
+  companyId        String
+  expenseId        String
+  /// {companyId}/expenses/{expenseId}/{uuid}.{ext}
+  storageKey       String   @unique
+  originalName     String
+  mimeType         String
+  sizeBytes        Int
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expense    Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([companyId, expenseId])
+  @@map("expense_files")
+}
+
+model ExpenseStatusHistory {
+  id         String         @id @default(uuid())
+  companyId  String
+  expenseId  String
+  fromStatus ExpenseStatus?
+  toStatus   ExpenseStatus
+  byUserId   String
+  reason     String?
+  channel    Channel        @default(WEB)
+  createdAt  DateTime       @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  by      User    @relation(fields: [byUserId], references: [id])
+
+  @@index([companyId, expenseId, createdAt])
+  @@map("expense_status_history")
+}
+
+model EditRequest {
+  id                    String            @id @default(uuid())
+  companyId             String
+  expenseId             String
+  requestedByEmployeeId String
+  description           String
+  status                EditRequestStatus @default(PENDING)
+  handledByUserId       String?
+  handledAt             DateTime?
+  rejectReason          String?
+  createdAt             DateTime          @default(now())
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expense     Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  requestedBy Employee @relation(fields: [requestedByEmployeeId], references: [id])
+  handledBy   User?    @relation("EditRequestHandler", fields: [handledByUserId], references: [id])
+
+  @@index([companyId, status])
+  @@index([companyId, expenseId])
+  @@map("edit_requests")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Qaytarish (refund)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Refund {
+  id        String       @id @default(uuid())
+  companyId String
+  expenseId String
+  amount    Decimal      @db.Decimal(18, 2)
+  currency  Currency
+  /// Asl xarajatning kurs snapshot idan meros olinadi — hisobot tarixi o'zgarmasligi uchun
+  rateUsed  Decimal      @db.Decimal(18, 6)
+  amountUzs Decimal      @db.Decimal(18, 2)
+  reason    String
+  status    RefundStatus @default(DIRECTOR_PENDING)
+
+  requestedByUserId        String
+  directorApprovedByUserId String?
+  adminApprovedByUserId    String?
+  approvedAt               DateTime?
+  rejectReason             String?
+  channel                  Channel   @default(WEB)
+  version                  Int       @default(0)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expense          Expense      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  requestedBy      User         @relation("RefundRequester", fields: [requestedByUserId], references: [id])
+  directorApprover User?        @relation("RefundDirectorApprover", fields: [directorApprovedByUserId], references: [id])
+  adminApprover    User?        @relation("RefundAdminApprover", fields: [adminApprovedByUserId], references: [id])
+  files            RefundFile[]
+
+  @@index([companyId, status])
+  @@index([companyId, expenseId])
+  @@map("refunds")
+}
+
+model RefundFile {
+  id           String   @id @default(uuid())
+  companyId    String
+  refundId     String
+  storageKey   String   @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  refund  Refund  @relation(fields: [refundId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, refundId])
+  @@map("refund_files")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Byudjet
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Budget {
+  id            String      @id @default(uuid())
+  companyId     String
+  scope         BudgetScope
+  /// branchId | categoryId | employeeId
+  scopeId       String
+  periodType    PeriodType  @default(MONTHLY)
+  amount        Decimal     @db.Decimal(18, 2)
+  currency      Currency    @default(UZS)
+  effectiveFrom DateTime    @db.Date
+  effectiveTo   DateTime?   @db.Date
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  alerts  BudgetAlert[]
+
+  @@index([companyId, scope, scopeId])
+  @@map("budgets")
+}
+
+model BudgetAlert {
+  id        String   @id @default(uuid())
+  companyId String
+  budgetId  String
+  /// Davr kaliti, masalan "2026-08"
+  period    String
+  threshold Int
+  sentAt    DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  budget  Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@unique([budgetId, period, threshold])
+  @@map("budget_alerts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Valyuta, bildirishnoma, audit, sozlama, eksport
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CurrencyRate {
+  id              String     @id @default(uuid())
+  companyId       String
+  date            DateTime   @db.Date
+  currency        Currency
+  rate            Decimal    @db.Decimal(18, 6)
+  source          RateSource
+  createdByUserId String?
+  createdAt       DateTime   @default(now())
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation(fields: [createdByUserId], references: [id])
+
+  @@unique([companyId, date, currency, source])
+  @@index([companyId, currency, date])
+  @@map("currency_rates")
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  companyId String
+  userId    String
+  type      String
+  payload   Json
+  channel   NotificationChannel
+  isRead    Boolean             @default(false)
+  readAt    DateTime?
+  sentAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, userId, isRead])
+  @@map("notifications")
+}
+
+/// Append-only. UPDATE/DELETE uchun API endpoint umuman mavjud emas (TZ 3.14).
+model AuditLog {
+  id         String   @id @default(uuid())
+  companyId  String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  /// [{ field, old, new }] — eksportda maydon-boyicha qatorlarga yoyiladi
+  changes    Json?
+  ip         String?
+  channel    Channel
+  createdAt  DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([companyId, entityType, entityId])
+  @@index([companyId, userId])
+  @@map("audit_logs")
+}
+
+model Setting {
+  companyId       String
+  key             String
+  value           Json
+  updatedByUserId String?
+  updatedAt       DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  updatedBy User?   @relation(fields: [updatedByUserId], references: [id])
+
+  @@id([companyId, key])
+  @@map("settings")
+}
+
+model ExportJob {
+  id                String       @id @default(uuid())
+  companyId         String
+  requestedByUserId String
+  type              ExportType
+  format            ExportFormat
+  filters           Json
+  status            ExportStatus @default(QUEUED)
+  storageKey        String?
+  rowCount          Int?
+  error             String?
+  createdAt         DateTime     @default(now())
+  finishedAt        DateTime?
+  expiresAt         DateTime?
+
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requestedBy User    @relation(fields: [requestedByUserId], references: [id])
+
+  @@index([companyId, requestedByUserId, createdAt])
+  @@map("export_jobs")
+}
