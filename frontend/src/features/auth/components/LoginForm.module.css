@@ -1,0 +1,16 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.errorAlert {
+  background-color: rgb(var(--destructive-subtle));
+  color: rgb(var(--destructive));
+  padding: 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

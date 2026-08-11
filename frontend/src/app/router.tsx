@@ -2,6 +2,7 @@ import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
+import { LoginPage } from '@/features/auth/LoginPage';
 
 export const router = createBrowserRouter([
   {
@@ -25,7 +26,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <div>Login Formasi (Tez kunda)</div>,
+        element: <LoginPage />,
       }
     ]
   },
