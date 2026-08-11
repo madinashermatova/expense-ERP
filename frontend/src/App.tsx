@@ -1,11 +1,10 @@
 import React from 'react';
+import { RouterProvider } from 'react-router-dom';
+import { router } from './app/router';
 
 function App() {
   return (
-    <div style={{ padding: '24px' }}>
-      <h1>Web ERP</h1>
-      <p>Poydevor va Sozlamalar bosqichi yakunlandi.</p>
-    </div>
+    <RouterProvider router={router} />
   );
 }
 

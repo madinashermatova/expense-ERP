@@ -1,0 +1,49 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background-color: rgb(var(--background));
+}
+
+.sidebar {
+  width: 248px;
+  background-color: rgb(var(--background));
+  border-right: 1px solid rgb(var(--border));
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease-in-out;
+}
+
+.sidebarCollapsed {
+  width: 64px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  height: 56px;
+  border-bottom: 1px solid rgb(var(--border));
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  justify-content: space-between;
+  background-color: rgb(var(--background));
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background-color: rgb(var(--muted));
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 64px;
+  }
+}
