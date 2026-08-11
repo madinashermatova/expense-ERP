@@ -1,0 +1,65 @@
+.inputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(var(--foreground));
+}
+
+.required {
+  color: rgb(var(--destructive));
+  margin-left: 2px;
+}
+
+.input {
+  height: 40px;
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--border));
+  background-color: rgb(var(--background));
+  padding: 0 12px;
+  font-size: 14px;
+  color: rgb(var(--foreground));
+  transition: all 0.2s ease-out;
+  outline: none;
+}
+
+.input::placeholder {
+  color: rgb(var(--muted-foreground));
+}
+
+.input:focus-visible {
+  border-color: rgb(var(--ring));
+  box-shadow: 0 0 0 2px rgb(var(--background)), 0 0 0 4px rgb(var(--ring));
+}
+
+.input:disabled {
+  background-color: rgb(var(--muted));
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.errorInput {
+  border-color: rgb(var(--destructive));
+}
+
+.errorInput:focus-visible {
+  box-shadow: 0 0 0 2px rgb(var(--background)), 0 0 0 4px rgb(var(--destructive));
+}
+
+.errorText {
+  font-size: 12px;
+  color: rgb(var(--destructive));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.helpText {
+  font-size: 12px;
+  color: rgb(var(--muted-foreground));
+}
