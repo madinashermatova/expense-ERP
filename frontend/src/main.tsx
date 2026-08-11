@@ -4,10 +4,19 @@ import './styles/globals.css'
 import App from './App.tsx'
 import { AppProviders } from './app/providers'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AppProviders>
-      <App />
-    </AppProviders>
-  </StrictMode>,
-)
+async function enableMocking() {
+  if (import.meta.env.VITE_USE_MOCK === 'true') {
+    const { worker } = await import('./mocks/browser')
+    return worker.start()
+  }
+}
+
+enableMocking().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <AppProviders>
+        <App />
+      </AppProviders>
+    </StrictMode>,
+  )
+})
