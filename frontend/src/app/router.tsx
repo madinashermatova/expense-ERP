@@ -4,6 +4,7 @@ import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
+import { ExpensesPage } from '@/features/expenses/ExpensesPage';
 
 export const router = createBrowserRouter([
   {
@@ -16,7 +17,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'expenses',
-        element: <div>Xarajatlar ro'yxati (Tez kunda)</div>,
+        element: <ExpensesPage />,
       },
       // ... boshqa modullar shu yerda qo'shiladi
     ],

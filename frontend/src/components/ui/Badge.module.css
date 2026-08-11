@@ -1,0 +1,35 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+.neutral {
+  background-color: rgb(var(--muted));
+  color: rgb(var(--muted-foreground));
+}
+
+.success {
+  background-color: rgb(var(--success-subtle));
+  color: rgb(var(--success));
+}
+
+.warning {
+  background-color: rgb(var(--warning-subtle));
+  color: rgb(var(--warning));
+}
+
+.destructive {
+  background-color: rgb(var(--destructive-subtle));
+  color: rgb(var(--destructive));
+}
+
+.info {
+  background-color: rgb(var(--info-subtle));
+  color: rgb(var(--info));
+}
