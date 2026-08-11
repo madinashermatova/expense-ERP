@@ -20,7 +20,7 @@ migratsiyalari, `.env` / `.env.example`.
 
 ---
 
-## S1 — Tenancy qatlami ⬜ (TZ 3.16.1)
+## S1 — Tenancy qatlami ✅ (TZ 3.16.1)
 
 **Nima quriladi:**
 - `TenantContext` — `AsyncLocalStorage` da `{ companyId, userId, role, branchId, channel }`
@@ -35,6 +35,17 @@ migratsiyalari, `.env` / `.env.example`.
 
 **Qabul mezoni:** extension o'chirilganda `test:tenancy` **yiqiladi**; ikki kompaniya
 seed qilinganda A ning admini B ning yozuvini `findUnique` bilan ololmaydi.
+
+**Natija:** `test:tenancy` — 17/17 yashil, `lint` va `typecheck` toza, `GET /api/health` ishlaydi.
+
+**S1 da yuzaga chiqqan texnik nozikliklar:**
+- Prisma 7 Rust engine siz ishlaydi → `@prisma/adapter-pg` (node-postgres driver adapter) qo'shildi
+- Prisma promise **lazy** — so'rov `.then` chaqirilganda boshlanadi. Shu sababli
+  `AsyncLocalStorage` ichida `await` majburiy; `runAsync()` / `runUnscoped()` shuni kafolatlaydi
+- Unique operatsiyalarga (`findUnique`, `update`, `delete`, `upsert`) `AND` qo'shib bo'lmaydi —
+  ular uchun `companyId` `where` ning yuqori darajasiga qo'shiladi (extended where unique)
+- Prisma 7 generated kodi `.js` kengaytmali import ishlatadi → jest `moduleNameMapper`
+  va `NODE_OPTIONS=--experimental-vm-modules`
 
 **Commit:** `feat(tenancy): AsyncLocalStorage konteksti va Prisma tenant extension`
 
