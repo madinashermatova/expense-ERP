@@ -1,0 +1,74 @@
+:root {
+  /* Neytral — asosiy karkas */
+  --background: 255, 255, 255; /* #FFFFFF */
+  --foreground: 31, 37, 45; /* #191D24 */
+  --muted: 244, 245, 247; /* #F4F5F7 */
+  --muted-foreground: 107, 114, 128; /* #6B7280 */
+  --border: 228, 230, 235; /* #E4E6EB */
+  --input: 228, 230, 235;
+  --card: 255, 255, 255;
+  --card-foreground: 31, 37, 45;
+
+  /* Brend — to'q ko'k */
+  --primary: 43, 85, 180; /* #2B55B4 */
+  --primary-foreground: 255, 255, 255;
+  --primary-hover: 37, 73, 156;
+  --primary-subtle: 236, 241, 252;
+
+  /* Semantik */
+  --success: 33, 135, 87; /* #218757 */
+  --success-subtle: 234, 248, 241;
+  --warning: 214, 139, 7; /* #D68B07 */
+  --warning-subtle: 252, 246, 235;
+  --destructive: 202, 43, 43; /* #CA2B2B */
+  --destructive-subtle: 253, 237, 237;
+  --info: 27, 127, 196; /* #1B7FC4 */
+  --info-subtle: 236, 245, 252;
+
+  --ring: 43, 85, 180;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 16, 19, 26; /* #10131A */
+  --foreground: 237, 237, 237;
+  --muted: 31, 34, 43;
+  --muted-foreground: 143, 149, 163;
+  --border: 43, 47, 59;
+  --input: 43, 47, 59;
+  --card: 24, 28, 37;
+  --card-foreground: 237, 237, 237;
+
+  --primary: 90, 137, 245;
+  --primary-foreground: 18, 26, 46;
+  --primary-hover: 120, 159, 247;
+  --primary-subtle: 27, 40, 71;
+
+  --success: 64, 181, 119;
+  --success-subtle: 28, 57, 40;
+  --warning: 245, 182, 42;
+  --warning-subtle: 71, 51, 27;
+  --destructive: 235, 61, 61;
+  --destructive-subtle: 71, 27, 27;
+  --info: 82, 172, 235;
+  --info-subtle: 27, 49, 71;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typograhy helpers since we don't have tailwind */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+}
