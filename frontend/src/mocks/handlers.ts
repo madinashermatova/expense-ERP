@@ -86,4 +86,14 @@ export const handlers = [
       ]
     });
   }),
+
+  http.post('*/api/expenses/:id/approve', async () => {
+    await delay(300);
+    return HttpResponse.json({ success: true });
+  }),
+
+  http.post('*/api/expenses/:id/reject', async () => {
+    await delay(300);
+    return HttpResponse.json({ success: true });
+  }),
 ];
