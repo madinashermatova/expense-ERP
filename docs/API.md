@@ -319,6 +319,9 @@ Fayl turi **faqat `Content-Type` bo'yicha emas, magic-byte bo'yicha** tekshirila
 | `TOO_MANY_FILES` | 422 |
 | `FILE_CONTENT_MISMATCH` | 422 (kengaytma/MIME mazmuniga mos emas) |
 
+Saqlangan fayl kengaytmasi **yuborilgan nomdan emas, aniqlangan turdan** olinadi.
+Boshqa kompaniya fayliga so'rov `404` qaytaradi (mavjudligi oshkor qilinmaydi).
+
 ---
 
 ## ⏳ Rejada (keyingi bosqichlar)

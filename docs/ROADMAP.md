@@ -122,7 +122,7 @@ seed qilinganda A ning admini B ning yozuvini `findUnique` bilan ololmaydi.
 
 ---
 
-## S4 — Fayl saqlash ⬜ (TZ 4.2, 3.6)
+## S4 — Fayl saqlash ✅ (TZ 4.2, 3.6)
 
 **Nima quriladi:**
 - `StorageService` (S3/MinIO), kalit formati `{companyId}/expenses/{id}/{uuid}.{ext}`
@@ -131,6 +131,21 @@ seed qilinganda A ning admini B ning yozuvini `findUnique` bilan ololmaydi.
 - Multipart upload interceptor + magic-byte tekshiruvi (faqat Content-Type ga ishonmaydi)
 
 **Qabul mezoni:** 6-fayl → 422; 11 MB → 413; boshqa kompaniya fayliga signed URL → 403.
+
+**Natija:** 13 unit + 14 integratsion test (jami 98 int + 13 unit), hammasi yashil.
+Signed URL testlari real MinIO ga qarshi ishlaydi.
+
+**S4 da qabul qilingan qarorlar:**
+- **Magic-byte tekshiruvi qo'lda yozildi** (`file-type.util.ts`), tashqi kutubxonasiz:
+  bizga aynan 4 ta format kerak, ularning imzolari barqaror, va `file-type` v22 ESM-only
+  bo'lgani uchun CommonJS/jest bilan muammo tug'dirardi.
+- Fayl kengaytmasi **foydalanuvchi nomidan emas**, aniqlangan MIME dan olinadi —
+  `chek.png` deb yuborilgan PDF storage da `.pdf` bo'lib saqlanadi.
+- Cross-tenant himoya **ikki qatlamli**: Prisma extension yozuvni topmaydi, ustiga
+  kalitning `{companyId}/` prefiksi tekshiriladi (baza bog'lanishi buzilgan holat uchun).
+- Boshqa kompaniya fayliga so'rov **404** (TZ da 403 yozilgan) — mavjudligini oshkor
+  qilmaslik izchilroq va qolgan endpointlar bilan bir xil.
+- `memoryStorage` — fayl diskka tushmaydi, vaqtinchalik fayllarni tozalash muammosi yo'q.
 
 **Commit:** `feat(files): MinIO storage, signed URL, MIME validatsiya`
 

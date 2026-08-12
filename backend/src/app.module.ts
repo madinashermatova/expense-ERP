@@ -20,6 +20,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { EmployeesModule } from './modules/employees/employees.module';
+import { FilesModule } from './modules/files/files.module';
 import { PlansModule } from './modules/plans/plans.module';
 
 @Module({
@@ -58,6 +59,7 @@ import { PlansModule } from './modules/plans/plans.module';
     BranchesModule,
     EmployeesModule,
     CategoriesModule,
+    FilesModule,
   ],
   controllers: [HealthController],
   providers: [
