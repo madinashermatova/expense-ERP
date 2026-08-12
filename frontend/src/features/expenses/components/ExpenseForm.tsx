@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
+import { Dropzone } from '@/components/ui/Dropzone';
 import { useBranches, useCategories, useEmployees } from '../api';
 import { expenseSchema, ExpenseFormData } from '../schema';
 import { useAuthStore } from '@/features/auth/store';
@@ -18,6 +19,7 @@ interface ExpenseFormProps {
 export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER';
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
@@ -69,8 +71,8 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
   };
 
   const onSubmit = (data: ExpenseFormData) => {
-    console.log('Submitting', data);
-    // TODO: Mutation
+    console.log('Submitting', { ...data, attachments });
+    // TODO: Mutation (with FormData if attachments exist)
     if (onSuccess) onSuccess();
   };
 
@@ -152,6 +154,14 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
             placeholder="Xarajat haqida ma'lumot..."
             error={errors.reason?.message}
             {...register('reason')}
+          />
+        </div>
+
+        <div className={styles.fullWidth}>
+          <Dropzone
+            label="Chek / Isbot fayllar"
+            files={attachments}
+            onChange={setAttachments}
           />
         </div>
 
