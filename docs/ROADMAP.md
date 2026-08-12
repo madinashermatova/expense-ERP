@@ -86,7 +86,7 @@ seed qilinganda A ning admini B ning yozuvini `findUnique` bilan ololmaydi.
 
 ---
 
-## S3 — Filiallar, Xodimlar, Kategoriyalar ⬜ (TZ 3.2, 3.3, 3.4, 3.16.4)
+## S3 — Filiallar, Xodimlar, Kategoriyalar ✅ (TZ 3.2, 3.3, 3.4, 3.16.4)
 
 **Nima quriladi:**
 - `branches` CRUD + arxivlash, `code` immutable, `?status=` filtri
@@ -100,6 +100,23 @@ seed qilinganda A ning admini B ning yozuvini `findUnique` bilan ololmaydi.
 
 **Qabul mezoni:** direktor `role=ADMIN` bilan xodim yaratsa 403; mavjud telefon → 409;
 `maxBranches=3` test tarifida 4-chi filial 403.
+
+**Natija:** `test:int` — 84/84 yashil (yangi: filiallar 17, xodimlar 21, kategoriyalar 9).
+
+**S3 da qabul qilingan qarorlar:**
+- **`BranchScopeService`** — filial doirasi ataylab Prisma extension da emas, servis
+  qatlamida. Tenant izolyatsiyasi absolyut qoida, filial doirasi esa biznes qoidasi
+  (admin uchun cheklov yo'q, ba'zi hisobotlarda ataylab kengroq bo'ladi).
+  O'qishda boshqa filial → **404** (mavjudligini oshkor qilmaslik), yozishda → **403**.
+- Filial va kategoriya `restore` (arxivdan tiklash) qo'shildi — TZ da yo'q edi, lekin
+  arxivlash qaytarilmas bo'lishi mantiqsiz.
+- Bosh kategoriya arxivlanganda ichkilari ham arxivlanadi (kaskad).
+- Kategoriya `DELETE` faqat **ishlatilmagan va bolasiz** bo'lsa; aks holda 409 → arxivlash.
+- Xodim nofaol qilinganda `User.isActive=false` **va** Telegram bog'lanishlari bekor qilinadi.
+- Parol tiklanganda web sessiyalar (`RefreshToken`) ham yopiladi — TZ faqat Telegram
+  bog'lanishlarini aytgan edi, lekin web sessiyani ochiq qoldirish xavfsizlik teshigi.
+- Xato formatida **payload dagi `statusCode` ustun** — servis `BadRequestException` ichida
+  `statusCode: 422` bersa, HTTP javob ham 422 bo'ladi (TZ ko'p joyda aynan 422 talab qiladi).
 
 **Commit:** `feat(org): filiallar, xodimlar, kategoriyalar + tarif limit hooklari`
 

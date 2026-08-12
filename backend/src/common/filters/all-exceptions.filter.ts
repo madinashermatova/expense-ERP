@@ -83,9 +83,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         };
       }
 
+      // Servislar semantik statusni payload da beradi (masalan `BadRequestException`
+      // ichida `statusCode: 422`) — HTTP javob ham aynan shu status bilan chiqadi.
+      const effective =
+        typeof obj.statusCode === 'number' ? obj.statusCode : status;
+
       return {
-        statusCode: status,
-        code: (obj.code as string) ?? DEFAULT_CODES[status] ?? 'ERROR',
+        statusCode: effective,
+        code: (obj.code as string) ?? DEFAULT_CODES[effective] ?? 'ERROR',
         message: (obj.message as string) ?? 'Xatolik',
         ...(obj.details
           ? { details: obj.details as Record<string, string[]> }

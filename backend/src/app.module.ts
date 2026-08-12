@@ -17,6 +17,10 @@ import { TenantContextMiddleware } from './common/tenancy/tenant-context.middlew
 import { EnvironmentVariables, validateEnv } from './config/env.validation';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './modules/auth/auth.module';
+import { BranchesModule } from './modules/branches/branches.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { EmployeesModule } from './modules/employees/employees.module';
+import { PlansModule } from './modules/plans/plans.module';
 
 @Module({
   imports: [
@@ -49,7 +53,11 @@ import { AuthModule } from './modules/auth/auth.module';
     TenancyModule,
     PrismaModule,
     CommonModule,
+    PlansModule,
     AuthModule,
+    BranchesModule,
+    EmployeesModule,
+    CategoriesModule,
   ],
   controllers: [HealthController],
   providers: [
