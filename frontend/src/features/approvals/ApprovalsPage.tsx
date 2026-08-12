@@ -6,24 +6,32 @@ import { Button } from '@/components/ui/Button';
 import { Check, X, Eye } from 'lucide-react';
 import styles from './ApprovalsPage.module.css';
 
+import { ExpenseDetailModal } from './components/ExpenseDetailModal';
+
 export const ApprovalsPage = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER';
   
   const [activeTab, setActiveTab] = useState<'1' | '2'>('1');
+  const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
+
   const { data, isLoading } = usePendingExpenses(activeTab);
   
   const approveMutation = useApproveExpense();
   const rejectMutation = useRejectExpense();
 
   const handleApprove = (id: string) => {
-    approveMutation.mutate(id);
+    approveMutation.mutate(id, {
+      onSuccess: () => setSelectedExpense(null)
+    });
   };
 
   const handleReject = (id: string) => {
     const reason = window.prompt("Rad etish sababini kiriting (kamida 10 belgi):");
     if (reason && reason.length >= 10) {
-      rejectMutation.mutate({ id, reason });
+      rejectMutation.mutate({ id, reason }, {
+        onSuccess: () => setSelectedExpense(null)
+      });
     } else if (reason) {
       alert("Sabab kamida 10 belgi bo'lishi kerak!");
     }
@@ -82,7 +90,13 @@ export const ApprovalsPage = () => {
                 </TableCell>
                 <TableCell>
                   <div className={styles.actions}>
-                    <Button variant="ghost" size="sm" title="Ko'rish" style={{ color: 'rgb(var(--info))' }}>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setSelectedExpense(item)}
+                      title="Ko'rish" 
+                      style={{ color: 'rgb(var(--info))' }}
+                    >
                       <Eye size={18} />
                     </Button>
                     <Button 
@@ -119,6 +133,15 @@ export const ApprovalsPage = () => {
           </TableBody>
         </Table>
       )}
+
+      <ExpenseDetailModal
+        expense={selectedExpense}
+        open={!!selectedExpense}
+        onClose={() => setSelectedExpense(null)}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        isPending={approveMutation.isPending || rejectMutation.isPending}
+      />
     </div>
   );
 };

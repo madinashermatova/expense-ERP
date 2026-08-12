@@ -7,6 +7,7 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { ExpensesPage } from '@/features/expenses/ExpensesPage';
 import { ExpenseCreatePage } from '@/features/expenses/ExpenseCreatePage';
 import { ApprovalsPage } from '@/features/approvals/ApprovalsPage';
+import { SettingsPage } from '@/features/settings/SettingsPage';
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,10 @@ export const router = createBrowserRouter([
       {
         path: 'approvals',
         element: <ApprovalsPage />,
+      },
+      {
+        path: 'settings',
+        element: <SettingsPage />,
       },
       // ... boshqa modullar shu yerda qo'shiladi
     ],
