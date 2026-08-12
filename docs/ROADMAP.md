@@ -151,7 +151,7 @@ Signed URL testlari real MinIO ga qarshi ishlaydi.
 
 ---
 
-## S5 — Valyuta va kurslar ⬜ (TZ 3.5)
+## S5 — Valyuta va kurslar ✅ (TZ 3.5)
 
 **Nima quriladi:**
 - `CurrencyService` — sanaga amaldagi kursni topish, `AUTO`/`MANUAL` baza tanlovi
@@ -161,6 +161,24 @@ Signed URL testlari real MinIO ga qarshi ishlaydi.
 
 **Qabul mezoni:** CBU 500 qaytarsa cron yiqilmaydi; kurs keyin o'zgarsa eski xarajat
 UZS ekvivalenti o'zgarmaydi.
+
+**Natija:** 145 test yashil (121 integratsion + 24 unit). Yangi: valyuta 21, pul arifmetikasi 11.
+
+**S5 da qabul qilingan qarorlar:**
+- **`Money` yordamchisi** (`Decimal` ustida) — barcha pul hisob-kitobi shu yerda.
+  `number` umuman ishlatilmaydi: 0.1 + 0.2 ≠ 0.3 muammosi moliyaviy tizimda yo'l qo'yilmaydi.
+  `splitEqually()` ham shu yerda — S6 dagi taqsimlash uchun oldindan yozildi va
+  "yig'indi har doim asl summaga teng" xossasi 5 xil kirish bilan tekshirilgan.
+- **Aniq sanaga kurs bo'lmasa — oldingi eng yaqin kurs** ishlatiladi (dam olish kunlari,
+  bayramlar). TZ buni aytmagan, lekin aks holda shanba kunlik xarajat kiritib bo'lmasdi.
+  Kelajakdagi kurs hech qachon ishlatilmaydi.
+- **`MANUAL` rejim `AUTO` kursiga tushib ketmaydi** — sozlama qat'iy: MANUAL tanlangan
+  bo'lsa faqat qo'lda kiritilgan kurslar ko'riladi, aks holda 422 (TZ qabul mezoni).
+- Cron **har kompaniya uchun alohida** yozadi va bittasidagi xatolik qolganlarini to'xtatmaydi.
+- CBU javob bermaganda `Notification` yozuvi yaratiladi (Web kanali) — S11 da BullMQ va
+  Telegram shu servis ustiga qo'shiladi, chaqiruvchi kod o'zgarmaydi.
+- `SettingsService` va `NotificationsService` ning kerakli qismi shu bosqichda yozildi
+  (to'liq CRUD S15/S11 da) — valyuta ularsiz ishlay olmaydi.
 
 **Commit:** `feat(currency): CBU cron, qo'lda kurs, snapshot mantiqi`
 

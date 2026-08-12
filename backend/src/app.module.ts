@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { CommonModule } from './common/common.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -20,7 +21,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { EmployeesModule } from './modules/employees/employees.module';
+import { CurrencyModule } from './modules/currency/currency.module';
 import { FilesModule } from './modules/files/files.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { PlansModule } from './modules/plans/plans.module';
 
 @Module({
@@ -51,6 +55,7 @@ import { PlansModule } from './modules/plans/plans.module';
         skipIf: () => process.env.DISABLE_THROTTLE === 'true',
       }),
     }),
+    ScheduleModule.forRoot(),
     TenancyModule,
     PrismaModule,
     CommonModule,
@@ -60,6 +65,9 @@ import { PlansModule } from './modules/plans/plans.module';
     EmployeesModule,
     CategoriesModule,
     FilesModule,
+    SettingsModule,
+    NotificationsModule,
+    CurrencyModule,
   ],
   controllers: [HealthController],
   providers: [

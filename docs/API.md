@@ -6,7 +6,7 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S4 tayyor** (tenancy, auth, tashkilot, fayllar)
+Holat: **S1–S5 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta)
 
 ---
 
@@ -324,11 +324,72 @@ Boshqa kompaniya fayliga so'rov `404` qaytaradi (mavjudligi oshkor qilinmaydi).
 
 ---
 
+## Valyuta
+
+Qo'llab-quvvatlanadigan valyutalar: **UZS** va **USD**. Hisobot valyutasi — UZS.
+
+### `GET /currency/rates`
+
+`?from=YYYY-MM-DD&to=YYYY-MM-DD&currency=USD` — oxirgi 400 yozuv, sana bo'yicha kamayish tartibida.
+
+```jsonc
+[
+  { "id": "uuid", "date": "2026-08-12", "currency": "USD",
+    "rate": "12650.500000", "source": "AUTO", "createdAt": "..." }
+]
+```
+
+### `GET /currency/rates/current?currency=USD`
+
+Xarajat formasida UZS ekvivalentini oldindan ko'rsatish uchun.
+
+```jsonc
+{ "currency": "USD", "rate": "12650.500000", "source": "AUTO", "rateDate": "2026-08-11" }
+```
+
+`rateDate` so'ralgan sanadan **eski bo'lishi mumkin**: aniq kunga kurs bo'lmasa
+(dam olish kuni, bayram) oldingi eng yaqin kurs ishlatiladi.
+
+### `POST /currency/rates` — `ADMIN` → `201`
+
+```jsonc
+{ "date": "2026-08-10", "currency": "USD", "rate": "12650.5" }
+```
+
+Bir kunga takroriy yuborish **yangilaydi** (dublikat yaratmaydi).
+
+| Xato | Status |
+|---|---|
+| `RATE_NOT_POSITIVE` | 422 |
+| `CURRENCY_NOT_CONVERTIBLE` | 422 (UZS uchun kurs kiritilmaydi) |
+
+### `GET /currency/base` · `POST /currency/base` — o'qish barchaga, yozish `ADMIN`
+
+```jsonc
+{ "mode": "AUTO" }   // AUTO = CBU kurslari, MANUAL = qo'lda kiritilganlar
+```
+
+Hisob bazasi **barcha konvertatsiya va hisobotlarga** ta'sir qiladi (TZ 3.5).
+`MANUAL` tanlangan bo'lsa CBU kurslari umuman ishlatilmaydi — kerakli sanaga qo'lda
+kurs kiritilmagan bo'lsa USD xarajat yaratish `422 CURRENCY_RATE_MISSING` bilan bloklanadi.
+
+### Kurs snapshot i
+
+Xarajat yaratilganda o'sha sanadagi kurs yozuvga **ko'chirib olinadi** (`rateUsed`,
+`rateSource`, `amountUzs`). Keyin kurs o'zgarsa tarixiy hisobot **o'zgarmaydi**.
+
+### CBU sinxronizatsiyasi
+
+Har kuni **09:00 (Asia/Tashkent)** avtomatik tortiladi. CBU javob bermasa:
+oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
+`CURRENCY_RATE_FAILED` bildirishnomasi yuboriladi.
+
+---
+
 ## ⏳ Rejada (keyingi bosqichlar)
 
 | Endpoint | Bosqich |
 |---|---|
-| `GET/POST /currency/rates` | S5 |
 | `GET/POST/PATCH/DELETE /expenses`, `/expenses/:id/files` | S6 |
 | `POST /expenses/:id/approve` · `/reject` · `/request-fix` · `/bulk-approve` | S7 |
 | `GET/POST /edit-requests` | S8 |
