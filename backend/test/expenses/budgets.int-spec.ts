@@ -287,6 +287,41 @@ describe('Byudjet va limitlar (TZ 3.10)', () => {
     expect(alerts.map((a) => a.threshold)).toEqual([80, 100]);
   });
 
+  it('tahrirlash chegaradan o‘tkazsa ogohlantirish yuboriladi (TZ 3.8)', async () => {
+    await branchBudget('1000000.00').expect(201);
+
+    const expense = await createExpense({ amount: '500000.00' });
+    await approveExpense(expense.id as string);
+
+    // 50% — hali chegara yo'q
+    expect(
+      await prisma.raw.budgetAlert.count({
+        where: { companyId: alfa.companyId },
+      }),
+    ).toBe(0);
+
+    await http()
+      .patch(API(`/expenses/${expense.id}`))
+      .set(...admin.header)
+      .send({
+        reason: 'Chek summasi noto‘g‘ri kiritilgan edi',
+        amount: '900000.00',
+      })
+      .expect(200);
+
+    const alerts = await prisma.raw.budgetAlert.findMany({
+      where: { companyId: alfa.companyId },
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].threshold).toBe(80);
+
+    const usage = await http()
+      .get(API('/budgets/usage'))
+      .set(...admin.header)
+      .expect(200);
+    expect(usage.body[0].spent).toBe('900000.00');
+  });
+
   // ─── Sarf hisobi ───────────────────────────────────────────────────────────
 
   it('faqat tasdiqlangan xarajat sarfga kiradi', async () => {

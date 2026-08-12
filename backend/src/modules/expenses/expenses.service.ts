@@ -41,6 +41,13 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { NumberingService } from './numbering.service';
 import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
 
+/** Byudjet sarfiga kiradigan statuslar (TZ 3.10) — `BudgetsService` bilan bir xil ro'yxat */
+const COUNTED_IN_SPEND: ExpenseStatus[] = [
+  ExpenseStatus.APPROVED,
+  ExpenseStatus.PARTIALLY_REFUNDED,
+  ExpenseStatus.REFUNDED,
+];
+
 /** Dublikat ogohlantirish oynasi (TZ 3.6) — bloklamaydi, faqat ogohlantiradi */
 const DUPLICATE_WINDOW_MINUTES = 10;
 
@@ -600,6 +607,17 @@ export class ExpensesService {
         { field: 'reason', old: null, new: reason },
       ],
     });
+
+    /*
+     * TZ 3.8 — summa tahrirlansa limit ogohlantirishlari qayta baholanadi.
+     * Sarfning o'zi so'rov vaqtida hisoblanadi, shuning uchun qayta hisoblash shart emas;
+     * lekin tahrir yozuvni chegaradan **o'tkazib yuborishi** mumkin va bu holda xabar
+     * ketishi kerak. Faqat sarfga kiradigan statuslar uchun — hali tasdiqlanmagan yozuv
+     * sarfga ta'sir qilmaydi.
+     */
+    if (COUNTED_IN_SPEND.includes(expense.status)) {
+      await this.budgets.reevaluateForExpense(id);
+    }
 
     // Tahrirlash ham status tarixida iz qoldiradi — sabab shu yerda saqlanadi
     await this.prisma.db.expenseStatusHistory.create({
