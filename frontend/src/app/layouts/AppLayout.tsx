@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Outlet, Navigate, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, Navigate, NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store';
 import { useLogout } from '@/features/auth/api';
-import { LayoutDashboard, Receipt, CheckCircle, Menu, LogOut, Settings, Undo2, PencilLine, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Receipt, CheckCircle, Menu, LogOut, Settings, Undo2, PencilLine, BarChart3, DownloadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
 import styles from './AppLayout.module.css';
 
 export const AppLayout = () => {
@@ -40,6 +41,7 @@ export const AppLayout = () => {
     { to: '/edit-requests', icon: <PencilLine size={20} />, label: "Tahrirlash" },
     { to: '/reports', icon: <BarChart3 size={20} />, label: "Hisobotlar" },
     { to: '/audit', icon: <Settings size={20} />, label: "Audit jurnali" },
+    { to: '/exports', icon: <DownloadCloud size={20} />, label: "Eksportlar" },
   ];
 
   if (user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER') {
@@ -81,11 +83,16 @@ export const AppLayout = () => {
       
       <main className={styles.main}>
         <header className={styles.header}>
-          <div style={{ fontWeight: 500 }}>{user?.fullName || 'Foydalanuvchi'}</div>
-          <Button variant="ghost" onClick={handleLogout} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <LogOut size={16} />
-            Chiqish
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+            <NotificationBell />
+            <Link to="/profile" style={{ fontWeight: 500, color: 'inherit', textDecoration: 'none' }}>
+              {user?.fullName || 'Foydalanuvchi'}
+            </Link>
+            <Button variant="ghost" onClick={handleLogout} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <LogOut size={16} />
+              Chiqish
+            </Button>
+          </div>
         </header>
         
         <div className={styles.content}>

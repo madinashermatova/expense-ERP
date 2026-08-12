@@ -1,0 +1,42 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.status_DONE {
+  color: green;
+  font-weight: 500;
+}
+
+.status_FAILED {
+  color: red;
+  font-weight: 500;
+}
+
+.status_QUEUED, .status_RUNNING {
+  color: orange;
+  font-weight: 500;
+}

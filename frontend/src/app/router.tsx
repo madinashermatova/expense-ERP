@@ -12,6 +12,8 @@ import { RefundsPage } from '@/features/refunds/RefundsPage';
 import { EditRequestsPage } from '@/features/edit-requests/EditRequestsPage';
 import { ReportsPage } from '@/features/reports/ReportsPage';
 import { AuditPage } from '@/features/audit/AuditPage';
+import { ExportHistoryPage } from '@/features/exports/ExportHistoryPage';
+import { ProfilePage } from '@/features/profile/ProfilePage';
 
 export const router = createBrowserRouter([
   {
@@ -51,9 +53,17 @@ export const router = createBrowserRouter([
         element: <AuditPage />,
       },
       {
+        path: 'exports',
+        element: <ExportHistoryPage />,
+      },
+      {
         path: 'settings',
         element: <SettingsPage />,
       },
+      {
+        path: 'profile',
+        element: <ProfilePage />,
+      }
       // ... boshqa modullar shu yerda qo'shiladi
     ],
   },
