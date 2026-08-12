@@ -35,7 +35,7 @@ test.describe('Expense Flow', () => {
     await expect(page.locator('text=Eksportlar tarixi')).toBeVisible();
     
     // Check if table loaded
-    const rows = page.locator('tbody tr');
+    // const rows = await page.locator('tbody tr').count();
     // await expect(rows.first()).toBeVisible();
   });
 });

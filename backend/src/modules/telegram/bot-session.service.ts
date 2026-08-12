@@ -96,7 +96,7 @@ export class BotSessionService implements OnModuleInit, OnModuleDestroy {
       telegramId,
       activeLinkId: row?.activeLinkId ?? null,
       language: row?.language ?? Language.UZ,
-      flow: (row?.flowState as FlowState | null) ?? null,
+      flow: toFlowState(row?.flowState),
     };
 
     await this.writeCache(session);
@@ -116,13 +116,12 @@ export class BotSessionService implements OnModuleInit, OnModuleDestroy {
         botId: session.botId,
         activeLinkId: session.activeLinkId,
         language: session.language,
-        flowState: this.flowJson(session.flow) ?? undefined,
+        flowState: this.flowJson(session.flow),
       },
       update: {
         activeLinkId: session.activeLinkId,
         language: session.language,
-        // `null` ustunni tozalash uchun ataylab: oqim tugaganda holat qolmasligi kerak
-        flowState: this.flowJson(session.flow) ?? { set: null },
+        flowState: this.flowJson(session.flow),
       },
     });
 
@@ -167,9 +166,18 @@ export class BotSessionService implements OnModuleInit, OnModuleDestroy {
   /**
    * Prisma `Json` ustuni indeks imzosi bo'lgan tipni talab qiladi, union esa uni
    * bermaydi — konvertatsiya bitta joyda, aniq izoh bilan qilinadi.
+   *
+   * Oqim tugaganda ustun **`Prisma.DbNull`** bilan tozalanadi: `null` yoki
+   * `{ set: null }` bu yerda ishlamaydi — birinchisini Prisma "o'zgartirmaslik"
+   * deb tushunadi, ikkinchisi esa ustunga aynan `{"set": null}` obyektini yozadi
+   * (real sinovda shu holat yuz bergan).
    */
-  private flowJson(flow: FlowState | null): Prisma.InputJsonValue | null {
-    return flow === null ? null : (flow as unknown as Prisma.InputJsonValue);
+  private flowJson(
+    flow: FlowState | null,
+  ): Prisma.InputJsonValue | typeof Prisma.DbNull {
+    return flow === null
+      ? Prisma.DbNull
+      : (flow as unknown as Prisma.InputJsonValue);
   }
 
   private async readCache(
@@ -212,4 +220,20 @@ export class BotSessionService implements OnModuleInit, OnModuleDestroy {
       // Kesh yozilmasa ham holat DB da bor — oqim buzilmaydi
     }
   }
+}
+
+/**
+ * Bazadagi `flowState` ni holatga aylantiradi.
+ *
+ * Ustunda kutilmagan qiymat (eski format, qo'lda o'zgartirilgan yozuv) bo'lsa oqim
+ * **yo'q** deb hisoblanadi: yarim tushunilgan holat bilan davom etish foydalanuvchini
+ * boshi berk ko'chaga olib borardi.
+ */
+function toFlowState(value: unknown): FlowState | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const candidate = value as { name?: unknown };
+  return typeof candidate.name === 'string' ? (value as FlowState) : null;
 }

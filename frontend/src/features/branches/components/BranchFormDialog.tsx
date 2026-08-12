@@ -37,7 +37,7 @@ export const BranchFormDialog = ({ open, onClose, branchToEdit }: BranchFormDial
 
   const onSubmit = (data: BranchFormData) => {
     if (branchToEdit) {
-      const { code, ...updateData } = data; // code can't be updated
+      const { code: _code, ...updateData } = data; // code can't be updated
       updateMutation.mutate(
         { id: branchToEdit.id, data: updateData },
         {

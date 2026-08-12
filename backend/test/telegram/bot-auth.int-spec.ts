@@ -269,6 +269,22 @@ describe('Telegram bot: kirish va hisoblar (TZ 3.12)', () => {
     expect(user.tx.last.text).toContain('Настройки');
   });
 
+  it('oqim tugaganda `flowState` ustuni tozalanadi (obyekt yozilmaydi)', async () => {
+    await login(user, alfa.workerEmail);
+
+    const row = await prisma.raw.telegramSession.findUniqueOrThrow({
+      where: { telegramId_botId: { telegramId: TG, botId: SHARED_BOT } },
+    });
+    // `{ "set": null }` yozilib qolsa oqim "ochiq" ko'rinadi va menyu tugmasi
+    // bosilganda keraksiz "Bekor qilindi" chiqadi (real sinovda shu bo'lgan)
+    expect(row.flowState).toBeNull();
+
+    // Keshni chetlab o'tib, holat DB dan o'qilganda ham oqim yo'q
+    await sessions.forget(SHARED_BOT, TG);
+    const session = await sessions.load(SHARED_BOT, TG);
+    expect(session.flow).toBeNull();
+  });
+
   it('oqim Redis o‘chirilgan holatda ham DB dan davom etadi', async () => {
     await user.send(BUTTONS.login.uz);
     await user.send(alfa.workerEmail);

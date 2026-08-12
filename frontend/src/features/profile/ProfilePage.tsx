@@ -6,7 +6,7 @@ import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 
 export const ProfilePage = () => {
-  const { t, i18n } = useTranslation(['common']);
+  const { i18n } = useTranslation(['common']);
   const { user } = useAuthStore();
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
 

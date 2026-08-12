@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useAuthStore } from '@/features/auth/store';
+
 import { useBranches, useCategories, useEmployees } from '@/features/expenses/api';
 import { useBudgets, useCurrencies } from './api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Plus } from 'lucide-react';
-import { Navigate } from 'react-router-dom';
+
 import { useTranslation } from 'react-i18next';
 import styles from './SettingsPage.module.css';
 import { EmployeeForm } from './components/EmployeeForm';
@@ -16,7 +16,7 @@ import { BudgetForm } from './components/BudgetForm';
 import { CurrencyForm } from './components/CurrencyForm';
 
 export const SettingsPage = () => {
-  const { user } = useAuthStore();
+
 
 
   const { t } = useTranslation(['settings', 'common']);

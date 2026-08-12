@@ -9,7 +9,7 @@ export const useExports = () => {
       try {
         const { data } = await apiClient.get('/exports');
         return data.items || data;
-      } catch (_e) {
+      } catch {
         return [
           { id: '1', type: 'E2', format: 'Excel', status: 'DONE', rowCount: 1500, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString() },
           { id: '2', type: 'E9', format: 'PDF', status: 'QUEUED', rowCount: null, createdAt: new Date().toISOString(), expiresAt: null }
