@@ -349,6 +349,36 @@ export class ExpensesService {
     );
   }
 
+  /**
+   * Eksport uchun qatorlar — sahifalashsiz (TZ 3.13 E1).
+   *
+   * Ro'yxat bilan **bir xil** filtr va filial doirasi ishlatiladi: eksportdagi qatorlar
+   * soni ekrandagi natija bilan aynan mos kelishi kerak, shuning uchun bu yerda alohida
+   * so'rov qurilmaydi.
+   */
+  async listForExport(
+    query: ListExpensesDto,
+    take: number,
+  ): Promise<ExpenseView[]> {
+    const branchId = this.branchScope.resolveListFilter(query.branchId);
+    const rows = await this.prisma.db.expense.findMany({
+      where: this.buildWhere(query, branchId),
+      include: EXPENSE_INCLUDE,
+      orderBy: this.buildOrderBy(query),
+      take,
+    });
+
+    return rows.map((row) => this.toView(row));
+  }
+
+  /** Eksportni fon rejimiga o'tkazish kerakligini aniqlash uchun (TZ 3.13) */
+  async countForExport(query: ListExpensesDto): Promise<number> {
+    const branchId = this.branchScope.resolveListFilter(query.branchId);
+    return this.prisma.db.expense.count({
+      where: this.buildWhere(query, branchId),
+    });
+  }
+
   async findOne(id: string): Promise<ExpenseView> {
     const expense = await this.prisma.db.expense.findUnique({
       where: { id },

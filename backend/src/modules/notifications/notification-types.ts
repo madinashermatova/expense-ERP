@@ -18,6 +18,8 @@ export const NOTIFICATION_TYPES = {
   budgetThreshold: 'BUDGET_THRESHOLD',
   approvalReminder: 'APPROVAL_REMINDER',
   dailyDigest: 'DAILY_DIGEST',
+  exportReady: 'EXPORT_READY',
+  exportFailed: 'EXPORT_FAILED',
 } as const;
 
 export type NotificationType =

@@ -68,6 +68,23 @@ export const ApprovalsPage = () => {
     });
   };
 
+  // Keyboard navigation for A (Approve) and R (Reject)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Faqatgina modal ochiq va input maydonida bo'lmaganda ishlaydi
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (!selectedExpense) return;
+
+      if (e.key.toLowerCase() === 'a') {
+        handleApprove(selectedExpense.id);
+      } else if (e.key.toLowerCase() === 'r') {
+        handleReject(selectedExpense.id);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedExpense, handleApprove, handleReject]);
+
   const toggleSelectAll = () => {
     if (data?.items) {
       if (selectedIds.length === data.items.length) {

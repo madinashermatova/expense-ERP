@@ -65,6 +65,14 @@ const TEMPLATES: Record<string, Template> = {
     uz: 'Kunlik xulosa: {approved} tasdiqlangan, {pending} navbatda, jami {total}',
     ru: 'Сводка за день: одобрено {approved}, в очереди {pending}, всего {total}',
   },
+  [NOTIFICATION_TYPES.exportReady]: {
+    uz: 'Eksport tayyor: {title} ({format}) — {rowCount} qator',
+    ru: 'Экспорт готов: {title} ({format}) — строк: {rowCount}',
+  },
+  [NOTIFICATION_TYPES.exportFailed]: {
+    uz: 'Eksport bajarilmadi: {title} ({format})',
+    ru: 'Экспорт не выполнен: {title} ({format})',
+  },
 };
 
 /** Ichma-ich obyekt matnga aylanmaydi — `[object Object]` xabarni buzardi */

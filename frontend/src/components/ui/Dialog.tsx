@@ -28,12 +28,12 @@ export const Dialog = ({ open, onClose, title, children }: DialogProps) => {
   if (!open) return null;
 
   return createPortal(
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.content} onClick={e => e.stopPropagation()}>
+    <div className={styles.overlay} onClick={onClose} role="presentation">
+      <div className={styles.content} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="dialog-title">
         {title && (
           <div className={styles.header}>
-            <h2 className={styles.title}>{title}</h2>
-            <button className={styles.closeButton} onClick={onClose}>
+            <h2 id="dialog-title" className={styles.title}>{title}</h2>
+            <button className={styles.closeButton} onClick={onClose} aria-label="Yopish">
               <X size={20} />
             </button>
           </div>

@@ -82,33 +82,53 @@ export class StorageService implements OnModuleInit {
     return `${companyId}/${scope}/${ownerId}/${randomUUID()}.${extensionFor(mime)}`;
   }
 
+  /** Eksport kaliti: `{companyId}/exports/{jobId}.{ext}` (TZ 3.13) */
+  buildExportKey(companyId: string, jobId: string, extension: string): string {
+    return `${companyId}/exports/${jobId}.${extension}`;
+  }
+
   async put(
     key: string,
     body: Buffer,
     mime: AllowedMime,
   ): Promise<StoredObject> {
+    await this.putObject(key, body, mime);
+    return { storageKey: key, sizeBytes: body.length, mimeType: mime };
+  }
+
+  /**
+   * Ixtiyoriy MIME bilan saqlash — eksport fayllari uchun (xlsx `AllowedMime` ro'yxatida
+   * yo'q: u ro'yxat foydalanuvchi **yuklaydigan** fayllarni cheklaydi, server o'zi
+   * generatsiya qilganini emas).
+   */
+  async putObject(
+    key: string,
+    body: Buffer,
+    contentType: string,
+  ): Promise<void> {
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
         Body: body,
-        ContentType: mime,
+        ContentType: contentType,
       }),
     );
-
-    return { storageKey: key, sizeBytes: body.length, mimeType: mime };
   }
 
   /** TZ 4.2 — fayllarga kirish faqat vaqtinchalik signed URL orqali (TTL 15 daqiqa) */
   async signedUrl(
     key: string,
     downloadName?: string,
+    disposition: 'inline' | 'attachment' = 'inline',
   ): Promise<{ url: string; expiresAt: Date }> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
       ...(downloadName
-        ? { ResponseContentDisposition: `inline; filename="${downloadName}"` }
+        ? {
+            ResponseContentDisposition: `${disposition}; filename="${downloadName}"`,
+          }
         : {}),
     });
 
