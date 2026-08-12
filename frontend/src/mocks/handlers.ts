@@ -5,12 +5,23 @@ export const handlers = [
     await delay(500);
     const body = (await request.json()) as any;
     
-    if (body.login === 'admin' && body.password === 'password') {
+    if (body.login === 'multi' && body.password === 'password' && !body.companySlug) {
+      return new HttpResponse(
+        JSON.stringify({ 
+          code: 'MULTIPLE_COMPANIES', 
+          message: 'Bu login bir nechta kompaniyada mavjud — kompaniyani tanlang',
+          details: { companies: ["alfa:Alfa Savdo MChJ", "beta:Beta Logistika MChJ"] }
+        }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if ((body.login === 'admin' || body.login === 'multi') && body.password === 'password') {
       return HttpResponse.json({
         accessToken: 'mock-jwt-token-12345',
         user: {
           id: 'u1',
-          login: 'admin',
+          login: body.login,
           role: 'ADMIN',
           fullName: 'Tizim Administratori'
         }
@@ -18,7 +29,7 @@ export const handlers = [
     }
 
     return new HttpResponse(
-      JSON.stringify({ code: 'UNAUTHORIZED', message: 'Login yoki parol noto\'g\'ri' }),
+      JSON.stringify({ code: 'INVALID_CREDENTIALS', message: 'Login yoki parol noto\'g\'ri' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } }
     );
   }),

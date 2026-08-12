@@ -6,6 +6,7 @@ import { z } from 'zod';
 export const loginSchema = z.object({
   login: z.string().min(1, { message: "Login bo'sh bo'lishi mumkin emas" }),
   password: z.string().min(8, { message: "Parol kamida 8 ta belgidan iborat bo'lishi kerak" }),
+  companySlug: z.string().optional(),
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;
