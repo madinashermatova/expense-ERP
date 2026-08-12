@@ -107,4 +107,73 @@ export const handlers = [
     await delay(300);
     return HttpResponse.json({ success: true });
   }),
+
+  // Refunds
+  http.get('*/api/refunds', async ({ request }) => {
+    await delay(500);
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status') || 'PENDING';
+    
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'ref-1',
+          expenseId: 'exp-123',
+          expenseGlobalNumber: 'EXP-000123',
+          amount: '150000.00',
+          reason: 'Noto\'g\'ri kiritilibdi',
+          status: 'PENDING',
+          createdAt: '2026-08-10'
+        }
+      ].filter(r => r.status === status),
+      total: 1
+    });
+  }),
+  
+  http.post('*/api/refunds', async () => {
+    await delay(800);
+    return HttpResponse.json({ success: true }, { status: 201 });
+  }),
+
+  http.post('*/api/refunds/:id/approve', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true });
+  }),
+
+  http.post('*/api/refunds/:id/reject', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true });
+  }),
+
+  // Edit Requests
+  http.get('*/api/edit-requests', async ({ request }) => {
+    await delay(500);
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status') || 'PENDING';
+    
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'er-1',
+          expenseId: 'exp-456',
+          expenseGlobalNumber: 'EXP-000456',
+          requestedBy: 'Azizov Alisher (Worker)',
+          reason: 'Kategoriya xato kiritilgan, o\'zgartirish kerak.',
+          status: 'PENDING',
+          createdAt: '2026-08-11'
+        }
+      ].filter(r => r.status === status),
+      total: 1
+    });
+  }),
+
+  http.post('*/api/edit-requests/:id/apply', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true });
+  }),
+
+  http.post('*/api/edit-requests/:id/reject', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true });
+  }),
 ];

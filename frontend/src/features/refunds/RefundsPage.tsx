@@ -2,18 +2,24 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
+import { Dialog } from '@/components/ui/Dialog';
 import { Plus } from 'lucide-react';
+import { useRefunds } from './api';
+import { RefundForm } from './components/RefundForm';
 import styles from './RefundsPage.module.css';
 
 export const RefundsPage = () => {
   const { t } = useTranslation(['refunds', 'common']);
   const [activeTab, setActiveTab] = useState('PENDING');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  
+  const { data, isLoading } = useRefunds(activeTab);
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>{t('title')}</h1>
-        <Button style={{ gap: '8px' }}>
+        <Button style={{ gap: '8px' }} onClick={() => setIsCreateOpen(true)}>
           <Plus size={16} /> {t('newRefund')}
         </Button>
       </div>
@@ -44,13 +50,46 @@ export const RefundsPage = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow>
-            <TableCell colSpan={5} style={{ textAlign: 'center', padding: '24px' }}>
-              {t('common:status.empty')}
-            </TableCell>
-          </TableRow>
+          {isLoading ? (
+            <TableRow>
+              <TableCell colSpan={5} style={{ textAlign: 'center', padding: '24px' }}>
+                {t('common:status.loading')}
+              </TableCell>
+            </TableRow>
+          ) : data?.items?.length > 0 ? (
+            data.items.map((item: any) => (
+              <TableRow key={item.id}>
+                <TableCell style={{ fontFamily: 'monospace' }}>{item.expenseGlobalNumber}</TableCell>
+                <TableCell>
+                  {new Intl.NumberFormat('uz-UZ').format(Number(item.amount))}
+                </TableCell>
+                <TableCell>{item.reason}</TableCell>
+                <TableCell>{item.status}</TableCell>
+                <TableCell style={{ textAlign: 'right' }}>
+                  <Button variant="ghost" size="sm">{t('common:actions.approve')}</Button>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={5} style={{ textAlign: 'center', padding: '24px' }}>
+                {t('common:status.empty')}
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
+
+      <Dialog 
+        open={isCreateOpen} 
+        onClose={() => setIsCreateOpen(false)} 
+        title={t('newRefund')}
+      >
+        <RefundForm 
+          onSuccess={() => setIsCreateOpen(false)} 
+          onCancel={() => setIsCreateOpen(false)} 
+        />
+      </Dialog>
     </div>
   );
 };
