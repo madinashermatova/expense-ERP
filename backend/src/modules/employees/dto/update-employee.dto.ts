@@ -9,6 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { EmployeeStatus, Language } from '../../../generated/prisma/enums';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 /**
  * `branchId` bu yerda yo'q — filial almashtirish alohida `transfer` amali orqali,
@@ -29,7 +30,7 @@ export class UpdateEmployeeDto {
 
   @IsOptional()
   @Matches(/^\+998\d{9}$/, {
-    message: "Telefon +998XXXXXXXXX formatida bo'lishi kerak",
+    message: validationMessage('validation.PHONE_FORMAT'),
   })
   phone?: string;
 

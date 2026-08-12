@@ -3,7 +3,6 @@ import { PrismaService } from '../../src/common/prisma/prisma.service';
 import { EncryptionService } from '../../src/common/crypto/encryption.service';
 import { BotDirectoryService } from '../../src/modules/telegram/bot-directory.service';
 import { BotSessionService } from '../../src/modules/telegram/bot-session.service';
-import { BUTTONS } from '../../src/modules/telegram/bot-texts';
 import { createHttpApp } from '../helpers/http-app';
 import { truncateAll } from '../helpers/test-context';
 import {
@@ -11,7 +10,12 @@ import {
   SeededCompany,
   TEST_PASSWORD,
 } from '../helpers/seed-fixtures';
-import { botUser, BotUser } from '../helpers/bot-harness';
+import {
+  botUser,
+  BotUser,
+  ButtonLabels,
+  buttonLabels,
+} from '../helpers/bot-harness';
 
 const SHARED_BOT = 'shared-bot';
 
@@ -21,6 +25,7 @@ describe('Telegram bot: kirish va hisoblar (TZ 3.12)', () => {
   let prisma: PrismaService;
   let close: () => Promise<void>;
   let sessions: BotSessionService;
+  let BUTTONS: ButtonLabels;
   let alfa: SeededCompany;
   let beta: SeededCompany;
   let user: BotUser;
@@ -58,6 +63,7 @@ describe('Telegram bot: kirish va hisoblar (TZ 3.12)', () => {
     app = ctx.app;
     prisma = ctx.prisma;
     close = ctx.close;
+    BUTTONS = buttonLabels(app);
     sessions = app.get(BotSessionService);
   });
 
@@ -282,6 +288,7 @@ describe('Telegram bot: kompaniya boti (TZ 3.16.5)', () => {
   let close: () => Promise<void>;
   let directory: BotDirectoryService;
   let encryption: EncryptionService;
+  let BUTTONS: ButtonLabels;
   let alfa: SeededCompany;
   let beta: SeededCompany;
 
@@ -293,6 +300,7 @@ describe('Telegram bot: kompaniya boti (TZ 3.16.5)', () => {
     app = ctx.app;
     prisma = ctx.prisma;
     close = ctx.close;
+    BUTTONS = buttonLabels(app);
     directory = app.get(BotDirectoryService);
     encryption = app.get(EncryptionService);
   });

@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module, Provider } from '@nestjs/common';
 import { NOTIFICATION_QUEUE } from './notification-queue';
+import { NotificationTextService } from './notification-messages';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsProcessor } from './notifications.processor';
 import { NotificationsService } from './notifications.service';
@@ -26,10 +27,15 @@ function workerProviders(): Provider[] {
   imports: [BullModule.registerQueue({ name: NOTIFICATION_QUEUE })],
   controllers: [NotificationsController],
   providers: [
+    NotificationTextService,
     NotificationsService,
     TelegramSenderService,
     ...workerProviders(),
   ],
-  exports: [NotificationsService, TelegramSenderService],
+  exports: [
+    NotificationsService,
+    NotificationTextService,
+    TelegramSenderService,
+  ],
 })
 export class NotificationsModule {}

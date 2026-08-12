@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -7,6 +7,8 @@ import { AccessTokenPayload, AuthenticatedUser } from '../auth.types';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { CompanyStatus } from '../../../generated/prisma/enums';
+import { toAppLanguage } from '../../../common/i18n/languages';
+import { unauthorized } from '../../../common/errors/app-error';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -39,6 +41,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             companyId: true,
             employeeId: true,
             isActive: true,
+            language: true,
             employee: { select: { branchId: true, status: true } },
             company: { select: { status: true } },
           },
@@ -46,19 +49,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     );
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        code: 'UNAUTHORIZED',
-        message: 'Hisob faol emas',
-      });
+      throw unauthorized('UNAUTHORIZED');
     }
 
     if (user.company && user.company.status === CompanyStatus.SUSPENDED) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        code: 'COMPANY_SUSPENDED',
-        message: "Kompaniya hisobi to'xtatilgan",
-      });
+      throw unauthorized('COMPANY_SUSPENDED');
     }
 
     return {
@@ -68,6 +63,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       branchId: user.employee?.branchId ?? null,
       email: user.email,
       employeeId: user.employeeId,
+      language: toAppLanguage(user.language),
     };
   }
 }

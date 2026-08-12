@@ -5,7 +5,6 @@ import { ExpensesService, ExpenseView } from '../../expenses/expenses.service';
 import { MIN_REFUND_REASON_LENGTH } from '../../refunds/dto/refund.dto';
 import { RefundsService } from '../../refunds/refunds.service';
 import { EditRequestsService } from '../../edit-requests/edit-requests.service';
-import { langOf, t } from '../bot-texts';
 import { BotSession, BotSessionService } from '../bot-session.service';
 import {
   ActiveAccount,
@@ -17,6 +16,8 @@ import { DecisionFlow } from '../flow-state';
 import { formatAmount, formatDate } from '../format';
 import { MenuPresenter } from '../menu.presenter';
 import { extractServiceMessage } from '../service-error';
+import { toAppLanguage } from '../../../common/i18n/languages';
+import { BotTextService } from '../bot-text.service';
 
 /** Kartochkalar ketma-ket ko'riladi — bir vaqtda bittasi ko'rsatiladi (TZ 3.12.3) */
 const PAGE_SIZE = 20;
@@ -47,6 +48,7 @@ export class ApprovalsFlowHandler {
     private readonly editRequests: EditRequestsService,
     private readonly sessions: BotSessionService,
     private readonly menu: MenuPresenter,
+    private readonly texts: BotTextService,
   ) {}
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -61,7 +63,7 @@ export class ApprovalsFlowHandler {
     stage: Stage,
     index = 0,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const items = await this.pendingExpenses(stage);
 
     if (items.length === 0) {
@@ -70,7 +72,7 @@ export class ApprovalsFlowHandler {
         update,
         session,
         active,
-        t('approvalsEmpty', lang),
+        this.texts.t('approvalsEmpty', lang),
       );
       return;
     }
@@ -79,7 +81,7 @@ export class ApprovalsFlowHandler {
     const expense = items[position];
 
     const lines = [
-      t('approvalCard', lang, {
+      this.texts.t('approvalCard', lang, {
         number: expense.globalNumber,
         index: position + 1,
         total: items.length,
@@ -94,27 +96,36 @@ export class ApprovalsFlowHandler {
     ];
 
     if (expense.comment) {
-      lines.push(t('approvalComment', lang, { comment: expense.comment }));
+      lines.push(
+        this.texts.t('approvalComment', lang, { comment: expense.comment }),
+      );
     }
     if (expense.files?.length) {
-      lines.push(t('approvalFiles', lang, { count: expense.files.length }));
+      lines.push(
+        this.texts.t('approvalFiles', lang, { count: expense.files.length }),
+      );
     }
     // Bir nechta hisob bog'langan bo'lsa kartochkada kompaniya ko'rsatiladi (TZ 3.12.3)
     if ((await this.menu.linkedAccountCount(update)) > 1) {
-      lines.push(t('approvalCompany', lang, { company: active.companyName }));
+      lines.push(
+        this.texts.t('approvalCompany', lang, { company: active.companyName }),
+      );
     }
 
     const rows: InlineButton[][] = [
       [
-        { text: t('approve', lang), data: `apr:ok:${stage}:${expense.id}` },
         {
-          text: t('rejectAction', lang),
+          text: this.texts.t('approve', lang),
+          data: `apr:ok:${stage}:${expense.id}`,
+        },
+        {
+          text: this.texts.t('rejectAction', lang),
           data: `apr:no:${stage}:${expense.id}`,
         },
       ],
       [
         {
-          text: t('requestFix', lang),
+          text: this.texts.t('requestFix', lang),
           data: `apr:fix:${stage}:${expense.id}`,
         },
       ],
@@ -137,7 +148,7 @@ export class ApprovalsFlowHandler {
     active: ActiveAccount,
     data: string,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (data.startsWith('apr:go:')) {
       const [, , stage, index] = data.split(':');
@@ -161,7 +172,7 @@ export class ApprovalsFlowHandler {
           update,
           session,
           active,
-          t('approvedDone', lang, { number: decided.globalNumber }),
+          this.texts.t('approvedDone', lang, { number: decided.globalNumber }),
         );
       } catch (error) {
         await this.reportDecisionError(tx, update, session, active, error, {
@@ -206,7 +217,7 @@ export class ApprovalsFlowHandler {
           update,
           session,
           active,
-          t('refundApproved', lang),
+          this.texts.t('refundApproved', lang),
         );
       } catch (error) {
         await this.reportDecisionError(tx, update, session, active, error);
@@ -245,7 +256,7 @@ export class ApprovalsFlowHandler {
           update,
           session,
           active,
-          t('editApplied', lang),
+          this.texts.t('editApplied', lang),
         );
       } catch (error) {
         await this.reportDecisionError(tx, update, session, active, error);
@@ -275,13 +286,13 @@ export class ApprovalsFlowHandler {
     active: ActiveAccount,
     flow: DecisionFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const reason = update.text?.trim() ?? '';
 
     if (reason.length < MIN_REASON_LENGTH) {
       await tx.sendMessage(
         update.chatId,
-        t('reasonTooShort', lang, { min: MIN_REASON_LENGTH }),
+        this.texts.t('reasonTooShort', lang, { min: MIN_REASON_LENGTH }),
       );
       return;
     }
@@ -294,17 +305,17 @@ export class ApprovalsFlowHandler {
           flow.action === 'reject'
             ? await this.approvals.reject(flow.targetId, reason)
             : await this.approvals.requestFix(flow.targetId, reason);
-        message = t(
+        message = this.texts.t(
           flow.action === 'reject' ? 'rejectedDone' : 'fixRequestedDone',
           lang,
           { number: decided.globalNumber },
         );
       } else if (flow.kind === 'refund') {
         await this.refunds.reject(flow.targetId, reason);
-        message = t('refundRejected', lang);
+        message = this.texts.t('refundRejected', lang);
       } else {
         await this.editRequests.reject(flow.targetId, reason);
-        message = t('editRejected', lang);
+        message = this.texts.t('editRejected', lang);
       }
 
       await this.sessions.setFlow(session, null);
@@ -329,7 +340,7 @@ export class ApprovalsFlowHandler {
     active: ActiveAccount,
     index = 0,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const page = await this.refunds.list({
       status: 'PENDING',
       page: 1,
@@ -342,7 +353,7 @@ export class ApprovalsFlowHandler {
         update,
         session,
         active,
-        t('refundsEmpty', lang),
+        this.texts.t('refundsEmpty', lang),
       );
       return;
     }
@@ -350,7 +361,7 @@ export class ApprovalsFlowHandler {
     const position = Math.min(Math.max(index, 0), page.items.length - 1);
     const refund = page.items[position];
 
-    const text = t('refundCard', lang, {
+    const text = this.texts.t('refundCard', lang, {
       number: refund.expenseGlobalNumber,
       index: position + 1,
       total: page.items.length,
@@ -361,8 +372,11 @@ export class ApprovalsFlowHandler {
 
     const rows: InlineButton[][] = [
       [
-        { text: t('approve', lang), data: `rfd:ok:${refund.id}` },
-        { text: t('rejectAction', lang), data: `rfd:no:${refund.id}` },
+        { text: this.texts.t('approve', lang), data: `rfd:ok:${refund.id}` },
+        {
+          text: this.texts.t('rejectAction', lang),
+          data: `rfd:no:${refund.id}`,
+        },
       ],
     ];
     const navigation = this.navigation('rfd:go:x', position, page.items.length);
@@ -378,7 +392,7 @@ export class ApprovalsFlowHandler {
     active: ActiveAccount,
     index = 0,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const page = await this.editRequests.list({
       status: 'PENDING',
       page: 1,
@@ -391,7 +405,7 @@ export class ApprovalsFlowHandler {
         update,
         session,
         active,
-        t('editRequestsEmpty', lang),
+        this.texts.t('editRequestsEmpty', lang),
       );
       return;
     }
@@ -399,7 +413,7 @@ export class ApprovalsFlowHandler {
     const position = Math.min(Math.max(index, 0), page.items.length - 1);
     const request = page.items[position];
 
-    const text = t('editCard', lang, {
+    const text = this.texts.t('editCard', lang, {
       number: request.expenseGlobalNumber,
       index: position + 1,
       total: page.items.length,
@@ -409,8 +423,11 @@ export class ApprovalsFlowHandler {
 
     const rows: InlineButton[][] = [
       [
-        { text: t('editApply', lang), data: `edt:ok:${request.id}` },
-        { text: t('rejectAction', lang), data: `edt:no:${request.id}` },
+        { text: this.texts.t('editApply', lang), data: `edt:ok:${request.id}` },
+        {
+          text: this.texts.t('rejectAction', lang),
+          data: `edt:no:${request.id}`,
+        },
       ],
     ];
     const navigation = this.navigation('edt:go:x', position, page.items.length);
@@ -427,11 +444,11 @@ export class ApprovalsFlowHandler {
     session: BotSession,
     flow: DecisionFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     await this.sessions.setFlow(session, flow);
     await tx.sendMessage(
       update.chatId,
-      t('askReason', lang, { min: MIN_REASON_LENGTH }),
+      this.texts.t('askReason', lang, { min: MIN_REASON_LENGTH }),
     );
   }
 
@@ -510,7 +527,7 @@ export class ApprovalsFlowHandler {
       stage?: 'director' | 'admin';
     } = {},
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (
       context.expenseId &&
@@ -522,7 +539,7 @@ export class ApprovalsFlowHandler {
         update,
         session,
         active,
-        t('alreadyProcessed', lang),
+        this.texts.t('alreadyProcessed', lang),
       );
       return;
     }
@@ -533,7 +550,7 @@ export class ApprovalsFlowHandler {
         update,
         session,
         active,
-        t('alreadyProcessed', lang),
+        this.texts.t('alreadyProcessed', lang),
       );
       return;
     }
@@ -545,7 +562,7 @@ export class ApprovalsFlowHandler {
       update,
       session,
       active,
-      message ?? t('serverError', lang),
+      message ?? this.texts.t('serverError', lang),
     );
   }
 }

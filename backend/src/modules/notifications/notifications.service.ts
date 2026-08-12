@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import {
   Paginated,
@@ -17,13 +17,14 @@ import {
   Role,
 } from '../../generated/prisma/client';
 import { ListNotificationsDto } from './dto/list-notifications.dto';
-import { renderNotification } from './notification-messages';
+import { NotificationTextService } from './notification-messages';
 import {
   NOTIFICATION_JOB,
   NOTIFICATION_JOB_OPTIONS,
   NOTIFICATION_QUEUE,
   NotificationJob,
 } from './notification-queue';
+import { notFound } from '../../common/errors/app-error';
 export interface NotificationView {
   id: string;
   type: string;
@@ -53,6 +54,7 @@ export class NotificationsService {
     @InjectQueue(NOTIFICATION_QUEUE) private readonly queue: Queue,
     private readonly settings: SettingsService,
     private readonly tenantContext: TenantContextService,
+    private readonly texts: NotificationTextService,
   ) {}
 
   async notifyUsers(
@@ -166,11 +168,7 @@ export class NotificationsService {
         where: { id: notificationId, userId: userId ?? undefined },
       });
       if (exists === 0) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'NOT_FOUND',
-          message: 'Bildirishnoma topilmadi',
-        });
+        throw notFound('NOT_FOUND');
       }
     }
   }
@@ -261,7 +259,7 @@ export class NotificationsService {
     return {
       id: row.id,
       type: row.type,
-      title: renderNotification(row.type, row.payload, language),
+      title: this.texts.render(row.type, row.payload, language),
       payload: row.payload,
       channel: row.channel,
       isRead: row.isRead,

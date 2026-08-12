@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { AuditService } from '../../common/audit/audit.service';
 import {
   Paginated,
@@ -28,6 +22,12 @@ import {
 } from './dto/budget.dto';
 import { SPEND_COUNTED_STATUSES } from '../expenses/expense-status';
 import { Period, resolvePeriod } from './period';
+import {
+  AppErrorInit,
+  conflict,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 /** Ogohlantirish chegaralari (TZ 3.10) — yuqoridan pastga tekshiriladi */
 export const BUDGET_THRESHOLDS = [100, 80] as const;
@@ -144,11 +144,9 @@ export class BudgetsService {
   async create(dto: CreateBudgetDto): Promise<BudgetView> {
     const amount = Money.round2(dto.amount);
     if (!Money.isPositive(amount)) {
-      throw this.unprocessable(
-        'AMOUNT_NOT_POSITIVE',
-        "Limit summasi noldan katta bo'lishi kerak",
-        { amount: [dto.amount] },
-      );
+      throw this.unprocessable('AMOUNT_NOT_POSITIVE', {
+        details: { amount: [dto.amount] },
+      });
     }
 
     await this.assertScopeExists(dto.scope, dto.scopeId);
@@ -195,11 +193,9 @@ export class BudgetsService {
 
     const amount = dto.amount ? Money.round2(dto.amount) : budget.amount;
     if (!Money.isPositive(amount)) {
-      throw this.unprocessable(
-        'AMOUNT_NOT_POSITIVE',
-        "Limit summasi noldan katta bo'lishi kerak",
-        { amount: [dto.amount ?? ''] },
-      );
+      throw this.unprocessable('AMOUNT_NOT_POSITIVE', {
+        details: { amount: [dto.amount ?? ''] },
+      });
     }
 
     const effectiveFrom = dto.effectiveFrom
@@ -591,21 +587,17 @@ export class BudgetsService {
             });
 
     if (!exists) {
-      throw this.unprocessable(
-        'SCOPE_NOT_FOUND',
-        'Limit belgilanadigan obyekt topilmadi',
-        { scopeId: [scopeId] },
-      );
+      throw this.unprocessable('SCOPE_NOT_FOUND', {
+        details: { scopeId: [scopeId] },
+      });
     }
   }
 
   private assertRange(from: Date, to: Date | null): void {
     if (to && to.getTime() < from.getTime()) {
-      throw this.unprocessable(
-        'INVALID_DATE_RANGE',
-        "Tugash sanasi boshlanish sanasidan oldin bo'la olmaydi",
-        { effectiveTo: [isoDate(to)] },
-      );
+      throw this.unprocessable('INVALID_DATE_RANGE', {
+        details: { effectiveTo: [isoDate(to)] },
+      });
     }
   }
 
@@ -631,10 +623,7 @@ export class BudgetsService {
     });
 
     if (overlapping) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'BUDGET_OVERLAP',
-        message: 'Bu doira uchun shu muddatda limit allaqachon belgilangan',
+      throw conflict('BUDGET_OVERLAP', {
         details: { effectiveFrom: [isoDate(overlapping.effectiveFrom)] },
       });
     }
@@ -704,20 +693,17 @@ export class BudgetsService {
     };
   }
 
-  private notFound(): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'NOT_FOUND',
-      message: 'Limit topilmadi',
+  private notFound(): HttpException {
+    return notFoundError('NOT_FOUND', {
+      messageKey: 'errors.BUDGET_NOT_FOUND',
     });
   }
 
   private unprocessable(
     code: string,
-    message: string,
-    details?: Record<string, string[]>,
-  ): BadRequestException {
-    return new BadRequestException({ statusCode: 422, code, message, details });
+    init: Omit<AppErrorInit, 'status'> = {},
+  ): HttpException {
+    return unprocessable(code, init);
   }
 }
 

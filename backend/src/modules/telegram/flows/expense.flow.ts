@@ -13,7 +13,6 @@ import {
   CreateExpenseResult,
   ExpensesService,
 } from '../../expenses/expenses.service';
-import { langOf, t } from '../bot-texts';
 import { BotSession, BotSessionService } from '../bot-session.service';
 import {
   ActiveAccount,
@@ -31,6 +30,8 @@ import {
 } from '../format';
 import { MenuPresenter } from '../menu.presenter';
 import { extractServiceMessage } from '../service-error';
+import { AppLanguage, toAppLanguage } from '../../../common/i18n/languages';
+import { BotTextService } from '../bot-text.service';
 
 /** Bir sahifada ko'rsatiladigan xodim soni — Telegram inline klaviaturasi cheklangan */
 const EMPLOYEES_PER_PAGE = 8;
@@ -58,6 +59,7 @@ export class ExpenseFlowHandler {
     private readonly approvals: ApprovalsService,
     private readonly sessions: BotSessionService,
     private readonly menu: MenuPresenter,
+    private readonly texts: BotTextService,
   ) {}
 
   async start(
@@ -66,7 +68,7 @@ export class ExpenseFlowHandler {
     session: BotSession,
     active: ActiveAccount,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (!active.branchId) {
       await this.menu.showMain(
@@ -74,7 +76,7 @@ export class ExpenseFlowHandler {
         update,
         session,
         active,
-        t('branchMissing', lang),
+        this.texts.t('branchMissing', lang),
       );
       return;
     }
@@ -96,7 +98,7 @@ export class ExpenseFlowHandler {
     active: ActiveAccount,
     flow: ExpenseFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (update.photoFileId || update.documentFileId) {
       await this.acceptFile(tx, update, session, active, flow);
@@ -119,7 +121,7 @@ export class ExpenseFlowHandler {
             session,
             active,
             flow,
-            t('amountInvalid', lang),
+            this.texts.t('amountInvalid', lang),
           );
           return;
         }
@@ -143,7 +145,7 @@ export class ExpenseFlowHandler {
             session,
             active,
             flow,
-            t('dateInvalid', lang),
+            this.texts.t('dateInvalid', lang),
           );
           return;
         }
@@ -173,7 +175,7 @@ export class ExpenseFlowHandler {
     flow: ExpenseFlow,
     data: string,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (data === 'exp:cancel') {
       await this.sessions.setFlow(session, null);
@@ -182,7 +184,7 @@ export class ExpenseFlowHandler {
         update,
         session,
         active,
-        t('cancelled', lang),
+        this.texts.t('cancelled', lang),
       );
       return;
     }
@@ -196,7 +198,7 @@ export class ExpenseFlowHandler {
           update,
           session,
           active,
-          t('cancelled', lang),
+          this.texts.t('cancelled', lang),
         );
         return;
       }
@@ -257,7 +259,7 @@ export class ExpenseFlowHandler {
           session,
           active,
           flow,
-          t('selectAtLeastOne', lang),
+          this.texts.t('selectAtLeastOne', lang),
         );
         return;
       }
@@ -367,7 +369,7 @@ export class ExpenseFlowHandler {
     flow: ExpenseFlow,
     target: string,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (target === 'self') {
       if (!active.employeeId) {
@@ -377,7 +379,7 @@ export class ExpenseFlowHandler {
           update,
           session,
           active,
-          t('employeeMissing', lang),
+          this.texts.t('employeeMissing', lang),
         );
         return;
       }
@@ -429,7 +431,7 @@ export class ExpenseFlowHandler {
     flow: ExpenseFlow,
     text: string,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const parsed = parseAmount(text);
     if (!parsed) {
       await this.render(
@@ -438,7 +440,7 @@ export class ExpenseFlowHandler {
         session,
         active,
         flow,
-        t('amountInvalid', lang),
+        this.texts.t('amountInvalid', lang),
       );
       return;
     }
@@ -475,7 +477,7 @@ export class ExpenseFlowHandler {
     active: ActiveAccount,
     flow: ExpenseFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (flow.step !== 'receipt') {
       await this.render(tx, update, session, active, flow);
@@ -495,10 +497,10 @@ export class ExpenseFlowHandler {
 
     await tx.sendMessage(
       update.chatId,
-      t('receiptAdded', lang, { count: files.length }),
+      this.texts.t('receiptAdded', lang, { count: files.length }),
       {
         inline: [
-          [{ text: t('next', lang), data: 'exp:receiptDone' }],
+          [{ text: this.texts.t('next', lang), data: 'exp:receiptDone' }],
           this.navRow(lang),
         ],
       },
@@ -516,7 +518,7 @@ export class ExpenseFlowHandler {
     active: ActiveAccount,
     flow: ExpenseFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     let created: CreateExpenseResult;
     try {
@@ -564,7 +566,9 @@ export class ExpenseFlowHandler {
           `Bot chekini biriktirib bo'lmadi: expense=${created.id}`,
           error instanceof Error ? error.message : undefined,
         );
-        lines.push(t('fileFailed', lang, { number: created.globalNumber }));
+        lines.push(
+          this.texts.t('fileFailed', lang, { number: created.globalNumber }),
+        );
       }
     }
 
@@ -587,7 +591,7 @@ export class ExpenseFlowHandler {
 
     if (created.duplicateWarning) {
       lines.push(
-        t('duplicateWarning', lang, {
+        this.texts.t('duplicateWarning', lang, {
           number: created.duplicateWarning.globalNumber,
         }),
       );
@@ -595,18 +599,22 @@ export class ExpenseFlowHandler {
 
     for (const warning of created.budgetWarning ?? []) {
       lines.push(
-        t('budgetWarningLine', lang, {
-          message: `${warning.scopeName ?? ''} — ${warning.usedPercent}% (${t('budgetLimit', lang)} ${warning.limit})`,
+        this.texts.t('budgetWarningLine', lang, {
+          warning: `${warning.scopeName ?? ''} — ${warning.usedPercent}% (${this.texts.t('budgetLimit', lang)} ${warning.limit})`,
         }),
       );
     }
 
     const headline =
       status === ExpenseStatus.DRAFT
-        ? t('expenseDraft', lang, { number: created.globalNumber })
+        ? this.texts.t('expenseDraft', lang, { number: created.globalNumber })
         : status === ExpenseStatus.ADMIN_PENDING
-          ? t('expenseSubmittedAdmin', lang, { number: created.globalNumber })
-          : t('expenseSubmitted', lang, { number: created.globalNumber });
+          ? this.texts.t('expenseSubmittedAdmin', lang, {
+              number: created.globalNumber,
+            })
+          : this.texts.t('expenseSubmitted', lang, {
+              number: created.globalNumber,
+            });
 
     await this.sessions.setFlow(session, null);
     await this.menu.showMain(
@@ -627,7 +635,7 @@ export class ExpenseFlowHandler {
     flow: ExpenseFlow,
     error: unknown,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const message = extractServiceMessage(error);
 
     this.logger.warn(`Bot xarajati yaratilmadi: ${message}`);
@@ -637,7 +645,7 @@ export class ExpenseFlowHandler {
       session,
       active,
       flow,
-      message ?? t('serverError', lang),
+      message ?? this.texts.t('serverError', lang),
     );
   }
 
@@ -667,7 +675,7 @@ export class ExpenseFlowHandler {
     flow: ExpenseFlow,
     prefix?: string,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const head = prefix ? `${prefix}\n\n` : '';
 
     switch (flow.step) {
@@ -687,15 +695,17 @@ export class ExpenseFlowHandler {
             update,
             session,
             active,
-            t('noCategories', lang),
+            this.texts.t('noCategories', lang),
           );
           return;
         }
 
         const label =
           flow.step === 'subcategory'
-            ? t('askSubcategory', lang, { category: flow.categoryName ?? '' })
-            : t('askCategory', lang);
+            ? this.texts.t('askSubcategory', lang, {
+                category: flow.categoryName ?? '',
+              })
+            : this.texts.t('askCategory', lang);
 
         await tx.sendMessage(update.chatId, head + label, {
           inline: [
@@ -715,14 +725,33 @@ export class ExpenseFlowHandler {
       }
 
       case 'target': {
-        await tx.sendMessage(update.chatId, head + t('askTarget', lang), {
-          inline: [
-            [{ text: t('targetSelf', lang), data: 'exp:target:self' }],
-            [{ text: t('targetOther', lang), data: 'exp:target:other' }],
-            [{ text: t('targetGroup', lang), data: 'exp:target:group' }],
-            this.navRow(lang),
-          ],
-        });
+        await tx.sendMessage(
+          update.chatId,
+          head + this.texts.t('askTarget', lang),
+          {
+            inline: [
+              [
+                {
+                  text: this.texts.t('targetSelf', lang),
+                  data: 'exp:target:self',
+                },
+              ],
+              [
+                {
+                  text: this.texts.t('targetOther', lang),
+                  data: 'exp:target:other',
+                },
+              ],
+              [
+                {
+                  text: this.texts.t('targetGroup', lang),
+                  data: 'exp:target:group',
+                },
+              ],
+              this.navRow(lang),
+            ],
+          },
+        );
         return;
       }
 
@@ -745,7 +774,7 @@ export class ExpenseFlowHandler {
             session,
             active,
             flow,
-            t('noEmployees', lang),
+            this.texts.t('noEmployees', lang),
           );
           return;
         }
@@ -777,27 +806,43 @@ export class ExpenseFlowHandler {
         }
 
         if (flow.target === 'group') {
-          rows.push([{ text: t('next', lang), data: 'exp:empDone' }]);
+          rows.push([
+            { text: this.texts.t('next', lang), data: 'exp:empDone' },
+          ]);
         }
         rows.push(this.navRow(lang));
 
         const label =
           flow.target === 'group'
-            ? t('askEmployees', lang, { count: selected.size })
-            : t('askEmployee', lang);
+            ? this.texts.t('askEmployees', lang, { count: selected.size })
+            : this.texts.t('askEmployee', lang);
 
         await tx.sendMessage(update.chatId, head + label, { inline: rows });
         return;
       }
 
       case 'split': {
-        await tx.sendMessage(update.chatId, head + t('askSplit', lang), {
-          inline: [
-            [{ text: t('splitEqual', lang), data: 'exp:split:equal' }],
-            [{ text: t('splitManual', lang), data: 'exp:split:manual' }],
-            this.navRow(lang),
-          ],
-        });
+        await tx.sendMessage(
+          update.chatId,
+          head + this.texts.t('askSplit', lang),
+          {
+            inline: [
+              [
+                {
+                  text: this.texts.t('splitEqual', lang),
+                  data: 'exp:split:equal',
+                },
+              ],
+              [
+                {
+                  text: this.texts.t('splitManual', lang),
+                  data: 'exp:split:manual',
+                },
+              ],
+              this.navRow(lang),
+            ],
+          },
+        );
         return;
       }
 
@@ -812,7 +857,7 @@ export class ExpenseFlowHandler {
         await tx.sendMessage(
           update.chatId,
           head +
-            t('askShare', lang, {
+            this.texts.t('askShare', lang, {
               employee: employee?.fullName ?? '',
               index: index + 1,
               total: employeeIds.length,
@@ -823,19 +868,27 @@ export class ExpenseFlowHandler {
       }
 
       case 'amount': {
-        await tx.sendMessage(update.chatId, head + t('askAmount', lang), {
-          inline: [this.navRow(lang)],
-        });
+        await tx.sendMessage(
+          update.chatId,
+          head + this.texts.t('askAmount', lang),
+          {
+            inline: [this.navRow(lang)],
+          },
+        );
         return;
       }
 
       case 'date': {
-        await tx.sendMessage(update.chatId, head + t('askDate', lang), {
-          inline: [
-            [{ text: t('dateToday', lang), data: 'exp:today' }],
-            this.navRow(lang),
-          ],
-        });
+        await tx.sendMessage(
+          update.chatId,
+          head + this.texts.t('askDate', lang),
+          {
+            inline: [
+              [{ text: this.texts.t('dateToday', lang), data: 'exp:today' }],
+              this.navRow(lang),
+            ],
+          },
+        );
         return;
       }
 
@@ -843,13 +896,14 @@ export class ExpenseFlowHandler {
         const required = await this.commentRequired(flow);
         const rows: InlineButton[][] = [];
         if (!required) {
-          rows.push([{ text: t('skip', lang), data: 'exp:skip' }]);
+          rows.push([{ text: this.texts.t('skip', lang), data: 'exp:skip' }]);
         }
         rows.push(this.navRow(lang));
 
         await tx.sendMessage(
           update.chatId,
-          head + t(required ? 'commentRequired' : 'askComment', lang),
+          head +
+            this.texts.t(required ? 'commentRequired' : 'askComment', lang),
           { inline: rows },
         );
         return;
@@ -859,15 +913,18 @@ export class ExpenseFlowHandler {
         const required = await this.receiptRequired(flow);
         const rows: InlineButton[][] = [];
         if (flow.files?.length) {
-          rows.push([{ text: t('next', lang), data: 'exp:receiptDone' }]);
+          rows.push([
+            { text: this.texts.t('next', lang), data: 'exp:receiptDone' },
+          ]);
         } else if (!required) {
-          rows.push([{ text: t('skip', lang), data: 'exp:skip' }]);
+          rows.push([{ text: this.texts.t('skip', lang), data: 'exp:skip' }]);
         }
         rows.push(this.navRow(lang));
 
         await tx.sendMessage(
           update.chatId,
-          head + t(required ? 'receiptRequired' : 'askReceipt', lang),
+          head +
+            this.texts.t(required ? 'receiptRequired' : 'askReceipt', lang),
           { inline: rows },
         );
         return;
@@ -879,9 +936,9 @@ export class ExpenseFlowHandler {
           head + (await this.summary(session, active, flow)),
           {
             inline: [
-              [{ text: t('confirmSend', lang), data: 'exp:send' }],
-              [{ text: t('confirmEdit', lang), data: 'exp:edit' }],
-              [{ text: t('cancel', lang), data: 'exp:cancel' }],
+              [{ text: this.texts.t('confirmSend', lang), data: 'exp:send' }],
+              [{ text: this.texts.t('confirmEdit', lang), data: 'exp:edit' }],
+              [{ text: this.texts.t('cancel', lang), data: 'exp:cancel' }],
             ],
           },
         );
@@ -894,14 +951,14 @@ export class ExpenseFlowHandler {
     active: ActiveAccount,
     flow: ExpenseFlow,
   ): Promise<string> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const employees = await this.prisma.db.employee.findMany({
       where: { id: { in: flow.employeeIds ?? [] } },
       select: { fullName: true },
     });
 
     const lines = [
-      t('confirmHeader', lang),
+      this.texts.t('confirmHeader', lang),
       `🏢 ${active.branchName ?? ''}`,
       `📂 ${flow.categoryName ?? ''}`,
       `👤 ${employees.map((employee) => employee.fullName).join(', ')}`,
@@ -915,10 +972,10 @@ export class ExpenseFlowHandler {
     return lines.join('\n');
   }
 
-  private navRow(lang: ReturnType<typeof langOf>): InlineButton[] {
+  private navRow(lang: AppLanguage): InlineButton[] {
     return [
-      { text: t('back', lang), data: 'exp:back' },
-      { text: t('cancel', lang), data: 'exp:cancel' },
+      { text: this.texts.t('back', lang), data: 'exp:back' },
+      { text: this.texts.t('cancel', lang), data: 'exp:cancel' },
     ];
   }
 

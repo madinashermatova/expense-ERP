@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { Currency, ExpenseStatus, Role } from '../../../generated/prisma/enums';
 import { ExpensesService } from '../../expenses/expenses.service';
 import { ReportsService } from '../../reports/reports.service';
-import { langOf, statusName, t } from '../bot-texts';
 import { BotSession } from '../bot-session.service';
 import { ActiveAccount, BotTransport, BotUpdate } from '../bot-types';
 import { formatAmount, formatDate } from '../format';
 import { MenuPresenter } from '../menu.presenter';
+import { toAppLanguage } from '../../../common/i18n/languages';
+import { BotTextService } from '../bot-text.service';
 
 /** Bot xabari uzun bo'lmasligi kerak — oxirgi yozuvlargina ko'rsatiladi */
 const LIST_LIMIT = 5;
@@ -28,6 +29,7 @@ export class ListsFlowHandler {
     private readonly expenses: ExpensesService,
     private readonly reports: ReportsService,
     private readonly menu: MenuPresenter,
+    private readonly texts: BotTextService,
   ) {}
 
   async myExpenses(
@@ -36,7 +38,7 @@ export class ListsFlowHandler {
     session: BotSession,
     active: ActiveAccount,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (!active.employeeId) {
       await this.menu.showMain(
@@ -44,7 +46,7 @@ export class ListsFlowHandler {
         update,
         session,
         active,
-        t('employeeMissing', lang),
+        this.texts.t('employeeMissing', lang),
       );
       return;
     }
@@ -62,7 +64,11 @@ export class ListsFlowHandler {
       update,
       session,
       active,
-      this.renderList(session, t('myExpensesHeader', lang), page.items),
+      this.renderList(
+        session,
+        this.texts.t('myExpensesHeader', lang),
+        page.items,
+      ),
     );
   }
 
@@ -72,7 +78,7 @@ export class ListsFlowHandler {
     session: BotSession,
     active: ActiveAccount,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     // Direktor uchun filial filtri servisda majburlanadi (BranchScopeService)
     const page = await this.expenses.list({
@@ -87,7 +93,11 @@ export class ListsFlowHandler {
       update,
       session,
       active,
-      this.renderList(session, t('branchExpensesHeader', lang), page.items),
+      this.renderList(
+        session,
+        this.texts.t('branchExpensesHeader', lang),
+        page.items,
+      ),
     );
   }
 
@@ -99,7 +109,7 @@ export class ListsFlowHandler {
     active: ActiveAccount,
     scope: 'own' | 'scoped',
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (scope === 'own' && !active.employeeId) {
       await this.menu.showMain(
@@ -107,7 +117,7 @@ export class ListsFlowHandler {
         update,
         session,
         active,
-        t('employeeMissing', lang),
+        this.texts.t('employeeMissing', lang),
       );
       return;
     }
@@ -117,7 +127,7 @@ export class ListsFlowHandler {
     );
 
     const lines = [
-      t('statsHeader', lang, {
+      this.texts.t('statsHeader', lang, {
         from: formatDate(summary.period.from),
         to: formatDate(summary.period.to),
         total: `${summary.totalUzs} UZS`,
@@ -129,7 +139,7 @@ export class ListsFlowHandler {
     // Kutilayotgan arizalar soni faqat tasdiqlovchilarga ma'noli
     if (active.role !== Role.WORKER) {
       lines.push(
-        t('statsPending', lang, {
+        this.texts.t('statsPending', lang, {
           director: summary.pendingDirectorCount,
           admin: summary.pendingAdminCount,
         }),
@@ -151,14 +161,14 @@ export class ListsFlowHandler {
       status: ExpenseStatus;
     }[],
   ): string {
-    const lang = langOf(session.language);
-    if (items.length === 0) return t('expensesEmpty', lang);
+    const lang = toAppLanguage(session.language);
+    if (items.length === 0) return this.texts.t('expensesEmpty', lang);
 
     const lines = items.map((item) =>
       [
         `🧾 ${item.globalNumber} — ${formatAmount(item.amount, item.currency, lang)}`,
         `   📂 ${item.categoryName} · 📅 ${formatDate(item.date)}`,
-        `   ${statusName(item.status, lang)}`,
+        `   ${this.texts.statusName(item.status, lang)}`,
       ].join('\n'),
     );
 

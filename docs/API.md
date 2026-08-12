@@ -37,7 +37,20 @@ Refresh token **httpOnly cookie** da (`erp_rt`) — JS uni ko'rmaydi. Barcha so'
 }
 ```
 
-`details` bo'lsa — forma maydonlariga tarqating. Bo'lmasa — toast.
+`details` bo'lsa — forma maydonlariga tarqating (kalit = maydon nomi, ichma-ich
+maydonlar `shares.0.amount` shaklida). Bo'lmasa — toast.
+
+### Til (i18n)
+
+`message` va `details` ichidagi matnlar **serverda tarjima qilinadi** (uz/ru). Til shu
+tartibda aniqlanadi:
+
+1. `?lang=uz|ru` yoki `x-lang: uz|ru` — so'rovga tegishli aniq tanlov, hammasidan ustun;
+2. foydalanuvchi profilidagi til (`User.language`, `GET /auth/me` da qaytadi);
+3. `Accept-Language` — faqat autentifikatsiyadan o'tmagan so'rovlar uchun;
+4. `uz`.
+
+`code` **hech qachon tarjima qilinmaydi** — mijoz mantiqi aynan shunga tayanishi kerak.
 
 ### Ro'yxat javobi
 

@@ -11,6 +11,7 @@ import {
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { EditRequestStatus } from '../../../generated/prisma/enums';
 import { UpdateExpenseDto } from '../../expenses/dto/update-expense.dto';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 /** Murojaat matnining eng kam uzunligi — rad etish sababi bilan bir xil (TZ 3.7, 3.8) */
 export const MIN_EDIT_REQUEST_LENGTH = 10;
@@ -38,7 +39,7 @@ export class CreateEditRequestDto {
   /** Nima o'zgarishi kerakligi va sababi */
   @IsString()
   @MinLength(MIN_EDIT_REQUEST_LENGTH, {
-    message: `Murojaat matni kamida ${MIN_EDIT_REQUEST_LENGTH} belgidan iborat bo'lishi kerak`,
+    message: validationMessage('validation.EDIT_REQUEST_MIN_LENGTH'),
   })
   @MaxLength(2000)
   description!: string;
@@ -59,7 +60,7 @@ export class ApplyEditRequestDto {
 export class RejectEditRequestDto {
   @IsString()
   @MinLength(MIN_EDIT_REQUEST_LENGTH, {
-    message: `Rad etish sababi kamida ${MIN_EDIT_REQUEST_LENGTH} belgidan iborat bo'lishi kerak`,
+    message: validationMessage('validation.REASON_MIN_LENGTH'),
   })
   @MaxLength(1000)
   reason!: string;

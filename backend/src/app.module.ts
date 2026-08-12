@@ -9,6 +9,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { join } from 'node:path';
+import {
+  AcceptLanguageResolver,
+  HeaderResolver,
+  I18nModule,
+  QueryResolver,
+} from 'nestjs-i18n';
 import { CommonModule } from './common/common.module';
 import { AuditInterceptor } from './common/audit/audit.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -17,6 +24,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { TenancyModule } from './common/tenancy/tenancy.module';
 import { TenantContextMiddleware } from './common/tenancy/tenant-context.middleware';
+import { DEFAULT_LANGUAGE } from './common/i18n/languages';
 import { EnvironmentVariables, validateEnv } from './config/env.validation';
 import { HealthController } from './health/health.controller';
 import { AuditModule } from './modules/audit/audit.module';
@@ -43,6 +51,26 @@ import { PlansModule } from './modules/plans/plans.module';
       isGlobal: true,
       cache: true,
       validate: validateEnv,
+    }),
+    /*
+     * i18n (TZ 4.3, 5.4). Tarjimalar `src/i18n/{uz,ru}/*.json` da; til so'rovdan
+     * `?lang=`, `x-lang` yoki `Accept-Language` orqali aniqlanadi, foydalanuvchi
+     * sozlamasi esa `TranslationService` da ulardan ustun turadi.
+     */
+    I18nModule.forRoot({
+      fallbackLanguage: DEFAULT_LANGUAGE,
+      loaderOptions: {
+        // `__dirname` — dev/testda `src`, prodda `dist` (JSON lar nest-cli assets bilan ko'chadi)
+        path: join(__dirname, 'i18n'),
+        watch: false,
+      },
+      resolvers: [
+        new QueryResolver(['lang']),
+        new HeaderResolver(['x-lang']),
+        AcceptLanguageResolver,
+      ],
+      // Kalit topilmaganda log yozilmaydi: `TranslationService` bu holatni o'zi hal qiladi
+      logging: false,
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],

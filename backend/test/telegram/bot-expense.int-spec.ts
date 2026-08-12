@@ -1,7 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
 import { BotSessionService } from '../../src/modules/telegram/bot-session.service';
-import { BUTTONS } from '../../src/modules/telegram/bot-texts';
 import { ExpenseStatus } from '../../src/generated/prisma/enums';
 import { createHttpApp } from '../helpers/http-app';
 import { truncateAll } from '../helpers/test-context';
@@ -10,7 +9,12 @@ import {
   SeededCompany,
   TEST_PASSWORD,
 } from '../helpers/seed-fixtures';
-import { botUser, BotUser } from '../helpers/bot-harness';
+import {
+  botUser,
+  BotUser,
+  ButtonLabels,
+  buttonLabels,
+} from '../helpers/bot-harness';
 
 const BOT = 'expense-bot';
 const TG = 6_000_001n;
@@ -21,6 +25,7 @@ describe('Telegram bot: xarajat oqimi (TZ 3.12.3)', () => {
   let prisma: PrismaService;
   let close: () => Promise<void>;
   let sessions: BotSessionService;
+  let BUTTONS: ButtonLabels;
   let alfa: SeededCompany;
   let user: BotUser;
   let taxiId: string;
@@ -61,6 +66,7 @@ describe('Telegram bot: xarajat oqimi (TZ 3.12.3)', () => {
     app = ctx.app;
     prisma = ctx.prisma;
     close = ctx.close;
+    BUTTONS = buttonLabels(app);
     sessions = app.get(BotSessionService);
   });
 

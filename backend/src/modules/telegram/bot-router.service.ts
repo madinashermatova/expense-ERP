@@ -5,15 +5,6 @@ import { EnvironmentVariables } from '../../config/env.validation';
 import { Channel, Role } from '../../generated/prisma/enums';
 import { BotDirectoryService } from './bot-directory.service';
 import { BotSession, BotSessionService } from './bot-session.service';
-import {
-  ButtonId,
-  buttonIdFromLabel,
-  langOf,
-  languageOf,
-  roleName,
-  t,
-  Lang,
-} from './bot-texts';
 import { ActiveAccount, BotTransport, BotUpdate } from './bot-types';
 import { AccountsFlowHandler } from './flows/accounts.flow';
 import { ApprovalsFlowHandler } from './flows/approvals.flow';
@@ -22,9 +13,14 @@ import { ExpenseFlowHandler } from './flows/expense.flow';
 import { ListsFlowHandler } from './flows/lists.flow';
 import { LoginFlowHandler } from './flows/login.flow';
 import { isFlow } from './flow-state';
-import { addAccountLabel, LANGUAGE_KEYBOARD } from './keyboards';
 import { MenuPresenter } from './menu.presenter';
 import { TelegramAuthService } from './telegram-auth.service';
+import {
+  AppLanguage,
+  fromAppLanguage,
+  toAppLanguage,
+} from '../../common/i18n/languages';
+import { BotTextService, ButtonId } from './bot-text.service';
 
 /**
  * Bot yangilanishlarini yo'naltirish (TZ 3.12).
@@ -55,6 +51,7 @@ export class BotRouterService {
     private readonly menu: MenuPresenter,
     private readonly tenantContext: TenantContextService,
     private readonly config: ConfigService<EnvironmentVariables, true>,
+    private readonly texts: BotTextService,
   ) {}
 
   async handle(update: BotUpdate, tx: BotTransport): Promise<void> {
@@ -72,9 +69,11 @@ export class BotRouterService {
       const session = await this.sessions
         .load(update.botId, update.telegramId)
         .catch(() => null);
-      const lang: Lang = session ? langOf(session.language) : 'uz';
+      const lang: AppLanguage = session
+        ? toAppLanguage(session.language)
+        : 'uz';
       await tx
-        .sendMessage(update.chatId, t('serverError', lang))
+        .sendMessage(update.chatId, this.texts.t('serverError', lang))
         .catch(() => undefined);
     }
   }
@@ -102,7 +101,7 @@ export class BotRouterService {
         tx,
         update,
         session,
-        t('sessionExpired', langOf(session.language)),
+        this.texts.t('sessionExpired', toAppLanguage(session.language)),
       );
       return;
     }
@@ -134,7 +133,9 @@ export class BotRouterService {
      * qiladi. Tugma matnlari emoji bilan boshlanadi, ya'ni ular login yoki izoh
      * sifatida kiritilgan matn bilan chalkashmaydi.
      */
-    const menuButton = update.text ? buttonIdFromLabel(update.text) : null;
+    const menuButton = update.text
+      ? this.texts.buttonIdFromLabel(update.text)
+      : null;
 
     // Inline tugma (callback) hech qachon oqimning matn qadamiga kirmaydi —
     // u prefiksi bo'yicha yuqorida yo'naltiriladi yoki menyu amali bo'ladi
@@ -195,11 +196,11 @@ export class BotRouterService {
     session: BotSession,
     active: ActiveAccount | null,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const had = session.flow !== null;
     await this.sessions.setFlow(session, null);
 
-    const text = t(had ? 'cancelled' : 'nothingToCancel', lang);
+    const text = this.texts.t(had ? 'cancelled' : 'nothingToCancel', lang);
     if (active) {
       await this.menu.showMain(tx, update, session, active, text);
     } else {
@@ -215,10 +216,10 @@ export class BotRouterService {
     const value = update.callbackData!.slice('lang:'.length);
     await this.sessions.setLanguage(
       session,
-      languageOf(value === 'ru' ? 'ru' : 'uz'),
+      fromAppLanguage(value === 'ru' ? 'ru' : 'uz'),
     );
 
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const active = await this.auth.resolveActive(
       update.botId,
       update.telegramId,
@@ -231,12 +232,17 @@ export class BotRouterService {
         update,
         session,
         active,
-        t('languageChanged', lang),
+        this.texts.t('languageChanged', lang),
       );
       return;
     }
 
-    await this.menu.showGuest(tx, update, session, t('languageChanged', lang));
+    await this.menu.showGuest(
+      tx,
+      update,
+      session,
+      this.texts.t('languageChanged', lang),
+    );
   }
 
   /** Kirmagan foydalanuvchi faqat kirish va yordamni ko'radi (TZ 3.12.1) */
@@ -245,8 +251,10 @@ export class BotRouterService {
     update: BotUpdate,
     session: BotSession,
   ): Promise<void> {
-    const lang = langOf(session.language);
-    const button = update.text ? buttonIdFromLabel(update.text) : null;
+    const lang = toAppLanguage(session.language);
+    const button = update.text
+      ? this.texts.buttonIdFromLabel(update.text)
+      : null;
 
     if (button === 'login') {
       await this.login.start(tx, update, session);
@@ -254,11 +262,21 @@ export class BotRouterService {
     }
 
     if (button === 'help' || update.text === '/help') {
-      await this.menu.showGuest(tx, update, session, t('help', lang));
+      await this.menu.showGuest(
+        tx,
+        update,
+        session,
+        this.texts.t('help', lang),
+      );
       return;
     }
 
-    await this.menu.showGuest(tx, update, session, t('notLoggedIn', lang));
+    await this.menu.showGuest(
+      tx,
+      update,
+      session,
+      this.texts.t('notLoggedIn', lang),
+    );
   }
 
   private async handleAuthenticated(
@@ -268,7 +286,7 @@ export class BotRouterService {
     active: ActiveAccount,
     button: ButtonId | null,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (update.callbackData?.startsWith('acc:')) {
       await this.handleAccountCallback(
@@ -290,7 +308,7 @@ export class BotRouterService {
       !FLOW_NEUTRAL_BUTTONS.has(button)
     ) {
       await this.sessions.setFlow(session, null);
-      await tx.sendMessage(update.chatId, t('cancelled', lang));
+      await tx.sendMessage(update.chatId, this.texts.t('cancelled', lang));
     }
 
     // Qaror kartochkalari va so'rov sahnalari — prefiks bo'yicha
@@ -349,7 +367,7 @@ export class BotRouterService {
           update,
           session,
           active,
-          t('nothingToCancel', lang),
+          this.texts.t('nothingToCancel', lang),
         );
         return;
       }
@@ -421,7 +439,7 @@ export class BotRouterService {
         update,
         session,
         active,
-        t('notAvailableYet', lang),
+        this.texts.t('notAvailableYet', lang),
       );
       return;
     }
@@ -514,7 +532,13 @@ export class BotRouterService {
         return;
 
       case 'help':
-        await this.menu.showMain(tx, update, session, active, t('help', lang));
+        await this.menu.showMain(
+          tx,
+          update,
+          session,
+          active,
+          this.texts.t('help', lang),
+        );
         return;
 
       case 'webErp':
@@ -523,7 +547,7 @@ export class BotRouterService {
           update,
           session,
           active,
-          t('webLink', lang, {
+          this.texts.t('webLink', lang, {
             url: this.config.get('WEB_URL', { infer: true }),
           }),
         );
@@ -536,7 +560,7 @@ export class BotRouterService {
             update,
             session,
             active,
-            update.text === '/help' ? t('help', lang) : undefined,
+            update.text === '/help' ? this.texts.t('help', lang) : undefined,
           );
           return;
         }
@@ -545,7 +569,7 @@ export class BotRouterService {
           update,
           session,
           active,
-          t('unknownCommand', lang),
+          this.texts.t('unknownCommand', lang),
         );
         return;
 
@@ -556,7 +580,7 @@ export class BotRouterService {
           update,
           session,
           active,
-          t('notAvailableYet', lang),
+          this.texts.t('notAvailableYet', lang),
         );
     }
   }
@@ -609,12 +633,12 @@ export class BotRouterService {
     session: BotSession,
     active: ActiveAccount,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
-    const profile = t('profile', lang, {
+    const profile = this.texts.t('profile', lang, {
       fullName: active.fullName,
       company: active.companyName,
-      role: roleName(active.role, lang),
+      role: this.texts.roleName(active.role, lang),
       branch: active.branchName ?? '—',
     });
 
@@ -625,11 +649,11 @@ export class BotRouterService {
      */
     await tx.sendMessage(
       update.chatId,
-      `${t('settingsHeader', lang)}\n\n${profile}`,
+      `${this.texts.t('settingsHeader', lang)}\n\n${profile}`,
       {
         inline: [
-          ...LANGUAGE_KEYBOARD,
-          [{ text: addAccountLabel(lang), data: 'acc:add' }],
+          ...this.texts.languageKeyboard(),
+          [{ text: this.texts.addAccountLabel(lang), data: 'acc:add' }],
         ],
       },
     );

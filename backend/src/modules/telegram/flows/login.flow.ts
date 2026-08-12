@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { langOf, t } from '../bot-texts';
 import { BotSession, BotSessionService } from '../bot-session.service';
 import { BotTransport, BotUpdate } from '../bot-types';
 import { LoginFlow } from '../flow-state';
 import { MenuPresenter } from '../menu.presenter';
 import { LoginOutcome, TelegramAuthService } from '../telegram-auth.service';
+import { toAppLanguage } from '../../../common/i18n/languages';
+import { BotTextService } from '../bot-text.service';
 
 /** Kompaniya tanlash muddati — parol tekshirilgandan keyin qancha vaqt amal qiladi */
 const CHOICE_TTL_MS = 2 * 60 * 1000;
@@ -24,6 +25,7 @@ export class LoginFlowHandler {
     private readonly auth: TelegramAuthService,
     private readonly sessions: BotSessionService,
     private readonly menu: MenuPresenter,
+    private readonly texts: BotTextService,
   ) {}
 
   async start(
@@ -32,13 +34,13 @@ export class LoginFlowHandler {
     session: BotSession,
     options: { addAccount?: boolean } = {},
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     await this.sessions.setFlow(session, {
       name: 'login',
       step: 'login',
       addAccount: options.addAccount,
     });
-    await tx.sendMessage(update.chatId, t('askLogin', lang));
+    await tx.sendMessage(update.chatId, this.texts.t('askLogin', lang));
   }
 
   async handle(
@@ -48,7 +50,7 @@ export class LoginFlowHandler {
     flow: LoginFlow,
     restrictCompanyId: string | null,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (flow.step === 'company') {
       await this.handleCompanyChoice(tx, update, session, flow);
@@ -59,7 +61,7 @@ export class LoginFlowHandler {
 
     if (flow.step === 'login') {
       if (!text) {
-        await tx.sendMessage(update.chatId, t('askLogin', lang));
+        await tx.sendMessage(update.chatId, this.texts.t('askLogin', lang));
         return;
       }
       await this.sessions.setFlow(session, {
@@ -67,7 +69,7 @@ export class LoginFlowHandler {
         step: 'password',
         login: text,
       });
-      await tx.sendMessage(update.chatId, t('askPassword', lang));
+      await tx.sendMessage(update.chatId, this.texts.t('askPassword', lang));
       return;
     }
 
@@ -77,7 +79,7 @@ export class LoginFlowHandler {
     }
 
     if (!text || !flow.login) {
-      await tx.sendMessage(update.chatId, t('askPassword', lang));
+      await tx.sendMessage(update.chatId, this.texts.t('askPassword', lang));
       return;
     }
 
@@ -100,7 +102,7 @@ export class LoginFlowHandler {
           companyName: option.companyName,
         })),
       });
-      await tx.sendMessage(update.chatId, t('chooseCompany', lang), {
+      await tx.sendMessage(update.chatId, this.texts.t('chooseCompany', lang), {
         inline: outcome.options.map((option) => [
           { text: option.companyName, data: `login:company:${option.userId}` },
         ]),
@@ -119,7 +121,7 @@ export class LoginFlowHandler {
     userId: string,
     restrictCompanyId: string | null,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const flow = session.flow;
 
     if (
@@ -130,7 +132,12 @@ export class LoginFlowHandler {
       !this.choiceIsFresh(flow)
     ) {
       await this.sessions.setFlow(session, null);
-      await this.menu.showGuest(tx, update, session, t('choiceExpired', lang));
+      await this.menu.showGuest(
+        tx,
+        update,
+        session,
+        this.texts.t('choiceExpired', lang),
+      );
       return;
     }
 
@@ -150,16 +157,21 @@ export class LoginFlowHandler {
     session: BotSession,
     flow: LoginFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     // Bu qadamda faqat inline tugma kutiladi; matn yuborilsa eslatib qo'yiladi
     if (!this.choiceIsFresh(flow)) {
       await this.sessions.setFlow(session, null);
-      await this.menu.showGuest(tx, update, session, t('choiceExpired', lang));
+      await this.menu.showGuest(
+        tx,
+        update,
+        session,
+        this.texts.t('choiceExpired', lang),
+      );
       return;
     }
 
-    await tx.sendMessage(update.chatId, t('chooseCompany', lang), {
+    await tx.sendMessage(update.chatId, this.texts.t('chooseCompany', lang), {
       inline: (flow.companyOptions ?? []).map((option) => [
         { text: option.companyName, data: `login:company:${option.userId}` },
       ]),
@@ -178,7 +190,7 @@ export class LoginFlowHandler {
     outcome: LoginOutcome,
     flow: LoginFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     switch (outcome.kind) {
       case 'ok':
@@ -188,7 +200,7 @@ export class LoginFlowHandler {
 
         const prefix =
           outcome.kind === 'alreadyLinked'
-            ? `${t('alreadyLinked', lang)}\n\n`
+            ? `${this.texts.t('alreadyLinked', lang)}\n\n`
             : '';
         await this.menu.showMain(
           tx,
@@ -206,7 +218,7 @@ export class LoginFlowHandler {
           tx,
           update,
           session,
-          t('loginLocked', lang, { minutes: outcome.minutes }),
+          this.texts.t('loginLocked', lang, { minutes: outcome.minutes }),
         );
         return;
       }
@@ -218,7 +230,7 @@ export class LoginFlowHandler {
           tx,
           update,
           session,
-          t(
+          this.texts.t(
             outcome.kind === 'inactive'
               ? 'accountInactive'
               : 'companySuspended',
@@ -234,7 +246,9 @@ export class LoginFlowHandler {
           tx,
           update,
           session,
-          t('foreignCompany', lang, { company: outcome.companyName }),
+          this.texts.t('foreignCompany', lang, {
+            company: outcome.companyName,
+          }),
         );
         return;
       }
@@ -248,7 +262,7 @@ export class LoginFlowHandler {
         });
         await tx.sendMessage(
           update.chatId,
-          `${t('invalidCredentials', lang)}\n${t('loginPasswordHint', lang)}\n\n${t('askLogin', lang)}`,
+          `${this.texts.t('invalidCredentials', lang)}\n${this.texts.t('loginPasswordHint', lang)}\n\n${this.texts.t('askLogin', lang)}`,
         );
       }
     }

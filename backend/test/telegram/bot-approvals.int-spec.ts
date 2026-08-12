@@ -1,7 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
 import { BotSessionService } from '../../src/modules/telegram/bot-session.service';
-import { BUTTONS } from '../../src/modules/telegram/bot-texts';
 import {
   EditRequestStatus,
   ExpenseStatus,
@@ -14,7 +13,12 @@ import {
   SeededCompany,
   TEST_PASSWORD,
 } from '../helpers/seed-fixtures';
-import { botUser, BotUser } from '../helpers/bot-harness';
+import {
+  botUser,
+  BotUser,
+  ButtonLabels,
+  buttonLabels,
+} from '../helpers/bot-harness';
 
 const BOT = 'approve-bot';
 const WORKER_TG = 7_000_001n;
@@ -29,6 +33,7 @@ describe('Telegram bot: tasdiqlash va so‘rovlar (TZ 3.12.3)', () => {
   let prisma: PrismaService;
   let close: () => Promise<void>;
   let sessions: BotSessionService;
+  let BUTTONS: ButtonLabels;
   let alfa: SeededCompany;
   let worker: BotUser;
   let director: BotUser;
@@ -59,6 +64,7 @@ describe('Telegram bot: tasdiqlash va so‘rovlar (TZ 3.12.3)', () => {
     app = ctx.app;
     prisma = ctx.prisma;
     close = ctx.close;
+    BUTTONS = buttonLabels(app);
     sessions = app.get(BotSessionService);
   });
 

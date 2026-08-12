@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { BudgetScope, Currency } from '../../../generated/prisma/enums';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 const MONEY = /^\d{1,16}(\.\d{1,2})?$/;
 
@@ -19,7 +20,9 @@ export class CreateBudgetDto {
   @IsUUID()
   scopeId!: string;
 
-  @Matches(MONEY, { message: "Limit summasi noto'g'ri formatda" })
+  @Matches(MONEY, {
+    message: validationMessage('validation.BUDGET_MONEY_FORMAT'),
+  })
   amount!: string;
 
   @IsOptional()
@@ -36,7 +39,9 @@ export class CreateBudgetDto {
 
 export class UpdateBudgetDto {
   @IsOptional()
-  @Matches(MONEY, { message: "Limit summasi noto'g'ri formatda" })
+  @Matches(MONEY, {
+    message: validationMessage('validation.BUDGET_MONEY_FORMAT'),
+  })
   amount?: string;
 
   @IsOptional()

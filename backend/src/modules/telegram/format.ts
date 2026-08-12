@@ -1,6 +1,6 @@
 import { Money } from '../../common/money/money';
 import { Currency } from '../../generated/prisma/enums';
-import { Lang } from './bot-texts';
+import { AppLanguage } from '../../common/i18n/languages';
 
 const CURRENCY_LABEL: Record<Currency, { uz: string; ru: string }> = {
   UZS: { uz: "so'm", ru: 'сум' },
@@ -16,7 +16,7 @@ const CURRENCY_LABEL: Record<Currency, { uz: string; ru: string }> = {
 export function formatAmount(
   amount: string,
   currency: Currency,
-  lang: Lang,
+  lang: AppLanguage,
 ): string {
   const value = Money.round2(amount);
   const [whole, fraction] = Money.toString(value).split('.');

@@ -6,7 +6,6 @@ import { MIN_EDIT_REQUEST_LENGTH } from '../../edit-requests/dto/edit-request.dt
 import { ExpensesService, ExpenseView } from '../../expenses/expenses.service';
 import { MIN_REFUND_REASON_LENGTH } from '../../refunds/dto/refund.dto';
 import { RefundsService } from '../../refunds/refunds.service';
-import { langOf, t } from '../bot-texts';
 import { BotSession, BotSessionService } from '../bot-session.service';
 import {
   ActiveAccount,
@@ -18,6 +17,8 @@ import { EditRequestFlow, PendingFile, RefundFlow } from '../flow-state';
 import { formatAmount, formatDate, parseAmount } from '../format';
 import { MenuPresenter } from '../menu.presenter';
 import { extractServiceMessage } from '../service-error';
+import { AppLanguage, toAppLanguage } from '../../../common/i18n/languages';
+import { BotTextService } from '../bot-text.service';
 
 /** Tanlash uchun ko'rsatiladigan xarajatlar soni */
 const CHOICES = 8;
@@ -41,6 +42,7 @@ export class RequestsFlowHandler {
     private readonly editRequests: EditRequestsService,
     private readonly sessions: BotSessionService,
     private readonly menu: MenuPresenter,
+    private readonly texts: BotTextService,
   ) {}
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -53,7 +55,7 @@ export class RequestsFlowHandler {
     session: BotSession,
     active: ActiveAccount,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const items = await this.refundableExpenses(active);
 
     if (items.length === 0) {
@@ -62,18 +64,22 @@ export class RequestsFlowHandler {
         update,
         session,
         active,
-        t('refundNoExpenses', lang),
+        this.texts.t('refundNoExpenses', lang),
       );
       return;
     }
 
     await this.sessions.setFlow(session, { name: 'refund', step: 'expense' });
-    await tx.sendMessage(update.chatId, t('refundChooseExpense', lang), {
-      inline: [
-        ...this.expenseButtons(items, 'rfd:exp', lang),
-        [{ text: t('cancel', lang), data: 'rfd:cancel' }],
-      ],
-    });
+    await tx.sendMessage(
+      update.chatId,
+      this.texts.t('refundChooseExpense', lang),
+      {
+        inline: [
+          ...this.expenseButtons(items, 'rfd:exp', lang),
+          [{ text: this.texts.t('cancel', lang), data: 'rfd:cancel' }],
+        ],
+      },
+    );
   }
 
   async handleRefundCallback(
@@ -84,7 +90,7 @@ export class RequestsFlowHandler {
     flow: RefundFlow,
     data: string,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (data === 'rfd:cancel') {
       await this.sessions.setFlow(session, null);
@@ -93,7 +99,7 @@ export class RequestsFlowHandler {
         update,
         session,
         active,
-        t('cancelled', lang),
+        this.texts.t('cancelled', lang),
       );
       return;
     }
@@ -114,10 +120,14 @@ export class RequestsFlowHandler {
 
       await tx.sendMessage(
         update.chatId,
-        t('refundAskAmount', lang, {
+        this.texts.t('refundAskAmount', lang, {
           max: formatAmount(flow.maxAmount, expense.currency, lang),
         }),
-        { inline: [[{ text: t('cancel', lang), data: 'rfd:cancel' }]] },
+        {
+          inline: [
+            [{ text: this.texts.t('cancel', lang), data: 'rfd:cancel' }],
+          ],
+        },
       );
       return;
     }
@@ -134,17 +144,21 @@ export class RequestsFlowHandler {
     active: ActiveAccount,
     flow: RefundFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const cancelRow: InlineButton[] = [
-      { text: t('cancel', lang), data: 'rfd:cancel' },
+      { text: this.texts.t('cancel', lang), data: 'rfd:cancel' },
     ];
 
     if (flow.step === 'proof') {
       const fileId = update.photoFileId ?? update.documentFileId;
       if (!fileId) {
-        await tx.sendMessage(update.chatId, t('refundAskProof', lang), {
-          inline: [cancelRow],
-        });
+        await tx.sendMessage(
+          update.chatId,
+          this.texts.t('refundAskProof', lang),
+          {
+            inline: [cancelRow],
+          },
+        );
         return;
       }
 
@@ -160,7 +174,7 @@ export class RequestsFlowHandler {
       await tx.sendMessage(
         update.chatId,
         [
-          t('confirmHeader', lang),
+          this.texts.t('confirmHeader', lang),
           `🧾 ${flow.expenseNumber ?? ''}`,
           `💰 ${flow.amount ?? ''}`,
           `📝 ${flow.reason ?? ''}`,
@@ -168,7 +182,7 @@ export class RequestsFlowHandler {
         ].join('\n'),
         {
           inline: [
-            [{ text: t('confirmSend', lang), data: 'rfd:send' }],
+            [{ text: this.texts.t('confirmSend', lang), data: 'rfd:send' }],
             cancelRow,
           ],
         },
@@ -181,9 +195,13 @@ export class RequestsFlowHandler {
     if (flow.step === 'amount') {
       const parsed = parseAmount(text);
       if (!parsed) {
-        await tx.sendMessage(update.chatId, t('amountInvalid', lang), {
-          inline: [cancelRow],
-        });
+        await tx.sendMessage(
+          update.chatId,
+          this.texts.t('amountInvalid', lang),
+          {
+            inline: [cancelRow],
+          },
+        );
         return;
       }
 
@@ -193,7 +211,7 @@ export class RequestsFlowHandler {
       ) {
         await tx.sendMessage(
           update.chatId,
-          t('refundAmountTooBig', lang, { max: flow.maxAmount }),
+          this.texts.t('refundAmountTooBig', lang, { max: flow.maxAmount }),
           { inline: [cancelRow] },
         );
         return;
@@ -204,7 +222,9 @@ export class RequestsFlowHandler {
       await this.sessions.setFlow(session, flow);
       await tx.sendMessage(
         update.chatId,
-        t('refundAskReason', lang, { min: MIN_REFUND_REASON_LENGTH }),
+        this.texts.t('refundAskReason', lang, {
+          min: MIN_REFUND_REASON_LENGTH,
+        }),
         { inline: [cancelRow] },
       );
       return;
@@ -214,7 +234,9 @@ export class RequestsFlowHandler {
       if (text.length < MIN_REFUND_REASON_LENGTH) {
         await tx.sendMessage(
           update.chatId,
-          t('reasonTooShort', lang, { min: MIN_REFUND_REASON_LENGTH }),
+          this.texts.t('reasonTooShort', lang, {
+            min: MIN_REFUND_REASON_LENGTH,
+          }),
           { inline: [cancelRow] },
         );
         return;
@@ -223,9 +245,13 @@ export class RequestsFlowHandler {
       flow.reason = text;
       flow.step = 'proof';
       await this.sessions.setFlow(session, flow);
-      await tx.sendMessage(update.chatId, t('refundAskProof', lang), {
-        inline: [cancelRow],
-      });
+      await tx.sendMessage(
+        update.chatId,
+        this.texts.t('refundAskProof', lang),
+        {
+          inline: [cancelRow],
+        },
+      );
     }
   }
 
@@ -236,7 +262,7 @@ export class RequestsFlowHandler {
     active: ActiveAccount,
     flow: RefundFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     try {
       const files = await Promise.all(
@@ -267,7 +293,9 @@ export class RequestsFlowHandler {
         update,
         session,
         active,
-        t('refundSubmitted', lang, { number: refund.expenseGlobalNumber }),
+        this.texts.t('refundSubmitted', lang, {
+          number: refund.expenseGlobalNumber,
+        }),
       );
     } catch (error) {
       const message = extractServiceMessage(error);
@@ -278,7 +306,7 @@ export class RequestsFlowHandler {
         update,
         session,
         active,
-        message ?? t('serverError', lang),
+        message ?? this.texts.t('serverError', lang),
       );
     }
   }
@@ -293,7 +321,7 @@ export class RequestsFlowHandler {
     session: BotSession,
     active: ActiveAccount,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const items = await this.ownExpenses(active);
 
     if (items.length === 0) {
@@ -302,7 +330,7 @@ export class RequestsFlowHandler {
         update,
         session,
         active,
-        t('editNoExpenses', lang),
+        this.texts.t('editNoExpenses', lang),
       );
       return;
     }
@@ -311,12 +339,16 @@ export class RequestsFlowHandler {
       name: 'editRequest',
       step: 'expense',
     });
-    await tx.sendMessage(update.chatId, t('editChooseExpense', lang), {
-      inline: [
-        ...this.expenseButtons(items, 'edt:exp', lang),
-        [{ text: t('cancel', lang), data: 'edt:cancel' }],
-      ],
-    });
+    await tx.sendMessage(
+      update.chatId,
+      this.texts.t('editChooseExpense', lang),
+      {
+        inline: [
+          ...this.expenseButtons(items, 'edt:exp', lang),
+          [{ text: this.texts.t('cancel', lang), data: 'edt:cancel' }],
+        ],
+      },
+    );
   }
 
   async handleEditCallback(
@@ -327,7 +359,7 @@ export class RequestsFlowHandler {
     flow: EditRequestFlow,
     data: string,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
 
     if (data === 'edt:cancel') {
       await this.sessions.setFlow(session, null);
@@ -336,7 +368,7 @@ export class RequestsFlowHandler {
         update,
         session,
         active,
-        t('cancelled', lang),
+        this.texts.t('cancelled', lang),
       );
       return;
     }
@@ -353,8 +385,14 @@ export class RequestsFlowHandler {
 
       await tx.sendMessage(
         update.chatId,
-        t('editAskDescription', lang, { min: MIN_EDIT_REQUEST_LENGTH }),
-        { inline: [[{ text: t('cancel', lang), data: 'edt:cancel' }]] },
+        this.texts.t('editAskDescription', lang, {
+          min: MIN_EDIT_REQUEST_LENGTH,
+        }),
+        {
+          inline: [
+            [{ text: this.texts.t('cancel', lang), data: 'edt:cancel' }],
+          ],
+        },
       );
     }
   }
@@ -366,7 +404,7 @@ export class RequestsFlowHandler {
     active: ActiveAccount,
     flow: EditRequestFlow,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const text = update.text?.trim() ?? '';
 
     if (flow.step !== 'description') return;
@@ -374,8 +412,12 @@ export class RequestsFlowHandler {
     if (text.length < MIN_EDIT_REQUEST_LENGTH) {
       await tx.sendMessage(
         update.chatId,
-        t('reasonTooShort', lang, { min: MIN_EDIT_REQUEST_LENGTH }),
-        { inline: [[{ text: t('cancel', lang), data: 'edt:cancel' }]] },
+        this.texts.t('reasonTooShort', lang, { min: MIN_EDIT_REQUEST_LENGTH }),
+        {
+          inline: [
+            [{ text: this.texts.t('cancel', lang), data: 'edt:cancel' }],
+          ],
+        },
       );
       return;
     }
@@ -392,7 +434,9 @@ export class RequestsFlowHandler {
         update,
         session,
         active,
-        t('editSubmitted', lang, { number: request.expenseGlobalNumber }),
+        this.texts.t('editSubmitted', lang, {
+          number: request.expenseGlobalNumber,
+        }),
       );
     } catch (error) {
       const message = extractServiceMessage(error);
@@ -405,7 +449,7 @@ export class RequestsFlowHandler {
         update,
         session,
         active,
-        message ?? t('serverError', lang),
+        message ?? this.texts.t('serverError', lang),
       );
     }
   }
@@ -443,7 +487,7 @@ export class RequestsFlowHandler {
   private expenseButtons(
     items: ExpenseView[],
     prefix: string,
-    lang: ReturnType<typeof langOf>,
+    lang: AppLanguage,
   ): InlineButton[][] {
     return items.map((item) => [
       {

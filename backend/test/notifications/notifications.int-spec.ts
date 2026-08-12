@@ -8,6 +8,7 @@ import { TenantContextService } from '../../src/common/tenancy/tenant-context.se
 import { NOTIFICATION_QUEUE } from '../../src/modules/notifications/notification-queue';
 import { NotificationsProcessor } from '../../src/modules/notifications/notifications.processor';
 import { NotificationsService } from '../../src/modules/notifications/notifications.service';
+import { NotificationTextService } from '../../src/modules/notifications/notification-messages';
 import { TelegramSenderService } from '../../src/modules/notifications/telegram-sender.service';
 import { API, createHttpApp } from '../helpers/http-app';
 import { truncateAll } from '../helpers/test-context';
@@ -309,6 +310,7 @@ describe('Bildirishnomalar (TZ 3.11)', () => {
         prisma,
         { ...sender, enabled: true } as unknown as TelegramSenderService,
         tenant,
+        app.get(NotificationTextService),
       );
     });
 

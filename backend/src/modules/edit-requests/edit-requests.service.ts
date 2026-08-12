@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { AuditService } from '../../common/audit/audit.service';
 import {
   Paginated,
@@ -24,6 +19,11 @@ import {
   ListEditRequestsDto,
 } from './dto/edit-request.dto';
 import { UpdateExpenseDto } from '../expenses/dto/update-expense.dto';
+import {
+  conflict,
+  forbidden,
+  notFound as notFoundError,
+} from '../../common/errors/app-error';
 
 export interface EditRequestView {
   id: string;
@@ -135,29 +135,22 @@ export class EditRequestsService {
 
     const employeeId = user?.employeeId ?? null;
     if (!employeeId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'EMPLOYEE_REQUIRED',
-        message:
-          'Murojaatni faqat xodim kartochkasi bor foydalanuvchi yubora oladi',
-      });
+      throw forbidden('EMPLOYEE_REQUIRED');
     }
 
     const expense = await this.prisma.db.expense.findUnique({
       where: { id: dto.expenseId },
       select: { id: true, branchId: true, globalNumber: true, deletedAt: true },
     });
-    if (!expense || expense.deletedAt) throw this.notFound('Xarajat topilmadi');
+    if (!expense || expense.deletedAt) {
+      throw this.notFound('errors.EXPENSE_NOT_FOUND');
+    }
 
     const existing = await this.prisma.db.editRequest.count({
       where: { expenseId: dto.expenseId, status: EditRequestStatus.PENDING },
     });
     if (existing > 0) {
-      throw new BadRequestException({
-        statusCode: 409,
-        code: 'EDIT_REQUEST_PENDING',
-        message: 'Bu xarajat bo‘yicha ko‘rilmagan murojaat allaqachon bor',
-      });
+      throw conflict('EDIT_REQUEST_PENDING');
     }
 
     const created = await this.prisma.db.editRequest.create({
@@ -221,11 +214,7 @@ export class EditRequestsService {
     this.branchScope.assertCanWrite(request.expense.branchId);
 
     if (request.status !== EditRequestStatus.PENDING) {
-      throw new BadRequestException({
-        statusCode: 409,
-        code: 'ALREADY_PROCESSED',
-        message: 'Murojaat allaqachon ko‘rib chiqilgan',
-      });
+      throw conflict('ALREADY_PROCESSED');
     }
 
     return request;
@@ -250,11 +239,7 @@ export class EditRequestsService {
     });
 
     if (count === 0) {
-      throw new BadRequestException({
-        statusCode: 409,
-        code: 'ALREADY_PROCESSED',
-        message: 'Murojaat allaqachon ko‘rib chiqilgan',
-      });
+      throw conflict('ALREADY_PROCESSED');
     }
 
     await this.audit.log({
@@ -323,11 +308,10 @@ export class EditRequestsService {
     };
   }
 
-  private notFound(message = 'Murojaat topilmadi'): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'NOT_FOUND',
-      message,
-    });
+  /** `messageKey` — bir xil kod turli kontekstda boshqacha o'qiladi (TZ 5.4) */
+  private notFound(
+    messageKey = 'errors.NOT_FOUND_EDIT_REQUEST',
+  ): HttpException {
+    return notFoundError('NOT_FOUND', { messageKey });
   }
 }

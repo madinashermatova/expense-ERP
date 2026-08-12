@@ -4,7 +4,7 @@ import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import { Channel } from '../../generated/prisma/enums';
-import { renderNotification } from './notification-messages';
+import { NotificationTextService } from './notification-messages';
 import { NOTIFICATION_QUEUE, NotificationJob } from './notification-queue';
 import { TelegramSenderService } from './telegram-sender.service';
 
@@ -26,6 +26,7 @@ export class NotificationsProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramSenderService,
     private readonly tenantContext: TenantContextService,
+    private readonly texts: NotificationTextService,
   ) {
     super();
   }
@@ -67,7 +68,7 @@ export class NotificationsProcessor extends WorkerHost {
 
     if (!user || !user.isActive || user.telegramLinks.length === 0) return;
 
-    const text = renderNotification(data.type, data.payload, user.language);
+    const text = this.texts.render(data.type, data.payload, user.language);
     let delivered = false;
 
     for (const link of user.telegramLinks) {

@@ -1,4 +1,5 @@
 import { Role, Channel } from '../../generated/prisma/enums';
+import { AppLanguage } from '../i18n/languages';
 
 /**
  * So'rov davomida amal qiladigan tenant konteksti.
@@ -12,6 +13,11 @@ export interface TenantStore {
   /** DIRECTOR uchun o'z filiali; ADMIN uchun null */
   branchId: string | null;
   channel: Channel;
+  /**
+   * Foydalanuvchi tanlagan til (`User.language`). Xato xabarlari va bildirishnomalar
+   * shu tilda chiqadi; `null` bo'lsa so'rov sarlavhasi yoki fallback ishlatiladi.
+   */
+  language: AppLanguage | null;
   /** Audit uchun */
   ip: string | null;
   /**
@@ -30,6 +36,7 @@ export function emptyStore(overrides: Partial<TenantStore> = {}): TenantStore {
     role: null,
     branchId: null,
     channel: Channel.WEB,
+    language: null,
     ip: null,
     unscopedReason: null,
     requestId: null,

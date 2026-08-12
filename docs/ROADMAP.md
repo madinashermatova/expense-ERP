@@ -675,10 +675,55 @@ almashtirilganda cross-tenant ma'lumot oqmaydi; javob ≤ 2 s (p95).
 
 ---
 
-## S17 — i18n, xato formati, sayqal ⬜ (TZ 4.3, 5.4)
+## S17 — i18n, xato formati, sayqal ✅ (TZ 4.3, 5.4)
 
-**Nima:** `nestjs-i18n` uz/ru, yagona xato formati `{ statusCode, code, message, details? }`,
-barcha xabarlar i18n kaliti bilan, hardcode matn qolmasligi (lint qoidasi).
+**Nima qurildi:**
+- `nestjs-i18n` + `src/i18n/{uz,ru}/` — `errors.json` (108 kalit), `validation.json` (29),
+  `notifications.json` (14), `bot.json` (116 + tugmalar/rollar/statuslar)
+- `appError()` va yordamchilar (`unprocessable`, `notFound`, `conflict`, …) — servis
+  faqat **kod + kalit + argument** beradi, matn bermaydi
+- `AllExceptionsFilter` xabarni **shu yerda** tarjima qiladi; `details` ichidagi
+  validatsiya xabarlari ham tarjima qilinadi
+- `validationExceptionFactory` — `ValidationPipe` xatolari maydon bo'yicha guruhlanadi
+- `TranslationService` — til aniqlash yagona nuqtada
+- `NotificationTextService` va `BotTextService` — bildirishnoma va bot matnlari i18n dan
+- ESLint qoidasi: `message:` maydonida satr literal — xato
+
+**Natija:** `test:int` — 327/327 yashil (yangi: i18n 11), `test:unit` — 53/53,
+`nest build` i18n JSON larni `dist/` ga ko'chiradi.
+
+**S17 da qabul qilingan qarorlar:**
+- **Tarjima filterda, servisda emas.** Servis `code` va `messageKey` beradi, matn esa
+  javob yasalayotganda tanlanadi. Shu sababli servislarga `I18nService` in'ektsiya
+  qilinmaydi va bir xil xato Web, bot va navbat orqali bir xil ko'rinadi.
+- **`code` API kontrakti, kalit esa matn manzili.** Bir xil kod turli kontekstda
+  boshqacha o'qilishi kerak bo'lganda kod o'zgarmaydi, faqat `messageKey` boshqa
+  bo'ladi (`errors.NOT_FOUND_EXPENSE`, `errors.STAGE_FORBIDDEN_ADMIN`). Mijoz
+  mantiqi kodga tayanadi, matn esa tarjimaga.
+- **Til tartibi: `?lang`/`x-lang` → profil tili → `Accept-Language` → `uz`.**
+  Brauzer sarlavhasi foydalanuvchining tizimdagi tanlovidan ustun turmaydi, lekin
+  mijoz bitta so'rov uchun ataylab boshqa tilni so'rashi mumkin. Aniq tanlov
+  `TenantContextMiddleware` da kontekstga yoziladi, profil tili esa guard da —
+  ya'ni ustunlik tartibi bitta joyda ko'rinadi.
+- **Validatsiya xabarlari kalit ko'rinishida `details` ga tushadi va filterda
+  tarjima qilinadi** (`validation.MONEY_FORMAT|{…}`): `ValidationPipe` so'rov tilini
+  bilmasligi kerak. DTO da kalit berilmagan qoidalar uchun kalit qoida nomidan
+  quriladi (`isUuid` → `validation.isUuid`), class-validator ning inglizcha matni
+  esa faqat zaxira.
+- **`details` maydon bo'yicha guruhlanadi** (`{ code: [...], name: [...] }`) — javobni
+  forma maydonlariga bevosita bog'lash uchun; ichma-ich maydonlar `shares.0.amount`.
+- **Bot matnlari `BotTextService` orqali**, chunki tugma matni ikki yo'nalishda kerak:
+  id → matn (klaviatura) va matn → id (bosilgan tugmani tanish). Ikkinchisi barcha
+  tillarda qidiradi — til almashtirilganda ekranda eski klaviatura qolishi mumkin.
+- **Bildirishnoma tili oluvchidan olinadi**, so'rovdan emas: xabar navbat va cron
+  ichida ham yasaladi, o'sha yerda so'rov konteksti yo'q.
+- **Eksport ustun sarlavhalari kodda qoldi** (`export-data.service.ts` dagi
+  `headerUz`/`headerRu`). Ular allaqachon ikki tilli va foydalanuvchi tiliga qarab
+  tanlanadi (TZ 3.13 talabi bajarilgan); i18n ga ko'chirish ustun kalitlari
+  (`amount`, `date`, …) turli eksportlarda takrorlanishi sababli sun'iy nomlash
+  talab qilardi — xatti-harakat esa o'zgarmasdi.
+- **`src/config/env.validation.ts` tarjima qilinmaydi** — u ishga tushish paytidagi
+  developer xatosi, foydalanuvchiga hech qachon ko'rinmaydi.
 
 **Commit:** `feat(i18n): uz/ru tarjimalar va yagona xato formati`
 

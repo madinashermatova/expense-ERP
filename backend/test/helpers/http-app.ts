@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import { AppModule } from '../../src/app.module';
+import { validationExceptionFactory } from '../../src/common/errors/validation-error';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
 
 export interface HttpTestApp {
@@ -40,6 +41,8 @@ export async function createHttpApp(
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      // Prod bilan bir xil: `main.ts` dagi sozlama takrorlanadi (TZ 5.4)
+      exceptionFactory: validationExceptionFactory,
     }),
   );
   await app.init();

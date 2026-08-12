@@ -10,6 +10,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { Language, Role } from '../../../generated/prisma/enums';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 export class CreateEmployeeDto {
   @IsString()
@@ -28,7 +29,7 @@ export class CreateEmployeeDto {
   /** Ma'lumot maydoni — autentifikatsiyada ishlatilmaydi (TZ 3.1) */
   @IsOptional()
   @Matches(/^\+998\d{9}$/, {
-    message: "Telefon +998XXXXXXXXX formatida bo'lishi kerak",
+    message: validationMessage('validation.PHONE_FORMAT'),
   })
   phone?: string;
 
@@ -53,8 +54,7 @@ export class CreateEmployeeDto {
   @MinLength(3)
   @MaxLength(50)
   @Matches(/^[a-z0-9._-]+$/i, {
-    message:
-      "Username faqat harf, raqam va . _ - belgilaridan iborat bo'lishi mumkin",
+    message: validationMessage('validation.USERNAME_FORMAT'),
   })
   username?: string;
 

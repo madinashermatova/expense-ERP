@@ -12,6 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Currency, PaymentMethod } from '../../../generated/prisma/enums';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 /** 2 kasrgacha musbat pul summasi. String — frontendda float arifmetikasi qilinmaydi (TZ 4.3) */
 const MONEY = /^\d{1,16}(\.\d{1,2})?$/;
@@ -20,7 +21,9 @@ export class ExpenseShareDto {
   @IsString()
   employeeId!: string;
 
-  @Matches(MONEY, { message: "Ulush summasi noto'g'ri formatda" })
+  @Matches(MONEY, {
+    message: validationMessage('validation.SHARE_MONEY_FORMAT'),
+  })
   amount!: string;
 }
 
@@ -38,7 +41,7 @@ export class CreateExpenseDto {
   @IsString({ each: true })
   employeeIds!: string[];
 
-  @Matches(MONEY, { message: "Summa noto'g'ri formatda" })
+  @Matches(MONEY, { message: validationMessage('validation.MONEY_FORMAT') })
   amount!: string;
 
   @IsEnum(Currency)

@@ -1,111 +1,61 @@
+import { Injectable } from '@nestjs/common';
+import { TranslationService } from '../../common/i18n/translation.service';
+import { toAppLanguage } from '../../common/i18n/languages';
 import { Language } from '../../generated/prisma/enums';
-import { NOTIFICATION_TYPES } from './notification-types';
 
-interface Template {
-  uz: string;
-  ru: string;
+/**
+ * Bildirishnoma matnlari (TZ 3.11, 4.3).
+ *
+ * Matn **serverda** tayyorlanadi: bir xil xabar Web badge ida ham, Telegram xabarida ham
+ * ishlatiladi, ya'ni ikki mijozda takrorlamaslik kerak. Shablonlar
+ * `src/i18n/{uz,ru}/notifications.json` da, kalit — bildirishnoma turi
+ * (`EXPENSE_CREATED`, …), ya'ni yangi til qo'shish uchun kod o'zgarmaydi.
+ *
+ * Til **oluvchining** sozlamasidan olinadi (`User.language`), so'rov sarlavhasidan emas:
+ * bildirishnoma fon jarayonida (navbat, cron) ham yasaladi, o'sha yerda so'rov yo'q.
+ */
+@Injectable()
+export class NotificationTextService {
+  constructor(private readonly translations: TranslationService) {}
+
+  render(
+    type: string,
+    payload: unknown,
+    language: Language = Language.UZ,
+  ): string {
+    const data =
+      payload !== null && typeof payload === 'object'
+        ? (payload as Record<string, unknown>)
+        : {};
+
+    const text = this.translations.translate(`notifications.${type}`, {
+      lang: toAppLanguage(language),
+      args: scalarsOnly(data),
+    });
+
+    // Noma'lum tur — turning o'zi ko'rsatiladi, xabar yo'qolib ketmasligi uchun
+    return text ?? type;
+  }
 }
 
 /**
- * Bildirishnoma matnlari (TZ 3.11).
- *
- * Matn **serverda** tayyorlanadi: bir xil xabar Web badge ida ham, Telegram xabarida ham
- * ishlatiladi, ya'ni ikki mijozda takrorlamaslik kerak. To'liq i18n infratuzilmasi
- * (`nestjs-i18n`) S17 da keladi va shu jadval o'sha yerga ko'chadi.
- *
- * `{...}` o'rnini `payload` dagi maydonlar egallaydi; topilmagan kalit o'z joyida qoladi
- * (jim bo'sh satr qoldirsa xabar tushunarsiz bo'lardi).
+ * Ichma-ich obyekt matnga aylanmaydi — `[object Object]` xabarni buzardi.
+ * Topilmagan o'rin egasi (`{reason}`) shablonda o'z holida qoladi.
  */
-const TEMPLATES: Record<string, Template> = {
-  [NOTIFICATION_TYPES.expenseCreated]: {
-    uz: 'Yangi xarajat: {globalNumber} — {amount}',
-    ru: 'Новый расход: {globalNumber} — {amount}',
-  },
-  [NOTIFICATION_TYPES.expenseDirectorApproved]: {
-    uz: 'Direktor tasdiqladi, yakuniy tasdiq kutilmoqda: {globalNumber}',
-    ru: 'Директор одобрил, ожидается финальное подтверждение: {globalNumber}',
-  },
-  [NOTIFICATION_TYPES.expenseFinalized]: {
-    uz: 'Xarajat tasdiqlandi: {globalNumber}',
-    ru: 'Расход подтверждён: {globalNumber}',
-  },
-  [NOTIFICATION_TYPES.expenseRejected]: {
-    uz: 'Xarajat rad etildi: {globalNumber}. Sabab: {reason}',
-    ru: 'Расход отклонён: {globalNumber}. Причина: {reason}',
-  },
-  [NOTIFICATION_TYPES.fixRequested]: {
-    uz: 'Tuzatish so‘raldi: {globalNumber}. Sabab: {reason}',
-    ru: 'Запрошено исправление: {globalNumber}. Причина: {reason}',
-  },
-  [NOTIFICATION_TYPES.editRequestSubmitted]: {
-    uz: 'Tahrirlash murojaati: {globalNumber} — {description}',
-    ru: 'Заявка на редактирование: {globalNumber} — {description}',
-  },
-  [NOTIFICATION_TYPES.refundSubmitted]: {
-    uz: 'Qaytarish so‘rovi: {globalNumber} — {amount}',
-    ru: 'Запрос на возврат: {globalNumber} — {amount}',
-  },
-  [NOTIFICATION_TYPES.refundResolved]: {
-    uz: 'Qaytarish so‘rovi hal qilindi: {status}',
-    ru: 'Запрос на возврат обработан: {status}',
-  },
-  [NOTIFICATION_TYPES.budgetThreshold]: {
-    uz: 'Byudjet ogohlantirishi: {threshold}% ({period}) — limit {limit}, sarf {spent}',
-    ru: 'Предупреждение по бюджету: {threshold}% ({period}) — лимит {limit}, расход {spent}',
-  },
-  [NOTIFICATION_TYPES.approvalReminder]: {
-    uz: 'Eslatma: {globalNumber} arizasi {waitingHours} soatdan ortiq javobsiz',
-    ru: 'Напоминание: заявка {globalNumber} без ответа более {waitingHours} ч',
-  },
-  [NOTIFICATION_TYPES.currencyRateFailed]: {
-    uz: 'Valyuta kursi olinmadi ({currency}, {date}) — oxirgi ma‘lum kurs kuchda',
-    ru: 'Не удалось получить курс ({currency}, {date}) — действует последний известный',
-  },
-  [NOTIFICATION_TYPES.dailyDigest]: {
-    uz: 'Kunlik xulosa: {approved} tasdiqlangan, {pending} navbatda, jami {total}',
-    ru: 'Сводка за день: одобрено {approved}, в очереди {pending}, всего {total}',
-  },
-  [NOTIFICATION_TYPES.exportReady]: {
-    uz: 'Eksport tayyor: {title} ({format}) — {rowCount} qator',
-    ru: 'Экспорт готов: {title} ({format}) — строк: {rowCount}',
-  },
-  [NOTIFICATION_TYPES.exportFailed]: {
-    uz: 'Eksport bajarilmadi: {title} ({format})',
-    ru: 'Экспорт не выполнен: {title} ({format})',
-  },
-};
+function scalarsOnly(
+  payload: Record<string, unknown>,
+): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {};
 
-/** Ichma-ich obyekt matnga aylanmaydi — `[object Object]` xabarni buzardi */
-function stringify(value: unknown): string | null {
-  if (value === undefined || value === null) return null;
-  if (typeof value === 'object') return null;
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
+  for (const [key, value] of Object.entries(payload)) {
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      out[key] = value;
+    }
   }
-  return null;
-}
 
-function fill(template: string, payload: Record<string, unknown>): string {
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
-    return stringify(payload[key]) ?? match;
-  });
-}
-
-/** Bildirishnoma sarlavhasi — Web badge ida va Telegram xabarida bir xil */
-export function renderNotification(
-  type: string,
-  payload: unknown,
-  language: Language = Language.UZ,
-): string {
-  const template = TEMPLATES[type];
-  const data =
-    payload !== null && typeof payload === 'object'
-      ? (payload as Record<string, unknown>)
-      : {};
-
-  // Noma'lum tur — turning o'zi ko'rsatiladi, xabar yo'qolib ketmasligi uchun
-  if (!template) return type;
-
-  return fill(language === Language.RU ? template.ru : template.uz, data);
+  return out;
 }

@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { AuditService } from '../../common/audit/audit.service';
 import {
   Paginated,
@@ -27,6 +21,13 @@ import { FilesService, UploadedFileInput } from '../files/files.service';
 import { NOTIFICATION_TYPES } from '../notifications/notification-types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRefundDto, ListRefundsDto } from './dto/refund.dto';
+import {
+  AppErrorInit,
+  conflict,
+  forbidden,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 export interface RefundView {
   id: string;
@@ -163,44 +164,36 @@ export class RefundsService {
   ): Promise<RefundView> {
     const userId = this.tenantContext.userId;
     if (!userId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'FORBIDDEN',
-        message: 'Foydalanuvchi aniqlanmadi',
-      });
+      throw forbidden('FORBIDDEN');
     }
 
     // Isbot fayli istisnosiz majburiy (TZ 3.9) — fayllar tekshiruvi hamma narsadan oldin
     if (files.length === 0) {
-      throw this.unprocessable(
-        'REFUND_PROOF_REQUIRED',
-        'Qaytarish uchun isbot majburiy',
-        { files: ['majburiy'] },
-      );
+      throw this.unprocessable('REFUND_PROOF_REQUIRED', {
+        details: { files: ['majburiy'] },
+      });
     }
 
     const expense = await this.prisma.db.expense.findUnique({
       where: { id: dto.expenseId },
     });
-    if (!expense || expense.deletedAt) throw this.notFound('Xarajat topilmadi');
+    if (!expense || expense.deletedAt) {
+      throw this.notFound('errors.EXPENSE_NOT_FOUND');
+    }
 
     this.branchScope.assertCanWrite(expense.branchId);
 
     if (!REFUNDABLE.includes(expense.status)) {
-      throw this.unprocessable(
-        'EXPENSE_NOT_REFUNDABLE',
-        'Qaytarish faqat tasdiqlangan xarajatga yaratiladi',
-        { status: [expense.status] },
-      );
+      throw this.unprocessable('EXPENSE_NOT_REFUNDABLE', {
+        details: { status: [expense.status] },
+      });
     }
 
     const amount = Money.round2(dto.amount);
     if (!Money.isPositive(amount)) {
-      throw this.unprocessable(
-        'AMOUNT_NOT_POSITIVE',
-        "Qaytarish summasi noldan katta bo'lishi kerak",
-        { amount: [dto.amount] },
-      );
+      throw this.unprocessable('AMOUNT_NOT_POSITIVE', {
+        details: { amount: [dto.amount] },
+      });
     }
 
     /*
@@ -224,11 +217,10 @@ export class RefundsService {
     );
 
     if (amount.greaterThan(remaining)) {
-      throw this.unprocessable(
-        'REFUND_EXCEEDS_REMAINING',
-        `Qaytarish summasi qolgan summadan (${Money.toString(remaining)}) oshmasligi kerak`,
-        { amount: [Money.toString(amount)] },
-      );
+      throw this.unprocessable('REFUND_EXCEEDS_REMAINING', {
+        args: { remaining: Money.toString(remaining) },
+        details: { amount: [Money.toString(amount)] },
+      });
     }
 
     // Kurs asl xarajatdan meros olinadi — hisobot tarixi o'zgarmasligi uchun (TZ 3.9)
@@ -291,11 +283,7 @@ export class RefundsService {
 
     // 2-bosqich — faqat bosh admin (TZ 3.9)
     if (role !== Role.ADMIN) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'STAGE_FORBIDDEN',
-        message: 'Bu bosqichni faqat bosh admin hal qiladi',
-      });
+      throw forbidden('STAGE_FORBIDDEN');
     }
 
     await this.transition(refund, version, {
@@ -345,11 +333,7 @@ export class RefundsService {
     const userId = this.tenantContext.userId;
     const role = this.tenantContext.role;
     if (!userId || !role) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'FORBIDDEN',
-        message: 'Foydalanuvchi aniqlanmadi',
-      });
+      throw forbidden('FORBIDDEN');
     }
 
     const refund = await this.prisma.db.refund.findUnique({
@@ -365,11 +349,11 @@ export class RefundsService {
       RefundStatus.ADMIN_PENDING,
     ];
     if (!open.includes(refund.status)) {
-      throw this.unprocessable(
-        'INVALID_STATUS_TRANSITION',
-        `«${refund.status}» holatidagi so'rovni qayta hal qilib bo'lmaydi`,
-        { status: [refund.status] },
-      );
+      throw this.unprocessable('INVALID_STATUS_TRANSITION', {
+        messageKey: 'errors.INVALID_STATUS_TRANSITION_REFUND',
+        args: { status: refund.status },
+        details: { status: [refund.status] },
+      });
     }
 
     return { refund, role, userId };
@@ -391,11 +375,7 @@ export class RefundsService {
     });
 
     if (count === 0) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'ALREADY_PROCESSED',
-        message: "So'rov allaqachon qayta ishlangan",
-      });
+      throw conflict('ALREADY_PROCESSED');
     }
   }
 
@@ -426,11 +406,11 @@ export class RefundsService {
     `;
 
     if (affected === 0) {
-      throw this.unprocessable(
-        'REFUND_EXCEEDS_REMAINING',
-        'Qaytarish summasi xarajatning qolgan summasidan oshib ketdi',
-        { amount: [value] },
-      );
+      throw this.unprocessable('REFUND_EXCEEDS_REMAINING', {
+        // Bu yerda qolgan summa ma'lum emas: yozuv boshqa tranzaksiyada o'zgargan
+        messageKey: 'errors.REFUND_EXCEEDS_REMAINING_RACE',
+        details: { amount: [value] },
+      });
     }
 
     const expense = await this.prisma.db.expense.findUniqueOrThrow({
@@ -529,19 +509,15 @@ export class RefundsService {
     };
   }
 
-  private notFound(message = "Qaytarish so'rovi topilmadi"): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'NOT_FOUND',
-      message,
-    });
+  /** `messageKey` — bir xil kod turli kontekstda boshqacha o'qiladi (TZ 5.4) */
+  private notFound(messageKey = 'errors.REFUND_NOT_FOUND'): HttpException {
+    return notFoundError('NOT_FOUND', { messageKey });
   }
 
   private unprocessable(
     code: string,
-    message: string,
-    details?: Record<string, string[]>,
-  ): BadRequestException {
-    return new BadRequestException({ statusCode: 422, code, message, details });
+    init: Omit<AppErrorInit, 'status'> = {},
+  ): HttpException {
+    return unprocessable(code, init);
   }
 }

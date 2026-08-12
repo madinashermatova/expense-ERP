@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { validationExceptionFactory } from './common/errors/validation-error';
 import { EnvironmentVariables } from './config/env.validation';
 
 async function bootstrap(): Promise<void> {
@@ -24,6 +25,8 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: { enableImplicitConversion: false },
+      // Xato tanasi yagona formatga keladi va xabarlar so'rov tiliga tarjima qilinadi
+      exceptionFactory: validationExceptionFactory,
     }),
   );
 

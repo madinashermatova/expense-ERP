@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { AuditService } from '../../common/audit/audit.service';
 import {
   Paginated,
@@ -41,6 +36,13 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { SPEND_COUNTED_STATUSES } from './expense-status';
 import { NumberingService } from './numbering.service';
 import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
+import {
+  AppErrorInit,
+  conflict,
+  forbidden,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 /** Dublikat ogohlantirish oynasi (TZ 3.6) — bloklamaydi, faqat ogohlantiradi */
 const DUPLICATE_WINDOW_MINUTES = 10;
@@ -143,29 +145,21 @@ export class ExpensesService {
     const companyId = this.tenantContext.requireCompanyId('Expense', 'create');
     const userId = this.tenantContext.userId;
     if (!userId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'FORBIDDEN',
-        message: 'Foydalanuvchi aniqlanmadi',
-      });
+      throw forbidden('FORBIDDEN');
     }
 
     const amount = Money.round2(dto.amount);
     if (!Money.isPositive(amount)) {
-      throw this.unprocessable(
-        'AMOUNT_NOT_POSITIVE',
-        "Summa noldan katta bo'lishi kerak",
-        { amount: [dto.amount] },
-      );
+      throw this.unprocessable('AMOUNT_NOT_POSITIVE', {
+        details: { amount: [dto.amount] },
+      });
     }
 
     const date = atUtcMidnight(dto.date);
     if (date.getTime() > atUtcMidnight(new Date()).getTime()) {
-      throw this.unprocessable(
-        'DATE_IN_FUTURE',
-        'Kelajakdagi sana bilan xarajat kiritib bo‘lmaydi',
-        { date: [dto.date] },
-      );
+      throw this.unprocessable('DATE_IN_FUTURE', {
+        details: { date: [dto.date] },
+      });
     }
 
     this.branchScope.assertCanWrite(dto.branchId);
@@ -173,44 +167,37 @@ export class ExpensesService {
     const branch = await this.prisma.db.branch.findUnique({
       where: { id: dto.branchId },
     });
-    if (!branch) throw this.notFound('Filial topilmadi');
+    if (!branch) throw this.notFound('errors.BRANCH_NOT_FOUND');
     if (branch.status !== BranchStatus.ACTIVE) {
-      throw this.unprocessable(
-        'BRANCH_ARCHIVED',
-        'Arxivlangan filialga xarajat kiritib bo‘lmaydi',
-        { branchId: [dto.branchId] },
-      );
+      throw this.unprocessable('BRANCH_ARCHIVED', {
+        details: { branchId: [dto.branchId] },
+      });
     }
 
     const category = await this.prisma.db.category.findUnique({
       where: { id: dto.categoryId },
     });
-    if (!category) throw this.notFound('Kategoriya topilmadi');
+    if (!category) throw this.notFound('errors.CATEGORY_NOT_FOUND');
     if (category.status !== CategoryStatus.ACTIVE) {
-      throw this.unprocessable(
-        'CATEGORY_ARCHIVED',
-        'Arxivlangan kategoriyaga xarajat kiritib bo‘lmaydi',
-        { categoryId: [dto.categoryId] },
-      );
+      throw this.unprocessable('CATEGORY_ARCHIVED', {
+        details: { categoryId: [dto.categoryId] },
+      });
     }
 
     if (category.commentRequired && !dto.comment?.trim()) {
-      throw this.unprocessable(
-        'COMMENT_REQUIRED',
-        'Bu kategoriya uchun izoh majburiy',
-        { comment: [category.nameUz] },
-      );
+      throw this.unprocessable('COMMENT_REQUIRED', {
+        details: { comment: [category.nameUz] },
+      });
     }
 
     if (
       category.maxAmountPerEntry !== null &&
       amount.greaterThan(category.maxAmountPerEntry)
     ) {
-      throw this.unprocessable(
-        'CATEGORY_LIMIT_EXCEEDED',
-        `Bu kategoriya uchun bir martalik chegara ${Money.toString(category.maxAmountPerEntry)}`,
-        { amount: [Money.toString(amount)] },
-      );
+      throw this.unprocessable('CATEGORY_LIMIT_EXCEEDED', {
+        args: { limit: Money.toString(category.maxAmountPerEntry) },
+        details: { amount: [Money.toString(amount)] },
+      });
     }
 
     await this.loadEmployees(dto.employeeIds, dto.branchId);
@@ -410,7 +397,7 @@ export class ExpensesService {
     const expense = await this.requireEditable(id);
 
     if (files.length === 0) {
-      throw this.unprocessable('NO_FILES', 'Fayl yuborilmadi');
+      throw this.unprocessable('NO_FILES');
     }
 
     const saved = await this.files.attachToExpense(expense.id, files, userId!);
@@ -436,7 +423,7 @@ export class ExpensesService {
       where: { id: fileId },
     });
     if (!file || file.expenseId !== expense.id) {
-      throw this.notFound('Fayl topilmadi');
+      throw this.notFound('errors.FILE_NOT_FOUND');
     }
 
     await this.files.removeExpenseFile(fileId);
@@ -481,20 +468,16 @@ export class ExpensesService {
 
     const amount = dto.amount ? Money.round2(dto.amount) : expense.amount;
     if (!Money.isPositive(amount)) {
-      throw this.unprocessable(
-        'AMOUNT_NOT_POSITIVE',
-        "Summa noldan katta bo'lishi kerak",
-        { amount: [dto.amount ?? ''] },
-      );
+      throw this.unprocessable('AMOUNT_NOT_POSITIVE', {
+        details: { amount: [dto.amount ?? ''] },
+      });
     }
 
     const date = dto.date ? atUtcMidnight(dto.date) : expense.date;
     if (date.getTime() > atUtcMidnight(new Date()).getTime()) {
-      throw this.unprocessable(
-        'DATE_IN_FUTURE',
-        'Kelajakdagi sana bilan xarajat kiritib bo‘lmaydi',
-        { date: [dto.date ?? ''] },
-      );
+      throw this.unprocessable('DATE_IN_FUTURE', {
+        details: { date: [dto.date ?? ''] },
+      });
     }
 
     const currency = dto.currency ?? expense.currency;
@@ -507,11 +490,9 @@ export class ExpensesService {
     if (effectiveCategory.commentRequired) {
       const comment = dto.comment !== undefined ? dto.comment : expense.comment;
       if (!comment?.trim()) {
-        throw this.unprocessable(
-          'COMMENT_REQUIRED',
-          'Bu kategoriya uchun izoh majburiy',
-          { comment: [effectiveCategory.nameUz] },
-        );
+        throw this.unprocessable('COMMENT_REQUIRED', {
+          details: { comment: [effectiveCategory.nameUz] },
+        });
       }
     }
 
@@ -519,20 +500,18 @@ export class ExpensesService {
       effectiveCategory.maxAmountPerEntry !== null &&
       amount.greaterThan(effectiveCategory.maxAmountPerEntry)
     ) {
-      throw this.unprocessable(
-        'CATEGORY_LIMIT_EXCEEDED',
-        `Bu kategoriya uchun bir martalik chegara ${Money.toString(effectiveCategory.maxAmountPerEntry)}`,
-        { amount: [Money.toString(amount)] },
-      );
+      throw this.unprocessable('CATEGORY_LIMIT_EXCEEDED', {
+        args: { limit: Money.toString(effectiveCategory.maxAmountPerEntry) },
+        details: { amount: [Money.toString(amount)] },
+      });
     }
 
     // Qaytarilgan summadan pastga tushib ketmasin (DB check constraint ham bor)
     if (amount.lessThan(expense.refundedAmount)) {
-      throw this.unprocessable(
-        'AMOUNT_BELOW_REFUNDED',
-        `Summa qaytarilgan miqdordan (${Money.toString(expense.refundedAmount)}) kichik bo‘la olmaydi`,
-        { amount: [Money.toString(amount)] },
-      );
+      throw this.unprocessable('AMOUNT_BELOW_REFUNDED', {
+        args: { refunded: Money.toString(expense.refundedAmount) },
+        details: { amount: [Money.toString(amount)] },
+      });
     }
 
     /*
@@ -672,11 +651,10 @@ export class ExpensesService {
     if (editableWithoutWindow.includes(status)) return;
 
     if (status !== ExpenseStatus.APPROVED) {
-      throw this.unprocessable(
-        'EXPENSE_NOT_EDITABLE',
-        `«${status}» holatidagi xarajatni tahrirlab bo‘lmaydi`,
-        { status: [status] },
-      );
+      throw this.unprocessable('EXPENSE_NOT_EDITABLE', {
+        args: { status },
+        details: { status: [status] },
+      });
     }
 
     const { hours } = await this.settings.get<{ hours: number }>(
@@ -687,11 +665,9 @@ export class ExpensesService {
     );
 
     if (Date.now() > deadline.getTime()) {
-      throw this.unprocessable(
-        'EDIT_WINDOW_CLOSED',
-        'Tahrirlash muddati tugagan',
-        { approvedAt: [deadline.toISOString()] },
-      );
+      throw this.unprocessable('EDIT_WINDOW_CLOSED', {
+        details: { approvedAt: [deadline.toISOString()] },
+      });
     }
   }
 
@@ -699,13 +675,11 @@ export class ExpensesService {
     const category = await this.prisma.db.category.findUnique({
       where: { id: categoryId },
     });
-    if (!category) throw this.notFound('Kategoriya topilmadi');
+    if (!category) throw this.notFound('errors.CATEGORY_NOT_FOUND');
     if (category.status !== CategoryStatus.ACTIVE) {
-      throw this.unprocessable(
-        'CATEGORY_ARCHIVED',
-        'Arxivlangan kategoriyaga xarajat kiritib bo‘lmaydi',
-        { categoryId: [categoryId] },
-      );
+      throw this.unprocessable('CATEGORY_ARCHIVED', {
+        details: { categoryId: [categoryId] },
+      });
     }
     return category;
   }
@@ -726,7 +700,7 @@ export class ExpensesService {
     this.branchScope.assertCanWrite(expense.branchId);
 
     if (expense.deletedAt) {
-      throw this.conflict('ALREADY_DELETED', "Xarajat allaqachon o'chirilgan");
+      throw this.conflict('ALREADY_DELETED');
     }
 
     // Tasdiqlangan yoki qaytarilgan xarajat moliyaviy tarixning bir qismi —
@@ -736,10 +710,7 @@ export class ExpensesService {
       expense.status === ExpenseStatus.PARTIALLY_REFUNDED ||
       expense.status === ExpenseStatus.REFUNDED
     ) {
-      throw this.conflict(
-        'EXPENSE_NOT_DELETABLE',
-        "Tasdiqlangan xarajatni o'chirib bo‘lmaydi",
-      );
+      throw this.conflict('EXPENSE_NOT_DELETABLE');
     }
 
     await this.prisma.db.expense.update({
@@ -841,10 +812,7 @@ export class ExpensesService {
       ExpenseStatus.NEEDS_FIX,
     ];
     if (!editable.includes(expense.status)) {
-      throw this.conflict(
-        'EXPENSE_LOCKED',
-        'Yakunlangan xarajat fayllarini o‘zgartirib bo‘lmaydi',
-      );
+      throw this.conflict('EXPENSE_LOCKED');
     }
 
     return expense;
@@ -857,11 +825,9 @@ export class ExpensesService {
   private async loadEmployees(employeeIds: string[], branchId: string) {
     const unique = [...new Set(employeeIds)];
     if (unique.length !== employeeIds.length) {
-      throw this.unprocessable(
-        'DUPLICATE_EMPLOYEE',
-        'Bitta xodim ro‘yxatda ikki marta ko‘rsatilgan',
-        { employeeIds },
-      );
+      throw this.unprocessable('DUPLICATE_EMPLOYEE', {
+        details: { employeeIds },
+      });
     }
 
     const employees = await this.prisma.db.employee.findMany({
@@ -869,29 +835,29 @@ export class ExpensesService {
     });
 
     if (employees.length !== unique.length) {
-      throw this.unprocessable('EMPLOYEE_NOT_FOUND', 'Xodim topilmadi', {
-        employeeIds: unique.filter((id) => !employees.some((e) => e.id === id)),
+      throw this.unprocessable('EMPLOYEE_NOT_FOUND', {
+        details: {
+          employeeIds: unique.filter(
+            (id) => !employees.some((e) => e.id === id),
+          ),
+        },
       });
     }
 
     const wrongBranch = employees.filter((e) => e.branchId !== branchId);
     if (wrongBranch.length > 0) {
-      throw this.unprocessable(
-        'EMPLOYEE_WRONG_BRANCH',
-        'Xodim tanlangan filialga tegishli emas',
-        { employeeIds: wrongBranch.map((e) => e.id) },
-      );
+      throw this.unprocessable('EMPLOYEE_WRONG_BRANCH', {
+        details: { employeeIds: wrongBranch.map((e) => e.id) },
+      });
     }
 
     const inactive = employees.filter(
       (e) => e.status !== EmployeeStatus.ACTIVE,
     );
     if (inactive.length > 0) {
-      throw this.unprocessable(
-        'EMPLOYEE_INACTIVE',
-        'Nofaol xodimga xarajat taqsimlab bo‘lmaydi',
-        { employeeIds: inactive.map((e) => e.id) },
-      );
+      throw this.unprocessable('EMPLOYEE_INACTIVE', {
+        details: { employeeIds: inactive.map((e) => e.id) },
+      });
     }
 
     return employees;
@@ -920,11 +886,9 @@ export class ExpensesService {
       given.size !== employeeIds.length ||
       !employeeIds.every((id) => given.has(id))
     ) {
-      throw this.unprocessable(
-        'SHARES_MISMATCH',
-        'Ulushlar ro‘yxati tanlangan xodimlarga mos kelmadi',
-        { shares: employeeIds },
-      );
+      throw this.unprocessable('SHARES_MISMATCH', {
+        details: { shares: employeeIds },
+      });
     }
 
     const shares = manual.map((s) => ({
@@ -934,21 +898,18 @@ export class ExpensesService {
 
     for (const share of shares) {
       if (!Money.isPositive(share.amount)) {
-        throw this.unprocessable(
-          'SHARE_NOT_POSITIVE',
-          "Har bir ulush noldan katta bo'lishi kerak",
-          { shares: [share.employeeId] },
-        );
+        throw this.unprocessable('SHARE_NOT_POSITIVE', {
+          details: { shares: [share.employeeId] },
+        });
       }
     }
 
     const total = Money.sum(shares.map((s) => s.amount));
     if (!Money.equals(total, amount)) {
-      throw this.unprocessable(
-        'SHARES_SUM_MISMATCH',
-        `Ulushlar yig'indisi (${Money.toString(total)}) umumiy summaga (${Money.toString(amount)}) teng emas`,
-        { shares: [Money.toString(total)] },
-      );
+      throw this.unprocessable('SHARES_SUM_MISMATCH', {
+        args: { total: Money.toString(total), amount: Money.toString(amount) },
+        details: { shares: [Money.toString(total)] },
+      });
     }
 
     return shares;
@@ -1072,23 +1033,22 @@ export class ExpensesService {
     };
   }
 
-  private notFound(message = 'Xarajat topilmadi'): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'NOT_FOUND',
-      message,
-    });
+  /** `messageKey` — bir xil kod turli kontekstda boshqacha o'qiladi (TZ 5.4) */
+  private notFound(messageKey = 'errors.EXPENSE_NOT_FOUND'): HttpException {
+    return notFoundError('NOT_FOUND', { messageKey });
   }
 
   private unprocessable(
     code: string,
-    message: string,
-    details?: Record<string, string[]>,
-  ): BadRequestException {
-    return new BadRequestException({ statusCode: 422, code, message, details });
+    init: Omit<AppErrorInit, 'status'> = {},
+  ): HttpException {
+    return unprocessable(code, init);
   }
 
-  private conflict(code: string, message: string): BadRequestException {
-    return new BadRequestException({ statusCode: 409, code, message });
+  private conflict(
+    code: string,
+    init: Omit<AppErrorInit, 'status'> = {},
+  ): HttpException {
+    return conflict(code, init);
   }
 }

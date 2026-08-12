@@ -1,0 +1,16 @@
+{
+  "APPROVAL_REMINDER": "Напоминание: заявка {globalNumber} без ответа более {waitingHours} ч",
+  "BUDGET_THRESHOLD": "Предупреждение по бюджету: {threshold}% ({period}) — лимит {limit}, расход {spent}",
+  "CURRENCY_RATE_FAILED": "Не удалось получить курс ({currency}, {date}) — действует последний известный",
+  "DAILY_DIGEST": "Сводка за день: одобрено {approved}, в очереди {pending}, всего {total}",
+  "EDIT_REQUEST_SUBMITTED": "Заявка на редактирование: {globalNumber} — {description}",
+  "EXPENSE_CREATED": "Новый расход: {globalNumber} — {amount}",
+  "EXPENSE_DIRECTOR_APPROVED": "Директор одобрил, ожидается финальное подтверждение: {globalNumber}",
+  "EXPENSE_FINALIZED": "Расход подтверждён: {globalNumber}",
+  "EXPENSE_REJECTED": "Расход отклонён: {globalNumber}. Причина: {reason}",
+  "EXPORT_FAILED": "Экспорт не выполнен: {title} ({format})",
+  "EXPORT_READY": "Экспорт готов: {title} ({format}) — строк: {rowCount}",
+  "FIX_REQUESTED": "Запрошено исправление: {globalNumber}. Причина: {reason}",
+  "REFUND_RESOLVED": "Запрос на возврат обработан: {status}",
+  "REFUND_SUBMITTED": "Запрос на возврат: {globalNumber} — {amount}"
+}

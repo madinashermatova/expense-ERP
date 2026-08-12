@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 import { Currency, PaymentMethod } from '../../../generated/prisma/enums';
 import { ExpenseShareDto } from './create-expense.dto';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 const MONEY = /^\d{1,16}(\.\d{1,2})?$/;
 
@@ -27,7 +28,7 @@ export const MIN_EDIT_REASON_LENGTH = 10;
 export class UpdateExpenseDto {
   @IsString()
   @MinLength(MIN_EDIT_REASON_LENGTH, {
-    message: `Tahrirlash sababi kamida ${MIN_EDIT_REASON_LENGTH} belgidan iborat bo'lishi kerak`,
+    message: validationMessage('validation.REASON_MIN_LENGTH'),
   })
   @MaxLength(1000)
   reason!: string;
@@ -37,7 +38,7 @@ export class UpdateExpenseDto {
   categoryId?: string;
 
   @IsOptional()
-  @Matches(MONEY, { message: "Summa noto'g'ri formatda" })
+  @Matches(MONEY, { message: validationMessage('validation.MONEY_FORMAT') })
   amount?: string;
 
   @IsOptional()

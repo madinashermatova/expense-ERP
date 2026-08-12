@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  PayloadTooLargeException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { tenantData } from '../../common/tenancy/tenant-data';
@@ -12,6 +7,11 @@ import { TenantContextService } from '../../common/tenancy/tenant-context.servic
 import { EnvironmentVariables } from '../../config/env.validation';
 import { AllowedMime, detectMime, sanitizeFileName } from './file-type.util';
 import { StorageService } from './storage.service';
+import {
+  appError,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 export interface UploadedFileInput {
   originalname: string;
@@ -53,10 +53,11 @@ export class FilesService {
    */
   validate(file: UploadedFileInput): AllowedMime {
     if (file.size > this.maxFileSizeBytes) {
-      throw new PayloadTooLargeException({
-        statusCode: 413,
-        code: 'FILE_TOO_LARGE',
-        message: `Fayl hajmi ${this.config.get('UPLOAD_MAX_FILE_SIZE_MB', { infer: true })} MB dan oshmasligi kerak`,
+      throw appError('FILE_TOO_LARGE', {
+        status: 413,
+        args: {
+          maxMb: this.config.get('UPLOAD_MAX_FILE_SIZE_MB', { infer: true }),
+        },
         details: { files: [file.originalname] },
       });
     }
@@ -64,20 +65,14 @@ export class FilesService {
     const detected = detectMime(file.buffer);
 
     if (!detected) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'FILE_TYPE_NOT_ALLOWED',
-        message: 'Faqat jpg, png, webp va pdf fayllar qabul qilinadi',
+      throw unprocessable('FILE_TYPE_NOT_ALLOWED', {
         details: { files: [file.originalname] },
       });
     }
 
     // E'lon qilingan tur mazmunga mos kelmasa — soxtalashtirishga urinish
     if (file.mimetype && file.mimetype !== detected) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'FILE_CONTENT_MISMATCH',
-        message: "Fayl mazmuni ko'rsatilgan turga mos kelmadi",
+      throw unprocessable('FILE_CONTENT_MISMATCH', {
         details: {
           files: [`${file.originalname}: ${file.mimetype} ≠ ${detected}`],
         },
@@ -89,11 +84,9 @@ export class FilesService {
 
   assertFileCount(current: number, incoming: number): void {
     if (current + incoming > this.maxFilesPerExpense) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'TOO_MANY_FILES',
-        message: `Bitta xarajatga eng ko'pi ${this.maxFilesPerExpense} ta fayl biriktiriladi`,
-        details: { files: [`joriy: ${current}, yangi: ${incoming}`] },
+      throw unprocessable('TOO_MANY_FILES', {
+        args: { max: this.maxFilesPerExpense },
+        details: { files: [`${current} + ${incoming}`] },
       });
     }
   }
@@ -230,10 +223,6 @@ export class FilesService {
   }
 
   private notFound(): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'FILE_NOT_FOUND',
-      message: 'Fayl topilmadi',
-    });
+    return notFoundError('FILE_NOT_FOUND');
   }
 }

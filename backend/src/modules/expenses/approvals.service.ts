@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { AuditService } from '../../common/audit/audit.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -16,6 +10,14 @@ import { NOTIFICATION_TYPES } from '../notifications/notification-types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ExpenseAction, findTransition, Transition } from './expense-status';
 import { ExpensesService, ExpenseView } from './expenses.service';
+import {
+  AppErrorInit,
+  conflict,
+  forbidden,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
+import { TranslationService } from '../../common/i18n/translation.service';
 
 export interface BulkApproveResult {
   approved: string[];
@@ -38,6 +40,7 @@ export class ApprovalsService {
     private readonly audit: AuditService,
     private readonly branchScope: BranchScopeService,
     private readonly tenantContext: TenantContextService,
+    private readonly translations: TranslationService,
   ) {}
 
   approve(id: string, version?: number): Promise<ExpenseView> {
@@ -93,11 +96,7 @@ export class ApprovalsService {
     const userId = this.tenantContext.userId;
     const role = this.tenantContext.role;
     if (!userId || !role) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'FORBIDDEN',
-        message: 'Foydalanuvchi aniqlanmadi',
-      });
+      throw forbidden('FORBIDDEN');
     }
 
     const expense = await this.prisma.db.expense.findUnique({
@@ -112,11 +111,10 @@ export class ApprovalsService {
 
     const base = findTransition(expense.status, input.action);
     if (!base) {
-      throw this.unprocessable(
-        'INVALID_STATUS_TRANSITION',
-        `«${expense.status}» holatida bu amalni bajarib bo'lmaydi`,
-        { status: [expense.status] },
-      );
+      throw this.unprocessable('INVALID_STATUS_TRANSITION', {
+        args: { status: expense.status },
+        details: { status: [expense.status] },
+      });
     }
 
     const transition = await this.adjustForCreator(
@@ -127,16 +125,12 @@ export class ApprovalsService {
     this.assertRole(transition, role);
 
     if (transition.creatorOnly && expense.createdByUserId !== userId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'NOT_EXPENSE_OWNER',
-        message: 'Faqat xarajatni kiritgan shaxs bu amalni bajara oladi',
-      });
+      throw forbidden('NOT_EXPENSE_OWNER');
     }
 
     const reason = input.reason?.trim();
     if (transition.reasonRequired && !reason) {
-      throw this.unprocessable('REASON_REQUIRED', 'Sabab matni majburiy');
+      throw this.unprocessable('REASON_REQUIRED');
     }
 
     // Chek majburiy bo'lgan kategoriyada yozuv chek bilan yuboriladi (TZ 3.6)
@@ -145,11 +139,9 @@ export class ApprovalsService {
         where: { expenseId: expense.id },
       });
       if (fileCount === 0) {
-        throw this.unprocessable(
-          'RECEIPT_REQUIRED',
-          'Bu kategoriya uchun chek yoki kvitansiya majburiy',
-          { files: [expense.category.nameUz] },
-        );
+        throw this.unprocessable('RECEIPT_REQUIRED', {
+          details: { files: [expense.category.nameUz] },
+        });
       }
     }
 
@@ -222,13 +214,11 @@ export class ApprovalsService {
     // (TZ 3.7), lekin faqat `creatorOnly` bilan cheklangan o'tishlarda.
     if (transition.roles.includes(role)) return;
 
-    throw new ForbiddenException({
-      statusCode: 403,
-      code: 'STAGE_FORBIDDEN',
-      message:
+    throw forbidden('STAGE_FORBIDDEN', {
+      messageKey:
         transition.from === ExpenseStatus.ADMIN_PENDING
-          ? 'Bu bosqichni faqat bosh admin hal qiladi'
-          : 'Bu amalni bajarishga huquqingiz yo‘q',
+          ? 'errors.STAGE_FORBIDDEN_ADMIN'
+          : 'errors.STAGE_FORBIDDEN',
     });
   }
 
@@ -250,11 +240,7 @@ export class ApprovalsService {
     });
 
     if (otherAdmins > 0) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'SELF_APPROVAL_FORBIDDEN',
-        message: 'Boshqa bosh admin tasdiqlashi kerak',
-      });
+      throw forbidden('SELF_APPROVAL_FORBIDDEN');
     }
 
     return true;
@@ -347,11 +333,7 @@ export class ApprovalsService {
     });
 
     if (!changed) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'ALREADY_PROCESSED',
-        message: 'Ariza allaqachon qayta ishlangan',
-      });
+      throw conflict('ALREADY_PROCESSED');
     }
 
     return this.expenses.findOne(params.id);
@@ -405,41 +387,52 @@ export class ApprovalsService {
     }
   }
 
-  /** Bulk hisobotida xatoni mashina o'qiydigan kodga keltiradi */
+  /**
+   * Bulk hisobotida xatoni mashina o'qiydigan kodga va foydalanuvchi tilidagi
+   * matnga keltiradi. Matn shu yerda tarjima qilinadi: bu javob xato emas,
+   * muvaffaqiyatli javob ichidagi ro'yxat, ya'ni filter unga tegmaydi (TZ 5.4).
+   */
   private describeError(error: unknown): { code: string; message: string } {
-    if (
-      error instanceof BadRequestException ||
-      error instanceof ForbiddenException ||
-      error instanceof ConflictException ||
-      error instanceof NotFoundException
-    ) {
+    if (error instanceof HttpException) {
       const payload = error.getResponse();
       if (typeof payload === 'object' && payload !== null) {
-        const body = payload as { code?: string; message?: string };
+        const body = payload as {
+          code?: string;
+          messageKey?: string;
+          message?: string;
+          args?: Record<string, string | number>;
+        };
+        const code = body.code ?? 'ERROR';
         return {
-          code: body.code ?? 'ERROR',
-          message: body.message ?? error.message,
+          code,
+          message: this.translations.translateOr(
+            body.messageKey ?? `errors.${code}`,
+            body.message ?? error.message,
+            { args: body.args },
+          ),
         };
       }
-      return { code: 'ERROR', message: String(payload) };
     }
 
-    return { code: 'INTERNAL_ERROR', message: 'Kutilmagan xato' };
+    return {
+      code: 'INTERNAL_ERROR',
+      message: this.translations.translateOr(
+        'errors.INTERNAL_ERROR',
+        'Internal error',
+      ),
+    };
   }
 
-  private notFound(): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'NOT_FOUND',
-      message: 'Xarajat topilmadi',
+  private notFound(): HttpException {
+    return notFoundError('NOT_FOUND', {
+      messageKey: 'errors.EXPENSE_NOT_FOUND',
     });
   }
 
   private unprocessable(
     code: string,
-    message: string,
-    details?: Record<string, string[]>,
-  ): BadRequestException {
-    return new BadRequestException({ statusCode: 422, code, message, details });
+    init: Omit<AppErrorInit, 'status'> = {},
+  ): HttpException {
+    return unprocessable(code, init);
   }
 }

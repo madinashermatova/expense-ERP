@@ -1,6 +1,11 @@
 import { INestApplication } from '@nestjs/common';
 import { BotRouterService } from '../../src/modules/telegram/bot-router.service';
 import {
+  BUTTON_IDS,
+  BotTextService,
+  ButtonId,
+} from '../../src/modules/telegram/bot-text.service';
+import {
   BotTransport,
   ReplyOptions,
 } from '../../src/modules/telegram/bot-types';
@@ -157,6 +162,23 @@ export class BotUser {
   async pressByText(needle: string): Promise<void> {
     await this.press(this.inlineData(needle));
   }
+}
+
+/**
+ * Tugma yorliqlari ikki tilda: testlar tugmani **matn bilan** bosadi (foydalanuvchi
+ * ham shunday qiladi), matnlar esa i18n fayllarida — shu sababli ular ilovadan olinadi.
+ */
+export type ButtonLabels = Record<ButtonId, { uz: string; ru: string }>;
+
+export function buttonLabels(app: INestApplication): ButtonLabels {
+  const texts = app.get(BotTextService);
+  const out = {} as ButtonLabels;
+
+  for (const id of BUTTON_IDS) {
+    out[id] = { uz: texts.button(id, 'uz'), ru: texts.button(id, 'ru') };
+  }
+
+  return out;
 }
 
 export function botUser(

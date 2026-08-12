@@ -7,6 +7,7 @@ import { BotDirectoryService } from './bot-directory.service';
 import { BotLauncherService } from './bot-launcher.service';
 import { BotRouterService } from './bot-router.service';
 import { BotSessionService } from './bot-session.service';
+import { BotTextService } from './bot-text.service';
 import { AccountsFlowHandler } from './flows/accounts.flow';
 import { ApprovalsFlowHandler } from './flows/approvals.flow';
 import { ExpenseFlowHandler } from './flows/expense.flow';
@@ -22,6 +23,7 @@ import { TelegramAuthService } from './telegram-auth.service';
   providers: [
     BotDirectoryService,
     BotSessionService,
+    BotTextService,
     TelegramAuthService,
     MenuPresenter,
     LoginFlowHandler,
@@ -33,6 +35,11 @@ import { TelegramAuthService } from './telegram-auth.service';
     BotRouterService,
     BotLauncherService,
   ],
-  exports: [BotRouterService, BotDirectoryService, BotSessionService],
+  exports: [
+    BotRouterService,
+    BotDirectoryService,
+    BotSessionService,
+    BotTextService,
+  ],
 })
 export class TelegramModule {}

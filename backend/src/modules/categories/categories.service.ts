@@ -1,14 +1,14 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CategoryStatus, Prisma } from '../../generated/prisma/client';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { ListCategoriesDto } from './dto/list-categories.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import {
+  conflict,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 export interface CategoryView {
   id: string;
@@ -79,11 +79,7 @@ export class CategoriesService {
       if (!parent) throw this.notFound();
       // TZ 3.4 — ierarxiya aynan ikki daraja
       if (parent.parentId !== null) {
-        throw new BadRequestException({
-          statusCode: 422,
-          code: 'CATEGORY_DEPTH_EXCEEDED',
-          message: 'Kategoriya ierarxiyasi ikki darajadan oshmaydi',
-        });
+        throw unprocessable('CATEGORY_DEPTH_EXCEEDED');
       }
     }
 
@@ -134,11 +130,7 @@ export class CategoriesService {
     const category = await this.ensureExists(id);
 
     if (category.status === CategoryStatus.ARCHIVED) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'CATEGORY_ALREADY_ARCHIVED',
-        message: 'Kategoriya allaqachon arxivlangan',
-      });
+      throw conflict('CATEGORY_ALREADY_ARCHIVED');
     }
 
     const updated = await this.prisma.db.$transaction(async (tx) => {
@@ -166,11 +158,7 @@ export class CategoriesService {
         where: { id: category.parentId },
       });
       if (parent?.status === CategoryStatus.ARCHIVED) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'PARENT_CATEGORY_ARCHIVED',
-          message: 'Avval bosh kategoriyani tiklang',
-        });
+        throw conflict('PARENT_CATEGORY_ARCHIVED');
       }
     }
 
@@ -195,20 +183,11 @@ export class CategoriesService {
     ]);
 
     if (expenseCount > 0) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'CATEGORY_IN_USE',
-        message:
-          'Kategoriya xarajatlarda ishlatilgan — uni faqat arxivlash mumkin',
-      });
+      throw conflict('CATEGORY_IN_USE');
     }
 
     if (childCount > 0) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'CATEGORY_HAS_CHILDREN',
-        message: "Avval ichki kategoriyalarni o'chiring",
-      });
+      throw conflict('CATEGORY_HAS_CHILDREN');
     }
 
     await this.prisma.db.category.delete({ where: { id: category.id } });
@@ -266,10 +245,6 @@ export class CategoriesService {
   }
 
   private notFound(): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'CATEGORY_NOT_FOUND',
-      message: 'Kategoriya topilmadi',
-    });
+    return notFoundError('CATEGORY_NOT_FOUND');
   }
 }

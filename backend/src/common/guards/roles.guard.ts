@@ -1,14 +1,10 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { Role } from '../../generated/prisma/enums';
 import { AuthenticatedUser } from '../../modules/auth/auth.types';
+import { forbidden } from '../../common/errors/app-error';
 
 /**
  * TZ 2.2 — rollar matritsasi server tomonda majburlanadi.
@@ -33,11 +29,7 @@ export class RolesGuard implements CanActivate {
 
     // Ishchi Web API ga umuman kirmaydi — endpointda @Roles bo'lmasa ham
     if (user.role === Role.WORKER) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'WEB_ACCESS_DENIED',
-        message: 'Ishchi hisobi Web ERP ga kira olmaydi',
-      });
+      throw forbidden('WEB_ACCESS_DENIED');
     }
 
     const required = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
@@ -47,11 +39,7 @@ export class RolesGuard implements CanActivate {
     if (!required || required.length === 0) return true;
 
     if (!required.includes(user.role)) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'FORBIDDEN',
-        message: "Bu amal uchun ruxsatingiz yo'q",
-      });
+      throw forbidden('FORBIDDEN');
     }
 
     return true;

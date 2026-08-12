@@ -11,6 +11,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { MIN_REASON_LENGTH } from '../expense-status';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 export class ApproveExpenseDto {
   /**
@@ -27,7 +28,7 @@ export class ApproveExpenseDto {
 export class RejectExpenseDto {
   @IsString()
   @MinLength(MIN_REASON_LENGTH, {
-    message: `Sabab kamida ${MIN_REASON_LENGTH} belgidan iborat bo'lishi kerak`,
+    message: validationMessage('validation.REASON_MIN_LENGTH'),
   })
   @MaxLength(1000)
   reason!: string;

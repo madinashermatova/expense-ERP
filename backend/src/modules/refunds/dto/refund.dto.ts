@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { RefundStatus } from '../../../generated/prisma/enums';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 const MONEY = /^\d{1,16}(\.\d{1,2})?$/;
 
@@ -32,12 +33,14 @@ export class CreateRefundDto {
   @IsUUID()
   expenseId!: string;
 
-  @Matches(MONEY, { message: "Qaytarish summasi noto'g'ri formatda" })
+  @Matches(MONEY, {
+    message: validationMessage('validation.REFUND_MONEY_FORMAT'),
+  })
   amount!: string;
 
   @IsString()
   @MinLength(MIN_REFUND_REASON_LENGTH, {
-    message: `Sabab kamida ${MIN_REFUND_REASON_LENGTH} belgidan iborat bo'lishi kerak`,
+    message: validationMessage('validation.REASON_MIN_LENGTH'),
   })
   @MaxLength(1000)
   reason!: string;
@@ -68,7 +71,7 @@ export class ApproveRefundDto {
 export class RejectRefundDto {
   @IsString()
   @MinLength(MIN_REFUND_REASON_LENGTH, {
-    message: `Rad etish sababi kamida ${MIN_REFUND_REASON_LENGTH} belgidan iborat bo'lishi kerak`,
+    message: validationMessage('validation.REASON_MIN_LENGTH'),
   })
   @MaxLength(1000)
   reason!: string;

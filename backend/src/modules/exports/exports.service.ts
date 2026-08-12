@@ -1,10 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import {
-  ForbiddenException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -46,6 +41,11 @@ import {
 } from './export-queue';
 import { PdfWriter } from './pdf.writer';
 import { XlsxWriter } from './xlsx.writer';
+import {
+  forbidden,
+  notFound,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 export interface ExportJobView {
   id: string;
@@ -249,19 +249,11 @@ export class ExportsService {
     const job = await this.requireOwn(id);
 
     if (job.status !== ExportStatus.DONE || !job.storageKey) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'EXPORT_NOT_READY',
-        message: 'Eksport fayli hali tayyor emas',
-      });
+      throw notFound('EXPORT_NOT_READY');
     }
 
     if (job.expiresAt && job.expiresAt.getTime() < Date.now()) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'EXPORT_EXPIRED',
-        message: "Eksport fayli muddati tugagan — qaytadan so'rang",
-      });
+      throw notFound('EXPORT_EXPIRED');
     }
 
     const fileName = this.fileNameOf(job);
@@ -305,18 +297,12 @@ export class ExportsService {
     const role = this.tenantContext.role;
 
     if (!role || !definition.roles.includes(role)) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'EXPORT_FORBIDDEN',
-        message: `${dto.type} eksportiga ruxsat yo'q`,
-      });
+      throw forbidden('EXPORT_FORBIDDEN', { args: { type: dto.type } });
     }
 
     if (!definition.formats.includes(dto.format)) {
-      throw new ForbiddenException({
-        statusCode: 422,
-        code: 'EXPORT_FORMAT_UNSUPPORTED',
-        message: `${dto.type} uchun ${dto.format} formati qo'llab-quvvatlanmaydi`,
+      throw unprocessable('EXPORT_FORMAT_UNSUPPORTED', {
+        args: { type: dto.type, format: dto.format },
       });
     }
   }
@@ -363,11 +349,7 @@ export class ExportsService {
       (this.tenantContext.role !== Role.ADMIN &&
         job.requestedByUserId !== this.tenantContext.userId)
     ) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'NOT_FOUND',
-        message: 'Eksport topilmadi',
-      });
+      throw notFound('NOT_FOUND');
     }
 
     return job;
@@ -376,11 +358,7 @@ export class ExportsService {
   private async reload(id: string) {
     const job = await this.prisma.db.exportJob.findUnique({ where: { id } });
     if (!job) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'NOT_FOUND',
-        message: 'Eksport topilmadi',
-      });
+      throw notFound('NOT_FOUND');
     }
     return job;
   }

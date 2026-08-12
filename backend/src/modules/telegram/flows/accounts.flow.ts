@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { langOf, roleName, t } from '../bot-texts';
 import { BotSession, BotSessionService } from '../bot-session.service';
 import { BotTransport, BotUpdate, InlineButton } from '../bot-types';
-import { addAccountLabel, logoutAllLabel, logoutLabel } from '../keyboards';
 import { MenuPresenter } from '../menu.presenter';
 import { TelegramAuthService } from '../telegram-auth.service';
 import { LoginFlowHandler } from './login.flow';
+import { toAppLanguage } from '../../../common/i18n/languages';
+import { BotTextService } from '../bot-text.service';
 
 /**
  * Hisobni almashtirish, qo'shish va chiqish (TZ 3.12.2).
@@ -22,6 +22,7 @@ export class AccountsFlowHandler {
     private readonly sessions: BotSessionService,
     private readonly menu: MenuPresenter,
     private readonly login: LoginFlowHandler,
+    private readonly texts: BotTextService,
   ) {}
 
   async showList(
@@ -29,7 +30,7 @@ export class AccountsFlowHandler {
     update: BotUpdate,
     session: BotSession,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const accounts = await this.auth.listAccounts(
       update.botId,
       update.telegramId,
@@ -37,18 +38,20 @@ export class AccountsFlowHandler {
 
     const rows: InlineButton[][] = accounts.map((account) => [
       {
-        text: `${account.linkId === session.activeLinkId ? '✅ ' : ''}${account.companyName} — ${account.fullName} (${roleName(account.role, lang)})`,
+        text: `${account.linkId === session.activeLinkId ? '✅ ' : ''}${account.companyName} — ${account.fullName} (${this.texts.roleName(account.role, lang)})`,
         data: `acc:switch:${account.linkId}`,
       },
     ]);
 
-    rows.push([{ text: addAccountLabel(lang), data: 'acc:add' }]);
-    rows.push([{ text: logoutLabel(lang), data: 'acc:logout' }]);
+    rows.push([{ text: this.texts.addAccountLabel(lang), data: 'acc:add' }]);
+    rows.push([{ text: this.texts.logoutLabel(lang), data: 'acc:logout' }]);
     if (accounts.length > 1) {
-      rows.push([{ text: logoutAllLabel(lang), data: 'acc:logoutAll' }]);
+      rows.push([
+        { text: this.texts.logoutAllLabel(lang), data: 'acc:logoutAll' },
+      ]);
     }
 
-    await tx.sendMessage(update.chatId, t('accountsHeader', lang), {
+    await tx.sendMessage(update.chatId, this.texts.t('accountsHeader', lang), {
       inline: rows,
     });
   }
@@ -59,7 +62,7 @@ export class AccountsFlowHandler {
     session: BotSession,
     linkId: string,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     const account = await this.auth.switchTo(
       update.botId,
       update.telegramId,
@@ -67,7 +70,12 @@ export class AccountsFlowHandler {
     );
 
     if (!account) {
-      await this.menu.showGuest(tx, update, session, t('sessionExpired', lang));
+      await this.menu.showGuest(
+        tx,
+        update,
+        session,
+        this.texts.t('sessionExpired', lang),
+      );
       await this.sessions.setActiveLink(session, null);
       return;
     }
@@ -77,11 +85,11 @@ export class AccountsFlowHandler {
     await this.sessions.setActiveLink(session, linkId);
 
     const header = [
-      hadFlow ? t('flowCancelledBySwitch', lang) : null,
-      t('accountSwitched', lang, {
+      hadFlow ? this.texts.t('flowCancelledBySwitch', lang) : null,
+      this.texts.t('accountSwitched', lang, {
         company: account.companyName,
         fullName: account.fullName,
-        role: roleName(account.role, lang),
+        role: this.texts.roleName(account.role, lang),
       }),
     ]
       .filter(Boolean)
@@ -103,9 +111,14 @@ export class AccountsFlowHandler {
     update: BotUpdate,
     session: BotSession,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     if (!session.activeLinkId) {
-      await this.menu.showGuest(tx, update, session, t('notLoggedIn', lang));
+      await this.menu.showGuest(
+        tx,
+        update,
+        session,
+        this.texts.t('notLoggedIn', lang),
+      );
       return;
     }
 
@@ -120,7 +133,12 @@ export class AccountsFlowHandler {
     // Boshqa bog'langan hisob bo'lsa unga o'tiladi, aks holda kirish ekrani (TZ 3.12.2)
     if (!next) {
       await this.sessions.setActiveLink(session, null);
-      await this.menu.showGuest(tx, update, session, t('loggedOut', lang));
+      await this.menu.showGuest(
+        tx,
+        update,
+        session,
+        this.texts.t('loggedOut', lang),
+      );
       return;
     }
 
@@ -131,7 +149,12 @@ export class AccountsFlowHandler {
     );
     if (!account) {
       await this.sessions.setActiveLink(session, null);
-      await this.menu.showGuest(tx, update, session, t('loggedOut', lang));
+      await this.menu.showGuest(
+        tx,
+        update,
+        session,
+        this.texts.t('loggedOut', lang),
+      );
       return;
     }
 
@@ -141,11 +164,15 @@ export class AccountsFlowHandler {
       update,
       session,
       account,
-      `${t('loggedOut', lang)}\n\n${t('accountSwitched', lang, {
-        company: account.companyName,
-        fullName: account.fullName,
-        role: roleName(account.role, lang),
-      })}`,
+      `${this.texts.t('loggedOut', lang)}\n\n${this.texts.t(
+        'accountSwitched',
+        lang,
+        {
+          company: account.companyName,
+          fullName: account.fullName,
+          role: this.texts.roleName(account.role, lang),
+        },
+      )}`,
     );
   }
 
@@ -154,10 +181,15 @@ export class AccountsFlowHandler {
     update: BotUpdate,
     session: BotSession,
   ): Promise<void> {
-    const lang = langOf(session.language);
+    const lang = toAppLanguage(session.language);
     await this.auth.logoutAll(update.botId, update.telegramId);
     session.flow = null;
     await this.sessions.setActiveLink(session, null);
-    await this.menu.showGuest(tx, update, session, t('loggedOutAll', lang));
+    await this.menu.showGuest(
+      tx,
+      update,
+      session,
+      this.texts.t('loggedOutAll', lang),
+    );
   }
 }

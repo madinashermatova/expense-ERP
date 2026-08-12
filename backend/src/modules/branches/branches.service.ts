@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { BranchScopeService } from '../../common/scope/branch-scope.service';
 import {
@@ -15,6 +11,11 @@ import { PlanLimitService } from '../plans/plan-limit.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { ListBranchesDto } from './dto/list-branches.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
+import {
+  conflict,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 export interface BranchView {
   id: string;
@@ -113,11 +114,9 @@ export class BranchesService {
       where: { code: dto.code },
     });
     if (existing) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'BRANCH_CODE_TAKEN',
-        message: `"${dto.code}" kodi allaqachon band`,
-        details: { code: ['band'] },
+      throw conflict('BRANCH_CODE_TAKEN', {
+        args: { code: dto.code },
+        details: { code: [dto.code] },
       });
     }
 
@@ -163,11 +162,7 @@ export class BranchesService {
     const branch = await this.ensureExists(id);
 
     if (branch.status === BranchStatus.ARCHIVED) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'BRANCH_ALREADY_ARCHIVED',
-        message: 'Filial allaqachon arxivlangan',
-      });
+      throw conflict('BRANCH_ALREADY_ARCHIVED');
     }
 
     const updated = await this.prisma.db.branch.update({
@@ -209,11 +204,7 @@ export class BranchesService {
     });
     if (!branch) throw this.notFound();
     if (branch.status === BranchStatus.ARCHIVED) {
-      throw new ConflictException({
-        statusCode: 422,
-        code: 'BRANCH_ARCHIVED',
-        message: "Arxivlangan filialga yangi yozuv kiritib bo'lmaydi",
-      });
+      throw unprocessable('BRANCH_ARCHIVED');
     }
   }
 
@@ -272,10 +263,6 @@ export class BranchesService {
   }
 
   private notFound(): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'BRANCH_NOT_FOUND',
-      message: 'Filial topilmadi',
-    });
+    return notFoundError('BRANCH_NOT_FOUND');
   }
 }
