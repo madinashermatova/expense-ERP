@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 
 export interface ExpenseListParams {
@@ -40,10 +40,31 @@ export const useEmployees = (branchId?: string) => {
   return useQuery({
     queryKey: ['employees', branchId],
     queryFn: async () => {
-      const response = await apiClient.get('/employees', { params: { branchId } });
+      const response = await apiClient.get('/employees', { params: { branchId, status: 'ACTIVE' } });
       return response.data.items || response.data;
     },
     enabled: branchId !== undefined ? !!branchId : true
+  });
+};
+
+export const useCreateExpense = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ data, files }: { data: any, files: File[] }) => {
+      const formData = new FormData();
+      formData.append('data', JSON.stringify(data));
+      files.forEach(f => {
+        formData.append('files', f);
+      });
+
+      const response = await apiClient.post('/expenses', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    }
   });
 };
 

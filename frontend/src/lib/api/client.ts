@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/features/auth/store';
+import toast from 'react-hot-toast';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
@@ -73,6 +74,35 @@ apiClient.interceptors.response.use(
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
+      }
+    }
+
+    const status = error.response?.status;
+    const errData = error.response?.data as any;
+    
+    // Toast global errors if no details provided (except special codes handled by forms)
+    if (status && status !== 401) {
+      if (errData && !errData.details) {
+        if (errData.code === 'PLAN_LIMIT_EXCEEDED') {
+          // Can be handled globally with a special event or just toast for now
+          toast.error(errData.message || 'Tarif limiti tugadi');
+        } else if (status === 409 && errData.code === 'EXPENSE_ALREADY_PROCESSED') {
+          toast.error('Bu ariza allaqachon qayta ishlangan');
+        } else if (status === 429) {
+          // Handled mostly by forms, but we can show a global toast if not login
+          if (!originalRequest.url?.includes('/auth/login')) {
+            toast.error("Ko'p so'rov yuborildi, iltimos kuting");
+          }
+        } else if (status === 403 && errData.code !== 'WEB_ACCESS_DENIED' && errData.code !== 'ACCOUNT_INACTIVE' && errData.code !== 'COMPANY_SUSPENDED') {
+          toast.error(errData.message || 'Kirish taqiqlangan');
+        } else if (status >= 500) {
+          toast.error('Server xatosi yuz berdi');
+        } else {
+          // Generic fallback for other statuses like 400, 404 without details
+          if (!originalRequest.url?.includes('/auth/login')) {
+             toast.error(errData.message || 'Xatolik yuz berdi');
+          }
+        }
       }
     }
 

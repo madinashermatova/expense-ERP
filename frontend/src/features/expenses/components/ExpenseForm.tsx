@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dropzone } from '@/components/ui/Dropzone';
-import { useBranches, useCategories, useEmployees } from '../api';
+import { useBranches, useCategories, useEmployees, useCreateExpense } from '../api';
 import { expenseSchema, ExpenseFormData } from '../schema';
 import { useAuthStore } from '@/features/auth/store';
+import toast from 'react-hot-toast';
 import styles from './ExpenseForm.module.css';
 
 interface ExpenseFormProps {
@@ -20,6 +21,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER';
   const [attachments, setAttachments] = useState<File[]>([]);
+  const createMutation = useCreateExpense();
 
   const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
@@ -40,10 +42,13 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
   const watchBranchId = watch('branchId');
   const watchAmount = watch('amount');
   const watchEmployeeIds = watch('employeeIds') || [];
+  const watchCategoryId = watch('categoryId');
 
   const { data: branches } = useBranches();
   const { data: categories } = useCategories();
   const { data: employees } = useEmployees(watchBranchId);
+
+  const selectedCategory = categories?.find((c: any) => c.id === watchCategoryId);
 
   // Auto-distribute shares when employeeIds or amount changes
   useEffect(() => {
@@ -71,9 +76,28 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
   };
 
   const onSubmit = (data: ExpenseFormData) => {
-    console.log('Submitting', { ...data, attachments });
-    // TODO: Mutation (with FormData if attachments exist)
-    if (onSuccess) onSuccess();
+    if (selectedCategory?.receiptRequired && attachments.length === 0) {
+      toast.error('Bu kategoriya uchun chek/isbot kiritish majburiy');
+      return;
+    }
+    if (selectedCategory?.commentRequired && !data.reason) {
+      toast.error('Bu kategoriya uchun izoh kiritish majburiy');
+      return;
+    }
+    if (selectedCategory?.maxAmountPerEntry && Number(data.amount) > Number(selectedCategory.maxAmountPerEntry)) {
+      toast.error(`Kategoriya bo'yicha maksimal summa: ${selectedCategory.maxAmountPerEntry}`);
+      return;
+    }
+
+    createMutation.mutate(
+      { data, files: attachments },
+      {
+        onSuccess: () => {
+          toast.success("Xarajat muvaffaqiyatli qo'shildi");
+          if (onSuccess) onSuccess();
+        }
+      }
+    );
   };
 
   return (
@@ -150,7 +174,8 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
         
         <div className={styles.fullWidth}>
           <Textarea
-            label="Izoh"
+            label={selectedCategory?.commentRequired ? "Izoh (Majburiy)" : "Izoh"}
+            required={selectedCategory?.commentRequired}
             placeholder="Xarajat haqida ma'lumot..."
             error={errors.reason?.message}
             {...register('reason')}
@@ -159,7 +184,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
 
         <div className={styles.fullWidth}>
           <Dropzone
-            label="Chek / Isbot fayllar"
+            label={selectedCategory?.receiptRequired ? "Chek / Isbot fayllar (Majburiy)" : "Chek / Isbot fayllar"}
             files={attachments}
             onChange={setAttachments}
           />
@@ -193,8 +218,10 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
       </div>
 
       <div className={styles.actions}>
-        <Button type="button" variant="ghost" onClick={onCancel}>Bekor qilish</Button>
-        <Button type="submit">Saqlash</Button>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={createMutation.isPending}>Bekor qilish</Button>
+        <Button type="submit" disabled={createMutation.isPending}>
+          {createMutation.isPending ? 'Saqlanmoqda...' : 'Saqlash'}
+        </Button>
       </div>
     </form>
   );

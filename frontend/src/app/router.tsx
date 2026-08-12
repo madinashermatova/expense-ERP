@@ -6,6 +6,7 @@ import { LoginPage } from '@/features/auth/LoginPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { ExpensesPage } from '@/features/expenses/ExpensesPage';
 import { ExpenseCreatePage } from '@/features/expenses/ExpenseCreatePage';
+import { ExpenseDetailsPage } from '@/features/expenses/ExpenseDetailsPage';
 import { ApprovalsPage } from '@/features/approvals/ApprovalsPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { RefundsPage } from '@/features/refunds/RefundsPage';
@@ -14,11 +15,20 @@ import { ReportsPage } from '@/features/reports/ReportsPage';
 import { AuditPage } from '@/features/audit/AuditPage';
 import { ExportHistoryPage } from '@/features/exports/ExportHistoryPage';
 import { ProfilePage } from '@/features/profile/ProfilePage';
+import { BranchesPage } from '@/features/branches/BranchesPage';
+import { EmployeesPage } from '@/features/employees/EmployeesPage';
+import { CategoriesPage } from '@/features/categories/CategoriesPage';
+import { RequireAuth } from '@/components/shared/RequireAuth';
+import { RequireRole } from '@/components/shared/RequireRole';
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <RequireAuth>
+        <AppLayout />
+      </RequireAuth>
+    ),
     children: [
       {
         index: true,
@@ -31,6 +41,10 @@ export const router = createBrowserRouter([
       {
         path: 'expenses/create',
         element: <ExpenseCreatePage />,
+      },
+      {
+        path: 'expenses/:id',
+        element: <ExpenseDetailsPage />,
       },
       {
         path: 'approvals',
@@ -50,7 +64,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'audit',
-        element: <AuditPage />,
+        element: (
+          <RequireRole roles={['ADMIN']}>
+            <AuditPage />
+          </RequireRole>
+        ),
       },
       {
         path: 'exports',
@@ -58,11 +76,39 @@ export const router = createBrowserRouter([
       },
       {
         path: 'settings',
-        element: <SettingsPage />,
+        element: (
+          <RequireRole roles={['ADMIN']}>
+            <SettingsPage />
+          </RequireRole>
+        ),
       },
       {
         path: 'profile',
         element: <ProfilePage />,
+      },
+      {
+        path: 'branches',
+        element: (
+          <RequireRole roles={['ADMIN']}>
+            <BranchesPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'categories',
+        element: (
+          <RequireRole roles={['ADMIN']}>
+            <CategoriesPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'employees',
+        element: (
+          <RequireRole roles={['ADMIN', 'DIRECTOR']}>
+            <EmployeesPage />
+          </RequireRole>
+        ),
       }
       // ... boshqa modullar shu yerda qo'shiladi
     ],
