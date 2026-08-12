@@ -276,11 +276,42 @@ ikki admin bir vaqtda → biri 409.
 
 ---
 
-## S8 — Tahrirlash + EditRequest ⬜ (TZ 3.8)
+## S8 — Tahrirlash + EditRequest ✅ (TZ 3.8)
 
 **Nima:** `PATCH /expenses/:id` 24 soat oynasi + majburiy sabab + audit `old→new`;
-`edit-requests` CRUD (bot: WORKER yaratadi, direktor apply/reject); summa o'zgarsa
-byudjet qayta hisoblanadi.
+`edit-requests` CRUD (bot: WORKER yaratadi, direktor apply/reject).
+
+**Natija:** `test:int` — 180/180 yashil (yangi: tahrirlash va murojaatlar 16),
+`test:unit` — 31/31.
+
+**S8 da qabul qilingan qarorlar:**
+- **Tahrirlash oynasi statusga bog'liq:** qaror chiqmagan yozuvlar (`DRAFT`,
+  `DIRECTOR_PENDING`, `NEEDS_FIX`) oynasiz tahrirlanadi, `APPROVED` esa `approvedAt`
+  dan `expense.editWindowHours` ichida. TZ faqat `APPROVED` holatini aytgan, lekin
+  hali tasdiqlanmagan yozuvni tahrirlab bo'lmasligi mantiqsiz bo'lardi.
+- **`ADMIN_PENDING` ataylab tahrirlanmaydi.** Direktor qarori allaqachon chiqqan va
+  uni jimgina o'zgartirish tasdiqlashning ma'nosini yo'qotardi — buning uchun
+  `request-fix` bor. Bu TZ da yo'q, lekin four-eyes mantig'ining tabiiy davomi.
+- **Kurs snapshot i faqat kirish ma'lumoti o'zgarganda qayta hisoblanadi:** valyuta
+  yoki sana tuzatilsa asl snapshot noto'g'ri kirishga tayangan edi, shuning uchun
+  qayta olinadi. Faqat summa o'zgarsa eski kurs saqlanadi (TZ 3.5 tarixiy kursni
+  muzlatadi).
+- **`AMOUNT_BELOW_REFUNDED`** — summani qaytarilgan miqdordan pastga tushirib bo'lmaydi.
+  DB da `refundedAmount <= amount` check constraint i bor, lekin 500 o'rniga tushunarli
+  422 qaytarish kerak.
+- **Tahrir `expense_status_history` ga ham yoziladi** (status o'zgarmagan yozuv, sabab
+  bilan) — kartochkadagi yagona xronologiyada tahrir ham ko'rinadi, audit jurnalini
+  ochish shart emas.
+- **Bitta xarajat bo'yicha bir vaqtda bitta ochiq murojaat** (409 `EDIT_REQUEST_PENDING`) —
+  aks holda direktor navbatida bir xil so'rovning nusxalari yig'ilib qolardi.
+- **`apply` ixtiyoriy `changes` qabul qiladi:** berilsa xarajat shu yerda tahrirlanadi
+  va tahrirlash qoidalari `ExpensesService.update()` da bir joyda qoladi; berilmasa
+  murojaat shunchaki yopiladi (direktor tahrirni alohida bajargan bo'ladi).
+- **Storno (bekor qiluvchi yozuv) S8 ga kirmadi** — TZ uni 24 soatdan keyingi yagona yo'l
+  deb ataydi, lekin sxemada storno modeli yo'q va uning semantikasi qaytarish (S9)
+  bilan ustma-ust tushadi. S9 da qayta baholanadi.
+- **Byudjet qayta hisobi** — byudjetlar S10 da quriladi, o'sha yerda tahrirlangan summa
+  hisobga olinadi (sarf har doim `APPROVED` yozuvlardan hisoblanadi, alohida hook shart emas).
 
 **Commit:** `feat(edit): 24 soatlik tahrirlash oynasi va tahrirlash murojaatlari`
 

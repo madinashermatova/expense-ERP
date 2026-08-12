@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   ParseUUIDPipe,
   Post,
   Query,
@@ -13,11 +14,14 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { Paginated } from '../../common/dto/pagination.dto';
+import { Role } from '../../generated/prisma/enums';
 import { FileView, UploadedFileInput } from '../files/files.service';
 import { uploadOptions } from '../files/upload.options';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ListExpensesDto } from './dto/list-expenses.dto';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
 import {
   CreateExpenseResult,
   ExpensesService,
@@ -49,6 +53,16 @@ export class ExpensesController {
   @Post()
   create(@Body() dto: CreateExpenseDto): Promise<CreateExpenseResult> {
     return this.expenses.create(dto);
+  }
+
+  /** TZ 3.8 — tasdiqlangandan keyin 24 soat ichida, sabab majburiy */
+  @Roles(Role.ADMIN, Role.DIRECTOR)
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateExpenseDto,
+  ): Promise<ExpenseView> {
+    return this.expenses.update(id, dto);
   }
 
   @Post(':id/files')

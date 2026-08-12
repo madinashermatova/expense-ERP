@@ -21,6 +21,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { EmployeesModule } from './modules/employees/employees.module';
+import { EditRequestsModule } from './modules/edit-requests/edit-requests.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { FilesModule } from './modules/files/files.module';
@@ -70,6 +71,7 @@ import { PlansModule } from './modules/plans/plans.module';
     NotificationsModule,
     CurrencyModule,
     ExpensesModule,
+    EditRequestsModule,
   ],
   controllers: [HealthController],
   providers: [

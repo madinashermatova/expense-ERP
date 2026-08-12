@@ -6,7 +6,7 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S7 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar, tasdiqlash oqimi)
+Holat: **S1–S8 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar, tasdiqlash, tahrirlash)
 
 ---
 
@@ -549,6 +549,114 @@ Bitta ariza bo'yicha eslatma **bir marta** yuboriladi.
 
 ---
 
+## Tahrirlash
+
+### `PATCH /expenses/:id` → `200` → `ExpenseView` — `ADMIN`, `DIRECTOR`
+
+```jsonc
+{
+  "reason": "Chek summasi noto'g'ri kiritilgan edi",  // majburiy, ≥ 10 belgi
+  "amount": "175000.00",
+  "currency": "USD",
+  "date": "2026-08-11",
+  "categoryId": "uuid",
+  "comment": "…",
+  "paymentMethod": "CARD",
+  "employeeIds": ["uuid"],                            // berilsa taqsimlash qayta quriladi
+  "shares": [{ "employeeId": "uuid", "amount": "175000.00" }]
+}
+```
+
+Raqamlar, status, kim kiritgani va qaytarilgan summa **hech qachon tahrirlanmaydi**.
+
+**Qachon mumkin:**
+
+| Status | Shart |
+|---|---|
+| `DRAFT` · `DIRECTOR_PENDING` · `NEEDS_FIX` | oynasiz — hali qaror chiqmagan |
+| `APPROVED` | `approvedAt` dan `expense.editWindowHours` (sukut **24 soat**) ichida |
+| `ADMIN_PENDING` | ❌ direktor qarori chiqqan — `request-fix` ishlatiladi |
+| `REJECTED` · `CANCELLED` · `REFUNDED` | ❌ |
+
+**Kurs snapshot i:** faqat `currency` yoki `date` o'zgarganda qayta hisoblanadi (asl
+snapshot noto'g'ri kirishga tayangan edi). Faqat summa o'zgarsa eski kurs saqlanadi —
+tarixiy kurs muzlatiladi (TZ 3.5).
+
+Har tahrir `audit_log` ga **eski → yangi** ko'rinishida va `expense_status_history` ga
+(status o'zgarmagan yozuv, sabab bilan) tushadi.
+
+| Kod | Status | Sabab |
+|---|---|---|
+| `EDIT_WINDOW_CLOSED` | 422 | 24 soat o'tgan — «Tahrirlash muddati tugagan» |
+| `EXPENSE_NOT_EDITABLE` | 422 | status tahrirlashga yopiq |
+| `AMOUNT_BELOW_REFUNDED` | 422 | summa qaytarilgan miqdordan kichik |
+| `CATEGORY_LIMIT_EXCEEDED` · `COMMENT_REQUIRED` · `SHARES_SUM_MISMATCH` | 422 | yaratishdagi kabi |
+
+---
+
+## Tahrirlash murojaatlari
+
+Ishchi Web ERP ga kira olmaydi, shuning uchun murojaatni **bot** yuboradi (S16);
+Web tomonida direktor yoki bosh admin uni qo'llaydi yoki rad etadi.
+
+### `GET /edit-requests`
+
+| Query | Qiymat |
+|---|---|
+| `status` | `PENDING` · `APPLIED` · `REJECTED` · `RESOLVED` (= APPLIED + REJECTED) |
+| `expenseId` | uuid |
+
+Direktor faqat o'z filiali xarajatlari bo'yicha murojaatlarni ko'radi.
+
+```jsonc
+// items[] elementi
+{
+  "id": "uuid",
+  "expenseId": "uuid",
+  "expenseGlobalNumber": "EXP-000123",
+  "expenseBranchNumber": "CHL-2026-0045",
+  "requestedByEmployeeId": "uuid",
+  "requestedBy": "Ali Valiyev",
+  "description": "Summa 150 000 emas, 175 000 bo'lishi kerak",
+  "status": "PENDING",
+  "handledByUserId": null,
+  "handledAt": null,
+  "rejectReason": null,
+  "createdAt": "..."
+}
+```
+
+### `GET /edit-requests/:id` → `EditRequestView`
+
+### `POST /edit-requests` → `201`
+
+```jsonc
+{ "expenseId": "uuid", "description": "Nima o'zgarishi kerak" }   // ≥ 10 belgi
+```
+
+Bitta xarajat bo'yicha bir vaqtda faqat bitta ochiq murojaat — ikkinchisi
+`409 EDIT_REQUEST_PENDING`. Murojaat filial direktorlariga (yo'q bo'lsa bosh adminlarga)
+`EDIT_REQUEST_SUBMITTED` bildirishnomasi sifatida boradi.
+
+### `POST /edit-requests/:id/apply` → `201` — `ADMIN`, `DIRECTOR`
+
+```jsonc
+{ "changes": { "reason": "…", "amount": "175000.00" } }   // ixtiyoriy
+```
+
+`changes` berilsa xarajat ham shu yerda tahrirlanadi — `PATCH /expenses/:id` bilan
+bir xil qoidalar (oyna, sabab, audit). Berilmasa murojaat shunchaki `APPLIED` bo'ladi.
+
+### `POST /edit-requests/:id/reject` → `201` — `ADMIN`, `DIRECTOR`
+
+```jsonc
+{ "reason": "…" }   // ≥ 10 belgi
+```
+
+Ko'rib chiqilgan murojaatni qayta hal qilishga urinish — `409 ALREADY_PROCESSED`.
+
+---
+
 ## Valyuta
 
 Qo'llab-quvvatlanadigan valyutalar: **UZS** va **USD**. Hisobot valyutasi — UZS.
@@ -615,8 +723,6 @@ oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
 
 | Endpoint | Bosqich |
 |---|---|
-| `PATCH /expenses/:id` (24 soatlik tahrirlash oynasi) | S8 |
-| `GET/POST /edit-requests` | S8 |
 | `GET/POST /refunds` | S9 |
 | `GET/POST/PATCH /budgets` | S10 |
 | `GET /notifications` | S11 |
