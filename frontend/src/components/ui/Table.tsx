@@ -1,4 +1,4 @@
-import React, { HTMLAttributes, ThHTMLAttributes, TdHTMLAttributes, forwardRef } from 'react';
+import { HTMLAttributes, ThHTMLAttributes, TdHTMLAttributes, forwardRef } from 'react';
 import styles from './Table.module.css';
 
 export const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(

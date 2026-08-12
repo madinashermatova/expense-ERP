@@ -36,11 +36,13 @@ const resources = {
   }
 };
 
+const savedLanguage = localStorage.getItem('language') || 'uz';
+
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'uz', // default language
+    lng: savedLanguage,
     fallbackLng: 'uz',
     interpolation: {
       escapeValue: false 

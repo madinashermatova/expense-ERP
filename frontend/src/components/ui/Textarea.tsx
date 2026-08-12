@@ -1,4 +1,4 @@
-import React, { TextareaHTMLAttributes, forwardRef } from 'react';
+import { TextareaHTMLAttributes, forwardRef } from 'react';
 import styles from './Textarea.module.css';
 import { AlertCircle } from 'lucide-react';
 

@@ -1,12 +1,20 @@
 import { Module } from '@nestjs/common';
+import { ApprovalReminderCron } from './approval-reminder.cron';
+import { ApprovalsController } from './approvals.controller';
+import { ApprovalsService } from './approvals.service';
 import { ExpensesController } from './expenses.controller';
 import { ExpensesService } from './expenses.service';
 import { NumberingService } from './numbering.service';
 
-/** `CurrencyModule` va `FilesModule` global — bu yerda qayta import qilinmaydi */
+/** `CurrencyModule`, `FilesModule` va `NotificationsModule` global — qayta import qilinmaydi */
 @Module({
-  controllers: [ExpensesController],
-  providers: [ExpensesService, NumberingService],
-  exports: [ExpensesService, NumberingService],
+  controllers: [ApprovalsController, ExpensesController],
+  providers: [
+    ExpensesService,
+    NumberingService,
+    ApprovalsService,
+    ApprovalReminderCron,
+  ],
+  exports: [ExpensesService, NumberingService, ApprovalsService],
 })
 export class ExpensesModule {}

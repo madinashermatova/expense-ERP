@@ -17,8 +17,18 @@ export async function loginAs(
 ): Promise<Session> {
   const res = await request(app.getHttpServer() as App)
     .post(API('/auth/login'))
-    .send({ login: email, password: TEST_PASSWORD })
-    .expect(200);
+    .send({ login: email, password: TEST_PASSWORD });
+
+  /*
+   * `.expect(200)` o'rniga aniq xato: login yiqilganda supertest faqat statusni
+   * ko'rsatadi va sabab ko'rinmay qoladi. Javob tanasi bilan birga chiqarish
+   * kamdan-kam uchraydigan holatlarni tekshirishni ancha osonlashtiradi.
+   */
+  if (res.status !== 200) {
+    throw new Error(
+      `login ${email} → ${res.status}: ${JSON.stringify(res.body)}`,
+    );
+  }
 
   const token = res.body.accessToken as string;
   const cookie = (res.headers['set-cookie'] as unknown as string[])[0] ?? '';

@@ -52,3 +52,24 @@ export const useCreateRefund = () => {
     }
   });
 };
+
+export const useEmployeesForRefund = () => {
+  return useQuery({
+    queryKey: ['employees', 'for-refund'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/employees', { params: { status: 'ACTIVE', limit: 1000 } });
+      return data;
+    }
+  });
+};
+
+export const useApprovedExpensesForEmployee = (employeeId?: string) => {
+  return useQuery({
+    queryKey: ['expenses', 'approved', employeeId],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/expenses', { params: { status: 'APPROVED', employeeId, limit: 1000 } });
+      return data;
+    },
+    enabled: !!employeeId
+  });
+};

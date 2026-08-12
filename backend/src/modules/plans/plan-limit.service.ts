@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import {
@@ -6,6 +6,7 @@ import {
   EmployeeStatus,
   SubscriptionStatus,
 } from '../../generated/prisma/enums';
+import { forbidden } from '../../common/errors/app-error';
 
 /**
  * TZ 3.16.4 — tarif limitlarini tekshirish nuqtasi (hook).
@@ -73,11 +74,9 @@ export class PlanLimitService {
     metric: string,
     limit: number,
     current: number,
-  ): ForbiddenException {
-    return new ForbiddenException({
-      statusCode: 403,
-      code: 'PLAN_LIMIT_EXCEEDED',
-      message: `Tarif limiti oshdi: ${metric} = ${limit} (joriy: ${current})`,
+  ): HttpException {
+    return forbidden('PLAN_LIMIT_EXCEEDED', {
+      args: { metric, limit, current },
       details: { metric: [String(limit)] },
     });
   }

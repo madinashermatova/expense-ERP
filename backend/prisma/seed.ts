@@ -4,6 +4,7 @@ import * as argon2 from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { Currency, Language, RateSource, Role } from '../src/generated/prisma/enums';
+import { DEFAULT_CATEGORY_TREE } from '../src/modules/categories/default-categories';
 
 /**
  * TZ 7 — seed skripti: 2 kompaniya (tenant izolyatsiyani isbotlash uchun), har birida
@@ -17,61 +18,6 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 const DEV_PASSWORD = 'Parol123!';
-
-const CATEGORY_TREE: {
-  uz: string;
-  ru: string;
-  receiptRequired?: boolean;
-  commentRequired?: boolean;
-  children?: { uz: string; ru: string; receiptRequired?: boolean }[];
-}[] = [
-  {
-    uz: 'Ovqatlanish',
-    ru: 'Питание',
-    children: [
-      { uz: 'Tushlik', ru: 'Обед' },
-      { uz: 'Korporativ tadbir', ru: 'Корпоративное мероприятие', receiptRequired: true },
-      { uz: 'Suv/choy', ru: 'Вода/чай' },
-    ],
-  },
-  {
-    uz: 'Malaka oshirish',
-    ru: 'Повышение квалификации',
-    children: [
-      { uz: 'Kurs', ru: 'Курс', receiptRequired: true },
-      { uz: 'Trening', ru: 'Тренинг', receiptRequired: true },
-      { uz: 'Sertifikat', ru: 'Сертификат', receiptRequired: true },
-      { uz: 'Kitob/materiallar', ru: 'Книги/материалы' },
-    ],
-  },
-  {
-    uz: 'Transport',
-    ru: 'Транспорт',
-    children: [
-      { uz: "Yo'l xarajati", ru: 'Дорожные расходы' },
-      { uz: 'Taksi', ru: 'Такси' },
-      { uz: "Yoqilg'i", ru: 'Топливо', receiptRequired: true },
-    ],
-  },
-  {
-    uz: "Sog'liq",
-    ru: 'Здоровье',
-    children: [
-      { uz: "Med. ko'rik", ru: 'Медосмотр', receiptRequired: true },
-      { uz: "Sug'urta", ru: 'Страховка', receiptRequired: true },
-    ],
-  },
-  {
-    uz: 'Ish jihozlari',
-    ru: 'Рабочее оборудование',
-    children: [
-      { uz: 'Forma', ru: 'Форма' },
-      { uz: 'Asboblar', ru: 'Инструменты', receiptRequired: true },
-      { uz: 'Kanselyariya', ru: 'Канцелярия' },
-    ],
-  },
-  { uz: 'Boshqa', ru: 'Прочее', commentRequired: true },
-];
 
 interface CompanySpec {
   name: string;
@@ -169,13 +115,14 @@ async function main(): Promise<void> {
 
     // ── Kategoriyalar daraxti
     let categoryCount = 0;
-    for (const [i, parent] of CATEGORY_TREE.entries()) {
+    for (const [i, parent] of DEFAULT_CATEGORY_TREE.entries()) {
       const created = await prisma.category.create({
         data: {
           companyId: company.id,
           nameUz: parent.uz,
           nameRu: parent.ru,
           commentRequired: parent.commentRequired ?? false,
+          receiptRequired: parent.receiptRequired ?? false,
           sortOrder: i,
         },
       });
@@ -188,6 +135,7 @@ async function main(): Promise<void> {
             nameUz: child.uz,
             nameRu: child.ru,
             receiptRequired: child.receiptRequired ?? false,
+            commentRequired: child.commentRequired ?? false,
             sortOrder: j,
           },
         });

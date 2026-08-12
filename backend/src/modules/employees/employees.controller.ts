@@ -8,6 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Audit } from '../../common/audit/audit.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Paginated } from '../../common/dto/pagination.dto';
 import { Role } from '../../generated/prisma/enums';
@@ -42,12 +43,22 @@ export class EmployeesController {
 
   /** DIRECTOR ham yarata oladi, lekin faqat o'z filialiga va WORKER roli bilan */
   @Roles(Role.ADMIN, Role.DIRECTOR)
+  @Audit({
+    action: 'employee.create',
+    entityType: 'Employee',
+    model: 'employee',
+  })
   @Post()
   create(@Body() dto: CreateEmployeeDto): Promise<EmployeeWithPassword> {
     return this.employees.create(dto);
   }
 
   @Roles(Role.ADMIN, Role.DIRECTOR)
+  @Audit({
+    action: 'employee.update',
+    entityType: 'Employee',
+    model: 'employee',
+  })
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -58,6 +69,11 @@ export class EmployeesController {
 
   /** Yangi parol bir marta qaytariladi va qayta ko'rsatilmaydi (TZ 3.3) */
   @Roles(Role.ADMIN, Role.DIRECTOR)
+  @Audit({
+    action: 'employee.resetPassword',
+    entityType: 'Employee',
+    idFrom: 'param',
+  })
   @Post(':id/reset-password')
   resetPassword(
     @Param('id', ParseUUIDPipe) id: string,
@@ -66,6 +82,11 @@ export class EmployeesController {
   }
 
   @Roles(Role.ADMIN)
+  @Audit({
+    action: 'employee.transfer',
+    entityType: 'Employee',
+    model: 'employee',
+  })
   @Post(':id/transfer')
   transfer(
     @Param('id', ParseUUIDPipe) id: string,

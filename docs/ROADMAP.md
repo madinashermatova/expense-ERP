@@ -229,124 +229,501 @@ UZS ekvivalenti o'zgarmaydi.
 
 ---
 
-## S7 — Tasdiqlash oqimi ⬜ (TZ 3.7)
+## S7 — Tasdiqlash oqimi ✅ (TZ 3.7)
 
 **Nima quriladi:**
-- Status mashinasi (o'tишлар jadvali, noto'g'ri o'tish → 422)
-- `approve` / `reject` / `request-fix` + `ExpenseStatusHistory`
+- Status mashinasi (`expense-status.ts` — o'tishlar jadvali, noto'g'ri o'tish → 422)
+- `approve` / `reject` / `request-fix` / `cancel` / `submit` + `ExpenseStatusHistory`
 - Direktor o'zinikini tasdiqlay olmaydi → to'g'ridan-to'g'ri `ADMIN_PENDING`
 - **Four-eyes:** admin o'zinikini tasdiqlay olmaydi; yagona faol admin bo'lsa `selfApproved=true`
 - Optimistik blokirovka (`version`) → ikkinchi admin ga 409
 - `POST /expenses/bulk-approve` — 20 tagacha, qisman muvaffaqiyat hisoboti
-- 24 soat javobsiz ariza eslatmasi (cron + BullMQ)
+- Javobsiz ariza eslatmasi (soatlik cron; BullMQ transporti S11 da)
 
 **Qabul mezoni:** direktor tasdiqlagach `ADMIN_PENDING`; 5 belgili sabab → 422;
 ikki admin bir vaqtda → biri 409.
+
+**Natija:** `test:int` — 164/164 yashil (yangi: tasdiqlash 19), `test:unit` — 31/31
+(yangi: status mashinasi 7).
+
+**S7 da qabul qilingan qarorlar:**
+- **O'tishlar bitta jadvalda** (`TRANSITIONS`): har bir o'tish uchun manba status, amal,
+  natija, ruxsat etilgan rollar, sabab majburiyligi va "faqat kiritgan shaxs" bayrog'i.
+  Yangi status qo'shilganda o'zgartiriladigan joy bitta va uni unit test qamrab oladi
+  (yakuniy statuslardan o'tish yo'qligi, 2-bosqich faqat adminda, va h.k.).
+- **Bulk har bir arizani o'z tranzaksiyasida** qayta ishlaydi. TZ "bitta tranzaksiyada"
+  deydi, lekin ayni paytda "bittasi xato bersa boshqalari o'tadi" ni ham talab qiladi —
+  bu ikkisi bir vaqtda bo'lolmaydi. Qisman muvaffaqiyat tanlandi, chunki qabul mezoni
+  aynan hisobotni talab qiladi.
+- **Optimistik blokirovka `WHERE version = ? AND status = ?`** bilan `updateMany` orqali:
+  `version` ni mijoz yubormasa ham server o'qigan qiymat ishlatiladi, ya'ni ikkinchi
+  tasdiqlovchi baribir 409 oladi. Faqat `version` ga tayanish mijozga bog'liq bo'lardi.
+- **`NEEDS_FIX` dan qaytgan direktor arizasi ham `ADMIN_PENDING` ga tushadi** — aks holda
+  tuzatish so'rovi orqali direktor o'z arizasini o'z navbatiga qaytarib olardi.
+- **`submit` va `request-fix` oldingi bosqich qarorlarini tozalaydi**
+  (`directorApprovedByUserId`, `adminApprovedByUserId`, `approvedAt` → `null`) — oqim
+  1-bosqichdan boshlanadi, eski "kim tasdiqlagan" yozuvi chalg'itmasligi kerak.
+  To'liq tarix `expense_status_history` da qoladi.
+- **`cancel` TZ da faqat ishchi uchun aytilgan**, lekin Web da ham kiritgan shaxs o'z
+  arizasini bekor qila olishi kerak — shuning uchun qoida "kiritgan shaxs" ga bog'landi,
+  rolga emas.
+- **Eslatma takrorlanmasligi mavjud `APPROVAL_REMINDER` bildirishnomalari bo'yicha**
+  tekshiriladi — sxemaga faqat shu funksiya uchun `reminderSentAt` maydoni qo'shilmadi.
+  Tekshiruv raw so'rov bilan (`payload->>'expenseId' = ANY(...)`), chunki Prisma ning
+  JSON filtri `path` bo'yicha `in` ni qo'llab-quvvatlamaydi.
 
 **Commit:** `feat(approvals): ikki bosqichli tasdiqlash, four-eyes, optimistik lock`
 
 ---
 
-## S8 — Tahrirlash + EditRequest ⬜ (TZ 3.8)
+## S8 — Tahrirlash + EditRequest ✅ (TZ 3.8)
 
 **Nima:** `PATCH /expenses/:id` 24 soat oynasi + majburiy sabab + audit `old→new`;
-`edit-requests` CRUD (bot: WORKER yaratadi, direktor apply/reject); summa o'zgarsa
-byudjet qayta hisoblanadi.
+`edit-requests` CRUD (bot: WORKER yaratadi, direktor apply/reject).
+
+**Natija:** `test:int` — 180/180 yashil (yangi: tahrirlash va murojaatlar 16),
+`test:unit` — 31/31.
+
+**S8 da qabul qilingan qarorlar:**
+- **Tahrirlash oynasi statusga bog'liq:** qaror chiqmagan yozuvlar (`DRAFT`,
+  `DIRECTOR_PENDING`, `NEEDS_FIX`) oynasiz tahrirlanadi, `APPROVED` esa `approvedAt`
+  dan `expense.editWindowHours` ichida. TZ faqat `APPROVED` holatini aytgan, lekin
+  hali tasdiqlanmagan yozuvni tahrirlab bo'lmasligi mantiqsiz bo'lardi.
+- **`ADMIN_PENDING` ataylab tahrirlanmaydi.** Direktor qarori allaqachon chiqqan va
+  uni jimgina o'zgartirish tasdiqlashning ma'nosini yo'qotardi — buning uchun
+  `request-fix` bor. Bu TZ da yo'q, lekin four-eyes mantig'ining tabiiy davomi.
+- **Kurs snapshot i faqat kirish ma'lumoti o'zgarganda qayta hisoblanadi:** valyuta
+  yoki sana tuzatilsa asl snapshot noto'g'ri kirishga tayangan edi, shuning uchun
+  qayta olinadi. Faqat summa o'zgarsa eski kurs saqlanadi (TZ 3.5 tarixiy kursni
+  muzlatadi).
+- **`AMOUNT_BELOW_REFUNDED`** — summani qaytarilgan miqdordan pastga tushirib bo'lmaydi.
+  DB da `refundedAmount <= amount` check constraint i bor, lekin 500 o'rniga tushunarli
+  422 qaytarish kerak.
+- **Tahrir `expense_status_history` ga ham yoziladi** (status o'zgarmagan yozuv, sabab
+  bilan) — kartochkadagi yagona xronologiyada tahrir ham ko'rinadi, audit jurnalini
+  ochish shart emas.
+- **Bitta xarajat bo'yicha bir vaqtda bitta ochiq murojaat** (409 `EDIT_REQUEST_PENDING`) —
+  aks holda direktor navbatida bir xil so'rovning nusxalari yig'ilib qolardi.
+- **`apply` ixtiyoriy `changes` qabul qiladi:** berilsa xarajat shu yerda tahrirlanadi
+  va tahrirlash qoidalari `ExpensesService.update()` da bir joyda qoladi; berilmasa
+  murojaat shunchaki yopiladi (direktor tahrirni alohida bajargan bo'ladi).
+- **Storno (bekor qiluvchi yozuv) S8 ga kirmadi** — TZ uni 24 soatdan keyingi yagona yo'l
+  deb ataydi, lekin sxemada storno modeli yo'q va uning semantikasi qaytarish (S9)
+  bilan ustma-ust tushadi. S9 da qayta baholanadi.
+- **Byudjet qayta hisobi** — byudjetlar S10 da quriladi, o'sha yerda tahrirlangan summa
+  hisobga olinadi (sarf har doim `APPROVED` yozuvlardan hisoblanadi, alohida hook shart emas).
 
 **Commit:** `feat(edit): 24 soatlik tahrirlash oynasi va tahrirlash murojaatlari`
 
 ---
 
-## S9 — Qaytarish (Refund) ⬜ (TZ 3.9)
+## S9 — Qaytarish (Refund) ✅ (TZ 3.9)
 
 **Nima:** `POST /refunds` (isbot fayli majburiy), ikki bosqichli tasdiqlash,
 to'liq/qisman, `refundedAmount` yangilanishi, `PARTIALLY_REFUNDED` → `REFUNDED` avtomatik
-o'tishi, effektiv summa hisobi, share larga proporsional taqsimlash.
+o'tishi, effektiv summa hisobi.
+
+**Natija:** `test:int` — 198/198 yashil (yangi: qaytarish 18), `test:unit` — 31/31.
+
+**S9 da qabul qilingan qarorlar:**
+- **`POST /refunds` — `multipart/form-data`.** Isbot fayli istisnosiz majburiy, shuning
+  uchun so'rov va fayl bitta chaqiruvda keladi: yozuv hech qachon isbotsiz holatda
+  mavjud bo'lmaydi. (Xarajat yaratishda buni qilib bo'lmagan edi — u yerda `employeeIds`
+  va `shares` kabi ichma-ich massivlar bor, shuning uchun `DRAFT` + `submit` yo'li tanlangan.)
+- **Qaytarish `PARTIALLY_REFUNDED` xarajatga ham yaratiladi.** TZ «faqat `APPROVED`» deydi,
+  lekin ayni paytda «bitta xarajatga bir nechta qisman qaytarish» ni talab qiladi — ikkinchi
+  qaytarish paytida xarajat allaqachon `PARTIALLY_REFUNDED` bo'ladi.
+- **Qolgan summa hisobida navbatdagi so'rovlar ham chegiriladi.** Aks holda 500 000 lik
+  xarajatga 400 000 va 200 000 lik ikki so'rov alohida-alohida o'rinli bo'lib, ikkalasi
+  tasdiqlanganda umumiy summadan oshib ketardi.
+- **Yig'indi chegarasi bitta shartli `UPDATE` ichida** tekshiriladi
+  (`refundedAmount + ? <= amount`) — ikkita qaytarish bir vaqtda tasdiqlansa ikkinchisi
+  shu yerda to'xtaydi. Prisma ustunni ustun bilan solishtira olmaydi, shuning uchun raw
+  `UPDATE`; DB da bu invariant check constraint bilan ham qo'riqlanadi.
+- **Kurs asl xarajatdan meros olinadi**, qaytarish sanasidagi kurs olinmaydi — aks holda
+  100 USD xarajat va uni to'liq qaytarish UZS da har xil chiqib, hisobotda qoldiq paydo
+  bo'lardi.
+- **Ulushlar (`ExpenseShare`) o'zgartirilmaydi.** Asl xarajat immutable (TZ 3.9), shuning
+  uchun xodim bo'yicha effektiv summa hisobot vaqtida proporsional hisoblanadi
+  (`ulush × (1 − refundedAmount / amount)`) — S12 da.
+- **Storno alohida qurilmadi (S8 dagi savolning javobi).** TZ storno ni 24 soatdan keyingi
+  yagona yo'l deb ataydi, lekin uning ma'nosi — isbot bilan tasdiqlangan, ikki bosqichdan
+  o'tgan, xarajatni nolga tushiruvchi yozuv — aynan **to'liq qaytarish**. Ikkinchi mexanizm
+  qurish bir xil holatni ikki xil yo'l bilan ifodalash bo'lardi.
+- **Cron testlarda o'chirildi** (`common/cron/cron.guard.ts`): `@Cron(EVERY_HOUR)` soat
+  boshida testlar orasida ishga tushib boshqa test faylining ma'lumotiga bildirishnoma
+  yozib, ikki testni tasodifiy yiqitgan edi. Cron mantig'i `run()` ni aniq chaqirib
+  sinaladi, ya'ni qamrov kamaymadi.
 
 **Commit:** `feat(refunds): to'liq va qisman qaytarish oqimi`
 
 ---
 
-## S10 — Byudjet va limitlar ⬜ (TZ 3.10)
+## S10 — Byudjet va limitlar ✅ (TZ 3.10)
 
 **Nima:** `budgets` CRUD (faqat ADMIN), sarf hisobi (`APPROVED` + effektiv summa),
-80% / 100% chegaralari, `BudgetAlert` bilan takrorlanmaslik, javobda `budgetWarning`.
+80% / 100% chegaralari, `BudgetAlert` bilan takrorlanmaslik, javobda `budgetWarning`,
+`GET /budgets/usage`.
+
+**Natija:** `test:int` — 216/216 yashil (yangi: byudjet 18), `test:unit` — 39/39
+(yangi: hisobot davri 8).
+
+**S10 da qabul qilingan qarorlar:**
+- **Hisobot davri alohida modulda** (`budgets/period.ts`) va unit testlar bilan qoplangan:
+  `startDay = 25` bo'lganda davr 25.07–24.08 bo'ladi va **boshlangan oy** bilan nomlanadi
+  (`2026-07`). Sukut holatda (`startDay = 1`) kalit kalendar oyga aynan mos tushadi, ya'ni
+  hech qanday siljish yo'q. Kalit faqat ogohlantirish takrorlanmasligi uchun; API har doim
+  `periodStart` / `periodEnd` sanalarini ham qaytaradi, shuning uchun UI da noaniqlik yo'q.
+- **Yaratishda `budgetWarning`, tasdiqda bildirishnoma.** Yangi yozuv `DIRECTOR_PENDING`
+  bo'ladi va sarfda hisoblanmaydi, lekin foydalanuvchiga darhol aytish kerak — shuning
+  uchun uning summasi `projected` ga qo'shiladi. Bildirishnoma esa sarf **haqiqatan**
+  o'zgarganda, ya'ni yakuniy tasdiqda ketadi: aks holda hech qachon tasdiqlanmagan
+  arizalar ham adminlarni bezovta qilardi.
+- **Chegara takrorlanmasligi `BudgetAlert` ning `UNIQUE(budgetId, period, threshold)` i
+  bilan**, xotiradagi hisoblagich bilan emas: parallel ikki tasdiqlashdan faqat bittasi
+  yozadi, ikkinchisi `P2002` oladi va jim o'tib ketadi.
+- **Sarf raw so'rov bilan hisoblanadi** — `(amount − refundedAmount) × rateUsed` ustunlar
+  ustidagi ifoda, Prisma `aggregate` da bunday ifoda yo'q. Xodim limitida esa ulush
+  qaytarish nisbatiga proporsional kamaytiriladi (`share.amountUzs × (1 − refunded/amount)`),
+  S9 da kelishilgandek.
+- **Ustma-ust tushadigan limitlar taqiqlangan** (409 `BUDGET_OVERLAP`) — aks holda bir
+  doiraga ikki limit amalda bo'lib, qaysi biri ishlashi noaniq bo'lardi. TZ bu holatni
+  aytmagan.
+- **Qaytarishda sarf qayta hisoblanmaydi** — sarf har doim so'rov vaqtida hisoblanadi,
+  ya'ni qaytarish tasdiqlangach o'z-o'zidan kamayadi. Ogohlantirish faqat chegara
+  **yuqoriga** kesib o'tilganda yuboriladi, shuning uchun kamayishda hech narsa qilinmaydi.
+- **Ro'yxatdagi ⚠️ belgisi uchun `GET /budgets/usage`** qo'shildi: har bir qator uchun
+  alohida so'rov qilish (N+1) o'rniga UI joriy davr sarfini bir marta olib, belgilarni
+  o'zi hisoblaydi. Tasdiqlash ekranidagi aniq ogohlantirish esa `budgetWarning` orqali.
 
 **Commit:** `feat(budgets): yumshoq limitlar va 80/100% ogohlantirishlari`
 
 ---
 
-## S11 — Bildirishnomalar ⬜ (TZ 3.11)
+## S11 — Bildirishnomalar ✅ (TZ 3.11)
 
-**Nima:** BullMQ navbatlari + processorlar, 3 marta retry (eksponensial backoff),
+**Nima:** BullMQ navbati + processor, 3 marta retry (eksponensial backoff),
 `Notification` yozuvi + Web badge, Telegram yuborish adapteri, bloklangan bot bilan
 xatosiz ishlash (`botBlocked` belgisi), job payload da `companyId` majburiy.
+
+**Natija:** `test:int` — 231/231 yashil (yangi: bildirishnomalar 15), `test:unit` — 39/39.
+
+**S11 da qabul qilingan qarorlar:**
+- **Web yozuvi navbatdan tashqarida.** `Notification` qatori darhol bazaga tushadi,
+  navbatga faqat **Telegram yuborish** qo'yiladi. Shu sababli Redis ishlamasa ham
+  foydalanuvchi xabarni badge da ko'radi — navbat yagona yetkazish yo'li emas.
+- **Job qo'shish asosiy amalni yiqitmaydi:** `queue.addBulk` xatosi loglanadi va oqim
+  davom etadi. Aks holda Redis uzilishi xarajat yaratishni ham to'xtatib qo'yardi.
+- **Xabar matni serverda tayyorlanadi** (`notification-messages.ts`), foydalanuvchining
+  `language` iga qarab uz/ru. Bir xil matn Web badge ida ham, Telegram xabarida ham
+  ishlatiladi — ikki mijozda takrorlash shart emas. To'liq `nestjs-i18n` S17 da keladi
+  va shu jadval o'sha yerga ko'chadi.
+- **`NOTIFICATION_TYPES` alohida faylga chiqarildi** (`notification-types.ts`): matn
+  shabloni va processor ham shu ro'yxatga tayanadi, servisda qolsa aylanma import chiqardi.
+- **Telegraf ning yengil `Telegram` mijozi** ishlatiladi, to'liq `Bot` obyekti emas:
+  bu yerda faqat chiqish kanali kerak, polling yoki webhook ko'tarilmaydi (ular S16 da).
+- **403 ni "bloklangan" deb hisoblash keng:** `blocked`, `deactivated`, `chat not found`
+  va bo'sh tavsif ham shu toifada — bularning barchasida qayta urinish befoyda va
+  job ni `failed` ga tushirish faqat navbatni chiqindi bilan to'ldirardi.
+- **Worker testlarda ro'yxatga olinmaydi** (`DISABLE_QUEUE_WORKER`): BullMQ worker Redis ga
+  blokli ulanish ochadi va uni har test faylida ko'tarish Jest ni jarayondan chiqmay
+  qoldirdi (to'liq qator 10 daqiqadan oshib ketdi). Job qo'shish baribir ishlaydi, ya'ni
+  "job soni +1" mezoni tekshiriladi; processor mantig'i esa `process()` ni aniq chaqirib
+  sinaladi — cron bilan bir xil yondashuv. Testlar alohida Redis DB (`1`) ishlatadi.
 
 **Commit:** `feat(notifications): BullMQ navbatlari, web + telegram kanallari`
 
 ---
 
-## S12 — Hisobotlar va dashboard ⬜ (TZ 3.13)
+## S12 — Hisobotlar va dashboard ✅ (TZ 3.13)
 
-**Nima:** `/reports/summary`, `by-branch`, `by-category`, `by-employee`,
+**Nima:** `/reports/summary`, `by-branch`, `by-category`, `by-employee`, `dynamics`,
 `budget-vs-actual`; hisobot davri (kalendar oy yoki 25–25); Redis kesh TTL 5 daq
 (kalit `companyId` bilan prefikslangan); aralash valyuta → UZS.
+
+**Natija:** `test:int` — 250/250 yashil (yangi: hisobotlar 18), `test:unit` — 39/39.
+
+**S12 da qabul qilingan qarorlar:**
+- **Agregatlar raw SQL da.** `(amount − refundedAmount) × rateUsed` ustunlar ustidagi
+  ifoda va `GROUP BY` ni Prisma `aggregate` bilan ifodalab bo'lmaydi; o'n minglab qatorni
+  xotiraga tortish esa 2 soniyalik javob mezoniga sig'masdi.
+- **`SPEND_COUNTED_STATUSES` bitta joyga yig'ildi** (`expenses/expense-status.ts`).
+  S10 va S8 da bir xil ro'yxat ikki faylda takrorlangan edi — endi byudjet, tahrirlash
+  va hisobotlar aynan shu konstantaga tayanadi.
+- **`dynamics` endpointi qo'shildi** — roadmap da yo'q edi, lekin TZ 3.13 dashboard
+  ro'yxatida "Dinamika grafigi (oylar kesimida trend)" bor va `date_trunc` bilan bu
+  arzon.
+- **Kesh kaliti `reports:{companyId}:{hisobot}:{filtrlar hash}`.** Kesh tenant
+  izolyatsiyasining eng oson buziladigan joyi: so'rov umuman bazaga bormaydi, ya'ni
+  Prisma extension himoya qila olmaydi. Shuning uchun `companyId` kalitning **prefiksi**
+  va bu alohida test bilan qoplangan.
+- **Redis yo'q bo'lsa hisobot keshsiz ishlaydi** (`enableOfflineQueue: false` + xatoni
+  yutish) — kesh tezlik uchun, mavjudlik uchun emas.
+- **Navbat ko'rsatkichlari (`pendingDirectorCount` / `pendingAdminCount`) sana filtriga
+  bog'lanmaydi** — navbat "hozir nima kutib turgani", tarixiy kesim emas.
+- **Xodim kesimi `expense_shares` bo'yicha** va qaytarish nisbatiga proporsional
+  kamaytiriladi — S9 da kelishilganidek, asl xarajat immutable bo'lgani uchun ulushlar
+  qaytarishda o'zgartirilmaydi.
+- **Filial kesimida xodim soni alohida so'rov bilan olinadi.** Birinchi variantda
+  `employees` `expenses` ga `LEFT JOIN` qilingan edi va `SUM` xodimlar soniga ko'payib
+  ketdi (750 000 → 3 000 000). Test shuni ushladi; `COUNT(DISTINCT)` to'g'ri bo'lgani
+  uchun xato faqat summada ko'rinardi.
 
 **Commit:** `feat(reports): dashboard KPI va kesimli hisobotlar`
 
 ---
 
-## S13 — Eksport E1–E10 ⬜ (TZ 3.13)
+## S13 — Eksport E1–E10 ✅ (TZ 3.13)
 
-**Nima:** `POST /exports` → `jobId`; `exceljs` bilan xlsx (raqam formati, jami qatori,
-freeze pane, avtofiltr), PDF (`pdfmake`); >1000 qator → fon rejimi; signed URL;
-24 soatdan keyin avtomatik tozalash (cron); har eksport → `audit_log`.
+**Nima:** `POST /exports` → eksport yozuvi; `GET /exports`, `GET /exports/:id`,
+`GET /exports/:id/download` (signed URL), `GET /exports/types`; `exceljs` bilan xlsx
+(raqam formati, jami qatori, freeze pane, avtofiltr), PDF (`pdfmake`); >1000 qator →
+fon rejimi (BullMQ `exports` navbati); 24 soatdan keyin avtomatik tozalash (cron);
+har eksport → `audit_log` (`action: "EXPORT"`).
+
+**Natija:** `test:int` — 262/262 yashil (yangi: eksport 12), `test:unit` — 47/47
+(yangi: `xlsx.writer` 6, `pdf.writer` 2).
+
+**S13 da qabul qilingan qarorlar:**
+- **Ruxsat `@Roles` da emas, katalogda.** Bitta endpoint E1–E10 ni qabul qiladi, ya'ni
+  ruxsat **turga** bog'liq (E9 — faqat admin). `export-catalog.ts` — turlar, ruxsat
+  etilgan rollar va formatlar yagona jadvalda; controller uni faqat o'qiydi.
+- **Ma'lumot mavjud servislardan olinadi** (`ExpensesService.listForExport`,
+  `ReportsService`) — shunda eksport ekrandagi jadval bilan bir xil filtr, bir xil
+  filial doirasi va bir xil hisoblash mantig'ini ishlatadi. Alohida SQL yozilganda
+  "qatorlar soni mos kelishi" mezoni birinchi o'zgarishdayoq buzilardi.
+- **Sinxron/fon chegarasi — 1000 qator**, lekin ikkala yo'l ham bitta `generate()` ni
+  chaqiradi: fon rejimidagi fayl sinxron fayldan farq qilmaydi.
+- **Job ichida rol va filial uzatiladi.** Processor so'rov konteksti tashqarisida
+  ishlaydi; faqat `companyId` uzatilganda direktor so'ragan faylga butun kompaniya
+  qatorlari tushib ketardi.
+- **Jami qatori formula bilan emas, hisoblangan qiymat bilan** — fayl PDF ga
+  aylantirilganda yoki formulani qo'llab-quvvatlamaydigan ko'rgichda ham son ko'rinadi.
+- **PDF uchun Roboto (pdfmake vfs) yuklanadi.** Standart Helvetica WinAnsi da ishlaydi
+  va kirill harflarini chiza olmaydi — ruscha hisobot bo'sh kvadratlarga aylanardi.
+  PDF da ustunlar 10 tagacha qisqaradi (A4 ga sig'maydi), to'liq ma'lumot xlsx da.
+- **Tozalash cron yozuvni emas, faqat `storageKey` ni o'chiradi** — eksport tarixi va
+  audit izi qoladi, muddati tugagan havola esa `EXPORT_NOT_READY` beradi.
+- **E9 `changes` ni maydon-boyicha qatorlarga yoyadi** (TZ 3.14) — bitta amalda uch
+  maydon o'zgargan bo'lsa, faylda uch qator.
 
 **Commit:** `feat(exports): E1–E10 xlsx/pdf, fon rejimi, signed URL`
 
 ---
 
-## S14 — Audit jurnali ⬜ (TZ 3.14)
+## S14 — Audit jurnali ✅ (TZ 3.14)
 
-**Nima:** `AuditInterceptor` / `AuditService` — `old→new` diff, IP, kanal;
-`GET /audit` (faqat ADMIN); E9 eksporti `changes` ni qatorlarga yoyadi.
-DB trigger allaqachon append-only ni majburlaydi.
+**Nima:** `@Audit()` dekoratori + `AuditInterceptor` — `old→new` diff, IP, kanal;
+`GET /audit` va `GET /audit/facets` (faqat ADMIN); login, filial, kategoriya, xodim va
+kurs amallari jurnalga ulandi; E9 eksporti `changes` ni qatorlarga yoyadi va `GET /audit`
+bilan aynan bir xil filtrni ishlatadi. DB trigger append-only ni majburlaydi.
+
+**Natija:** `test:int` — 282/282 yashil (yangi: audit 11, sozlamalar 9), `test:unit` — 47/47.
+
+**S14 da qabul qilingan qarorlar:**
+- **Interceptor `model` ni bilsa, `old → new` haqiqiy bo'ladi.** `@Audit({ model: 'branch' })`
+  berilganda interceptor yozuvni amaldan **oldin** ham, keyin ham o'qib solishtiradi —
+  so'rov tanasidan diff qurish "eski qiymat" ni umuman ko'rsata olmasdi.
+- **Ikki mexanizm ataylab yonma-yon.** Murakkab oqimlar (xarajat, tasdiqlash, qaytarish,
+  byudjet, eksport) `AuditService` ni o'zi chaqiradi — u yerda yoziladigan ma'lumot
+  so'rov tanasidan kengroq; dekorator esa oddiy CRUD uchun, shunda yangi endpointda
+  auditni unutish qiyinlashadi. Bir endpointga ikkalasi qo'yilmaydi.
+- **Login `runAsync` ichida yoziladi.** So'rov `@Public`, ya'ni guard kontekstni
+  to'ldirmagan va `companyId` aynan login paytida ma'lum bo'ladi.
+- **Maxfiy maydonlar ro'yxati interceptorda** (`password`, `passwordHash`, `token`, …) —
+  jurnalga ham, diff ga ham tushmaydi (TZ 4.2).
+- **`GET /audit` `q` bilan bir qatorda `search` ni ham qabul qiladi** — frontend jadvali
+  shu nom bilan yuboradi, `forbidNonWhitelisted` esa noma'lum parametrni rad etardi.
+- **Filtr mantig'i bitta funksiyada** (`buildWhere`) — `GET /audit` va E9 eksporti aynan
+  bir xil natija berishi shart.
 
 **Commit:** `feat(audit): append-only jurnal va E9 eksporti`
 
 ---
 
-## S15 — Sozlamalar ⬜ (TZ 3.15)
+## S15 — Sozlamalar ✅ (TZ 3.15)
 
-**Nima:** `GET/PATCH /settings` (ADMIN), kesh invalidatsiya, har o'zgarish audit ga;
-sozlanadigan: valyuta bazasi, davr boshlanish kuni, til, eslatma vaqti, tahrirlash oynasi.
+**Nima:** `GET/PATCH /settings` (faqat ADMIN), kesh invalidatsiya, har o'zgarish auditga;
+sozlanadigan: valyuta bazasi, hisobot davri boshlanish kuni, standart til, ish kunlari,
+bildirishnomalar yoqilishi, eslatma vaqti, tahrirlash oynasi.
+
+**S15 da qabul qilingan qarorlar:**
+- **API tekis shaklda** (`{"reportPeriodStartDay": 25}`), xom `{key, value}` emas:
+  aks holda mijoz kalit nomlarini ham, har birining ichki JSON tuzilishini ham bilishi
+  kerak bo'lardi, validatsiya esa serverda qolishi shart.
+- **Faqat haqiqatan o'zgargan kalit yoziladi** — forma barcha maydonlarni yuboradi,
+  ya'ni har saqlashda 7 ta soxta audit yozuvi paydo bo'lishi mumkin edi.
+- **`notifications.enabled` haqiqiy ta'sir qiladi** — `NotificationsService.notifyUsers`
+  sozlamani tekshiradi, ya'ni sozlama "o'lik konfiguratsiya" bo'lib qolmaydi.
+- **`company.defaultLanguage` ikki joyda saqlanmaydi**: sozlama yangilanganda
+  `companies.defaultLanguage` ustuni ham yangilanadi (u sxemada allaqachon bor).
 
 **Commit:** `feat(settings): kompaniya sozlamalari va kesh invalidatsiya`
 
 ---
 
-## S16 — Telegram bot ⬜ (TZ 3.12, 3.16.5)
+## S16 — Telegram bot ✅ (TZ 3.12, 3.16.5)
 
-**Nima quriladi:**
-- Telegraf modul, **token → companyId** xaritasi (umumiy bot + kompaniya boti)
-- Login sahnasi: login → parol → `deleteMessage` → `TelegramAccountLink`
-- **Hisobni almashtirish** (parolsiz), qo'shish, chiqish, hammasidan chiqish
-- Redis sessiya (`bot:{botId}:{telegramId}`), bot restartdan keyin oqim davom etadi
-- Xarajat qo'shish sahnasi (9 qadam, har qadamda ⬅️ / ❌)
-- Tasdiqlash kartochkasi + inline tugmalar + idempotentlik
-- Refund va EditRequest sahnalari, statistika, til almashtirish
+Bosqich hajmi katta, shuning uchun uchga bo'lindi: **S16.1** infratuzilma va kirish,
+**S16.2** xarajat oqimi va statistika, **S16.3** tasdiqlash/refund/tahrirlash sahnalari.
 
-**Qabul mezoni:** parol xabari o'chiriladi va loglarda yo'q; hisob almashtirilganda
-cross-tenant ma'lumot oqmaydi; javob ≤ 2 s (p95).
+### S16.1 — Infratuzilma, kirish, hisoblar ✅
 
-**Commit:** `feat(telegram): login, hisob almashtirish, xarajat oqimi`
+**Nima qurildi:**
+- `BotDirectoryService` — **token → companyId** xaritasi: umumiy bot (env token) va
+  kompaniya boti (`Company.telegramBotToken`, AES-256-GCM bilan shifrlangan)
+- `EncryptionService` (`common/crypto`) — qaytariladigan maxfiy qiymatlar uchun
+- `BotLauncherService` — bir jarayonda bir nechta Telegraf instansi, graceful stop
+- `BotSessionService` — Redis sessiya `bot:{botId}:{telegramId}` + DB `TelegramSession`
+- `BotRouterService` + `LoginFlowHandler` + `AccountsFlowHandler`, `MenuPresenter`
+- Rolga mos menyular (ishchi / direktor / admin), uz-ru matnlar (`bot-texts.ts`)
+
+**Natija:** `test:int` — 298/298 yashil (yangi: bot 16), `test:unit` — 53/53.
+
+**S16.1 da qabul qilingan qarorlar:**
+- **Telegraf `Scenes` ishlatilmadi.** Holat baribir Redis da saqlanishi shart, sahna
+  qadamlari esa bizga `flowState` union i sifatida kerak. O'z routeri transportdan
+  mustaqil bo'ldi: testlar tarmoqqa chiqmaydi, `BotTransport` ni almashtirib tekshiradi.
+- **`companyId` sessiyadan olinmaydi.** Har yangilanishda `activeLinkId` orqali bazadan
+  hisob qayta o'qiladi va amal `runAsync` konteksti ichida bajariladi — Redis dagi
+  qiymat eskirgan yoki bog'lanish bekor qilingan bo'lsa cross-tenant oqish bo'lmaydi.
+- **Redis yonma-yon DB ga ham yozadi** (`save` bitta funksiyada ikkalasini yozadi):
+  Redis tozalansa ham til va faol hisob yo'qolmaydi, ikki manba esa ajralib ketolmaydi.
+- **Parol sessiyada saqlanmaydi.** Bitta login bir nechta kompaniyada topilganda
+  parol har nomzodga tekshiriladi, keyin sessiyada faqat nomzod `userId` lari va
+  `verifiedAt` qoladi (2 daqiqa) — kompaniya tanlangach parol qayta so'ralmaydi.
+- **Bloklash `telegramId` bo'yicha** (`TelegramLoginAttempt`), `User` bo'yicha emas:
+  botda hujumchi login nomlarini almashtirib urinishi mumkin.
+- **Kompaniya boti tekshiruvi parol tasdiqlangandan keyin**: aks holda "bu bot boshqa
+  kompaniya uchun" javobi login mavjudligini oshkor qilardi.
+- **Menyu tugmasi oqimdan ustun turadi** — pastdagi klaviatura oqim davomida ham
+  ekranda qoladi va TZ 3.12.2 hisobni oqim o'rtasida almashtirishni talab qiladi.
+  Inline tugma esa hech qachon oqimning matn qadamiga tushmaydi.
+- **"Hisob qo'shish" sozlamalarda ham bor**: bitta hisobda menyuda "Hisobni
+  almashtirish" ko'rinmaydi (TZ 3.12.2), ya'ni ikkinchi hisobni qo'shish yo'li qolmasdi.
+
+**Commit:** `feat(telegram): bot infratuzilmasi, kirish va hisoblar`
+
+### S16.2 — Xarajat qo'shish oqimi, ro'yxatlar, statistika ✅
+
+**Nima qurildi:**
+- `ExpenseFlowHandler` — kategoriya (2 daraja) → kim uchun (o'zim / boshqa xodim /
+  guruh) → taqsimlash (teng yoki qo'lda) → summa (`100 USD` ham) → sana → izoh →
+  chek → tasdiqlash ekrani; har qadamda ⬅️ / ❌
+- `ListsFlowHandler` — "Mening xarajatlarim", "Filial xarajatlari", statistika
+- `format.ts` — summa/sana ko'rsatish va foydalanuvchi kiritganini o'qish
+
+**Natija:** `test:int` — 307/307 yashil (yangi: bot xarajat oqimi 9), `test:unit` — 53/53.
+
+**S16.2 da qabul qilingan qarorlar:**
+- **Bot yozuvni o'zi yaratmaydi** — `ExpensesService.create` va `ApprovalsService.submit`
+  chaqiriladi: validatsiya, raqamlash, kurs snapshot i, byudjet ogohlantirishi va audit
+  bitta joyda qolishi kerak. Web bilan farq faqat kirish nuqtasida.
+- **`history` massivi bilan "Orqaga"** — qadamlar shartli (guruh tanlanmasa taqsimlash
+  bo'lmaydi), ya'ni "oldingi qadam" ni ro'yxatdan hisoblab bo'lmaydi. Orqaga qaytganda
+  kiritilgan ma'lumot saqlanadi.
+- **Fayl turi e'lon qilingan MIME dan olinmaydi** — Telegram rasmni qayta kodlaydi,
+  shuning uchun bot `mimetype` ni bo'sh qoldiradi va `FilesService` mazmun imzosidan
+  (magic bytes) turni aniqlaydi.
+- **Chek majburiy kategoriyada tartib web bilan bir xil**: yozuv `DRAFT` yaratiladi →
+  fayl biriktiriladi → `submit`. Fayl yuklanmasa xarajat yo'qolmaydi: qoralama qoladi
+  va foydalanuvchiga web orqali chek biriktirishi aytiladi.
+- **`Role.WORKER` holat mashinasiga qo'shildi** (`expense-status.ts`): TZ 3.7 jadvali
+  bo'yicha `DRAFT` ni ishchi yuboradi va `NEEDS_FIX` dan keyin ham ishchi qayta
+  yuboradi. S7 da bu o'tishlar faqat ADMIN/DIRECTOR ga berilgan edi — ishchi kanali
+  (bot) yo'q edi, natijada ishchining qoralamasi hech qachon oqimga tushmasdi.
+  O'tishlar `creatorOnly` — o'z yozuvi bilan cheklangan.
+- **Menyu tugmasi oqimni bekor qiladi va bu aytiladi** — yarim to'ldirilgan xarajat
+  jim yo'qolmasligi kerak.
+- **Ishchi statistikasi `employeeId` filtri bilan** olinadi: rol bo'yicha doira ishchini
+  cheklamaydi, ulush filtri esa aynan o'z xarajatlarini qoldiradi. Kesh kaliti ham
+  `employeeId` ni o'z ichiga oladi, ya'ni bir ishchi natijasi boshqasiga ko'rinmaydi.
+- **To'lov usuli bot da so'ralmaydi** (TZ 3.12.3 da yo'q) — `CASH` qo'yiladi.
+
+### S16.3 — Tasdiqlash, refund, tahrirlash sahnalari ✅
+
+**Nima qurildi:**
+- `ApprovalsFlowHandler` — tasdiqlash kartochkasi (filial, xodim, kategoriya, summa,
+  sana, izoh, chek soni), ⬅️ ➡️ navigatsiya, ✅ / ❌ / ✏️ tugmalari; qaytarish va
+  tahrirlash so'rovlari kartochkalari qarorlar bilan
+- `RequestsFlowHandler` — ishchi tomonidan qaytarish so'rovi (xarajat → summa →
+  sabab → isbot → tasdiqlash) va tahrirlash murojaati (xarajat → matn)
+
+**Natija:** `test:int` — 316/316 yashil (yangi: bot tasdiqlash/so'rovlar 9),
+`test:unit` — 53/53.
+
+**S16.3 da qabul qilingan qarorlar:**
+- **Idempotentlik ikki xil xatoni birlashtiradi.** Ikkinchi bosishda servis yoki
+  `ALREADY_PROCESSED` (409, status hali o'zgarmagan), yoki 403 "bu bosqich sizga
+  tegishli emas" (status keyingi bosqichga o'tib ketgan) qaytaradi. Bot kartochka
+  ochilgan bosqichni joriy status bilan solishtiradi va ikkalasida ham
+  "allaqachon qayta ishlangan" deydi (TZ 3.12.3 qabul mezoni).
+- **Sabab qadami alohida holat** (`DecisionFlow`) — sabab majburiy (≥10 belgi, TZ 3.7)
+  va matn keyingi xabarda keladi, ya'ni qaror ikki qadamda yakunlanadi.
+- **`rfd:`/`edt:` prefikslari ikki tomonga xizmat qiladi** — tasdiqlovchi qarorlari
+  (`ok`/`no`/`go`) va ishchining sahnasi (`exp`/`cancel`/`send`). Ajratish amal nomi
+  bo'yicha: prefiksni ikkiga bo'lish callback nomlarini uzaytirardi.
+- **Tasdiqlovchi ekranlariga rol tekshiruvi routerda** (`APPROVER_BUTTONS`):
+  `ExpensesService.list` ishchini o'z yozuvlari bilan cheklamaydi, eski klaviatura
+  yoki qo'lda yozilgan matn esa tugmani "bosishi" mumkin.
+- **Hisob almashtirish va chiqish oqimni o'zi bekor qiladi** (`FLOW_NEUTRAL_BUTTONS`) —
+  ular o'z ogohlantirishini beradi; qolgan menyu tugmalari esa ochiq oqimni bekor
+  qilib "Bekor qilindi" deydi, ya'ni yarim to'ldirilgan ma'lumot jim yo'qolmaydi.
+
+**Qabul mezoni (butun S16):** parol xabari o'chiriladi va loglarda yo'q; hisob
+almashtirilganda cross-tenant ma'lumot oqmaydi; javob ≤ 2 s (p95).
 
 ---
 
-## S17 — i18n, xato formati, sayqal ⬜ (TZ 4.3, 5.4)
+## S17 — i18n, xato formati, sayqal ✅ (TZ 4.3, 5.4)
 
-**Nima:** `nestjs-i18n` uz/ru, yagona xato formati `{ statusCode, code, message, details? }`,
-barcha xabarlar i18n kaliti bilan, hardcode matn qolmasligi (lint qoidasi).
+**Nima qurildi:**
+- `nestjs-i18n` + `src/i18n/{uz,ru}/` — `errors.json` (108 kalit), `validation.json` (29),
+  `notifications.json` (14), `bot.json` (116 + tugmalar/rollar/statuslar)
+- `appError()` va yordamchilar (`unprocessable`, `notFound`, `conflict`, …) — servis
+  faqat **kod + kalit + argument** beradi, matn bermaydi
+- `AllExceptionsFilter` xabarni **shu yerda** tarjima qiladi; `details` ichidagi
+  validatsiya xabarlari ham tarjima qilinadi
+- `validationExceptionFactory` — `ValidationPipe` xatolari maydon bo'yicha guruhlanadi
+- `TranslationService` — til aniqlash yagona nuqtada
+- `NotificationTextService` va `BotTextService` — bildirishnoma va bot matnlari i18n dan
+- ESLint qoidasi: `message:` maydonida satr literal — xato
+
+**Natija:** `test:int` — 327/327 yashil (yangi: i18n 11), `test:unit` — 53/53,
+`nest build` i18n JSON larni `dist/` ga ko'chiradi.
+
+**S17 da qabul qilingan qarorlar:**
+- **Tarjima filterda, servisda emas.** Servis `code` va `messageKey` beradi, matn esa
+  javob yasalayotganda tanlanadi. Shu sababli servislarga `I18nService` in'ektsiya
+  qilinmaydi va bir xil xato Web, bot va navbat orqali bir xil ko'rinadi.
+- **`code` API kontrakti, kalit esa matn manzili.** Bir xil kod turli kontekstda
+  boshqacha o'qilishi kerak bo'lganda kod o'zgarmaydi, faqat `messageKey` boshqa
+  bo'ladi (`errors.NOT_FOUND_EXPENSE`, `errors.STAGE_FORBIDDEN_ADMIN`). Mijoz
+  mantiqi kodga tayanadi, matn esa tarjimaga.
+- **Til tartibi: `?lang`/`x-lang` → profil tili → `Accept-Language` → `uz`.**
+  Brauzer sarlavhasi foydalanuvchining tizimdagi tanlovidan ustun turmaydi, lekin
+  mijoz bitta so'rov uchun ataylab boshqa tilni so'rashi mumkin. Aniq tanlov
+  `TenantContextMiddleware` da kontekstga yoziladi, profil tili esa guard da —
+  ya'ni ustunlik tartibi bitta joyda ko'rinadi.
+- **Validatsiya xabarlari kalit ko'rinishida `details` ga tushadi va filterda
+  tarjima qilinadi** (`validation.MONEY_FORMAT|{…}`): `ValidationPipe` so'rov tilini
+  bilmasligi kerak. DTO da kalit berilmagan qoidalar uchun kalit qoida nomidan
+  quriladi (`isUuid` → `validation.isUuid`), class-validator ning inglizcha matni
+  esa faqat zaxira.
+- **`details` maydon bo'yicha guruhlanadi** (`{ code: [...], name: [...] }`) — javobni
+  forma maydonlariga bevosita bog'lash uchun; ichma-ich maydonlar `shares.0.amount`.
+- **Bot matnlari `BotTextService` orqali**, chunki tugma matni ikki yo'nalishda kerak:
+  id → matn (klaviatura) va matn → id (bosilgan tugmani tanish). Ikkinchisi barcha
+  tillarda qidiradi — til almashtirilganda ekranda eski klaviatura qolishi mumkin.
+- **Bildirishnoma tili oluvchidan olinadi**, so'rovdan emas: xabar navbat va cron
+  ichida ham yasaladi, o'sha yerda so'rov konteksti yo'q.
+- **Eksport ustun sarlavhalari kodda qoldi** (`export-data.service.ts` dagi
+  `headerUz`/`headerRu`). Ular allaqachon ikki tilli va foydalanuvchi tiliga qarab
+  tanlanadi (TZ 3.13 talabi bajarilgan); i18n ga ko'chirish ustun kalitlari
+  (`amount`, `date`, …) turli eksportlarda takrorlanishi sababli sun'iy nomlash
+  talab qilardi — xatti-harakat esa o'zgarmasdi.
+- **`src/config/env.validation.ts` tarjima qilinmaydi** — u ishga tushish paytidagi
+  developer xatosi, foydalanuvchiga hech qachon ko'rinmaydi.
 
 **Commit:** `feat(i18n): uz/ru tarjimalar va yagona xato formati`
 

@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import { AppModule } from '../../src/app.module';
+import { validationExceptionFactory } from '../../src/common/errors/validation-error';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
 
 export interface HttpTestApp {
@@ -23,6 +24,10 @@ export async function createHttpApp(
   // `@Throttle` dekoratori endpointda qattiq limit belgilagani uchun guard ni
   // override qilish yetarli emas — ThrottlerModule ning `skipIf` i ishlatiladi.
   process.env.DISABLE_THROTTLE = options.throttling ? 'false' : 'true';
+  // Cron soat boshida o'z-o'zidan ishga tushib boshqa test faylining ma'lumotiga
+  // tegib ketmasligi uchun o'chiriladi; cron mantig'i `run()` ni chaqirib sinaladi.
+  process.env.DISABLE_CRON = 'true';
+  process.env.DISABLE_QUEUE_WORKER = 'true';
 
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -36,6 +41,8 @@ export async function createHttpApp(
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      // Prod bilan bir xil: `main.ts` dagi sozlama takrorlanadi (TZ 5.4)
+      exceptionFactory: validationExceptionFactory,
     }),
   );
   await app.init();

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import { tenantData } from '../../common/tenancy/tenant-data';
@@ -6,10 +6,9 @@ import { Money } from '../../common/money/money';
 import { Currency, Prisma, RateSource } from '../../generated/prisma/client';
 import { SettingsService } from '../settings/settings.service';
 import { CbuClient } from './cbu.client';
-import {
-  NotificationsService,
-  NOTIFICATION_TYPES,
-} from '../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification-types';
+import { NotificationsService } from '../notifications/notifications.service';
+import { unprocessable } from '../../common/errors/app-error';
 
 export interface ResolvedRate {
   rate: Prisma.Decimal;
@@ -77,13 +76,12 @@ export class CurrencyService {
     });
 
     if (!rate) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'CURRENCY_RATE_MISSING',
-        message:
+      throw unprocessable('CURRENCY_RATE_MISSING', {
+        messageKey:
           source === RateSource.MANUAL
-            ? `${target.toISOString().slice(0, 10)} sanasi uchun qo'lda kurs kiritilmagan`
-            : `${target.toISOString().slice(0, 10)} sanasi uchun CBU kursi mavjud emas`,
+            ? 'errors.CURRENCY_RATE_MISSING_MANUAL'
+            : 'errors.CURRENCY_RATE_MISSING',
+        args: { date: target.toISOString().slice(0, 10) },
         details: { currency: [currency], source: [source] },
       });
     }
@@ -148,18 +146,11 @@ export class CurrencyService {
     rate: string;
   }): Promise<RateView> {
     if (input.currency === Currency.UZS) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'CURRENCY_NOT_CONVERTIBLE',
-        message: 'UZS uchun kurs kiritilmaydi',
-      });
+      throw unprocessable('CURRENCY_NOT_CONVERTIBLE');
     }
 
     if (!Money.isPositive(input.rate)) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'RATE_NOT_POSITIVE',
-        message: "Kurs musbat son bo'lishi kerak",
+      throw unprocessable('RATE_NOT_POSITIVE', {
         details: { rate: ["musbat bo'lishi kerak"] },
       });
     }

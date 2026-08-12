@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Check, Info, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
+=======
+import { useState, useRef, useEffect } from 'react';
+import { Bell, Check } from 'lucide-react';
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import { useNotifications, useMarkAllAsRead } from './api';
 import { useNavigate } from 'react-router-dom';
 import styles from './NotificationBell.module.css';

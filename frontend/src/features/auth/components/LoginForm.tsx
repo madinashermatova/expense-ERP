@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
+=======
+import { useState } from 'react';
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Clock, ArrowRight, Shield, Building, Smartphone } from 'lucide-react';
@@ -9,12 +13,17 @@ import { useAuthStore } from '../store';
 import styles from './LoginForm.module.css';
 
 export const LoginForm = () => {
+<<<<<<< HEAD
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       login: 'admin@erp.uz',
       password: 'Admin123!'
     }
+=======
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema)
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
   });
 
   const loginMutation = useLogin();

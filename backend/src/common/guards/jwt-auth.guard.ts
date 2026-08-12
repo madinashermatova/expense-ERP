@@ -45,6 +45,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       userId: authUser.id,
       role: authUser.role,
       branchId: authUser.role === Role.DIRECTOR ? authUser.branchId : null,
+      /*
+       * Profil tili so'rovda til ataylab ko'rsatilmagan bo'lsagina qo'yiladi:
+       * `?lang=`/`x-lang` mijozning shu so'rovga tegishli aniq tanlovi (TZ 4.3).
+       */
+      language: this.tenantContext.store?.language ?? authUser.language,
     });
 
     return result;

@@ -1,10 +1,7 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { TenantContextService } from '../tenancy/tenant-context.service';
 import { Role } from '../../generated/prisma/enums';
+import { forbidden, notFound } from '../../common/errors/app-error';
 
 /**
  * TZ 3.1 — filial doirasi (scope) server tomonda majburlanadi:
@@ -37,20 +34,11 @@ export class BranchScopeService {
 
     if (!own) {
       // Direktor xodim kartochkasiga bog'lanmagan — filialni aniqlab bo'lmaydi
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'BRANCH_SCOPE_MISSING',
-        message:
-          'Sizga filial biriktirilmagan — administratoringizga murojaat qiling',
-      });
+      throw forbidden('BRANCH_SCOPE_MISSING');
     }
 
     if (requestedBranchId && requestedBranchId !== own) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'BRANCH_FORBIDDEN',
-        message: "Boshqa filial ma'lumotini ko'rish mumkin emas",
-      });
+      throw forbidden('BRANCH_FORBIDDEN');
     }
 
     return own;
@@ -64,11 +52,7 @@ export class BranchScopeService {
     const own = this.ownBranchId;
     if (!this.isDirector) return;
     if (own !== branchId) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'NOT_FOUND',
-        message: 'Yozuv topilmadi',
-      });
+      throw notFound('NOT_FOUND');
     }
   }
 
@@ -77,11 +61,7 @@ export class BranchScopeService {
     const own = this.ownBranchId;
     if (!this.isDirector) return;
     if (own !== branchId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'BRANCH_FORBIDDEN',
-        message: "Faqat o'z filialingizda amal bajara olasiz",
-      });
+      throw forbidden('BRANCH_FORBIDDEN');
     }
   }
 }

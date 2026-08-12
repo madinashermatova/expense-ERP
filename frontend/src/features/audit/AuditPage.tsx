@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -74,6 +75,40 @@ export const AuditPage = () => {
         <Button style={{ gap: '6px' }} onClick={handleExportE9}>
           <FileSpreadsheet size={16} /> Audit eksporti (E9)
         </Button>
+=======
+import React from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
+import { Input } from '@/components/ui/Input';
+import { useAuditLogs } from './api';
+import styles from './AuditPage.module.css';
+
+export const AuditPage = () => {
+  const { t } = useTranslation(['audit', 'common']);
+  const [search, setSearch] = useState('');
+  
+  // Custom debounce logic if useDebounce is missing, but assuming it exists or fallback
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  React.useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const { data: logs, isLoading } = useAuditLogs(debouncedSearch);
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>{t('title')}</h1>
+        <div style={{ position: 'relative', width: '300px' }}>
+          <Input 
+            placeholder="Qidiruv (harakat, xodim...)" 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+          />
+        </div>
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
       </div>
 
       {/* Filter Bar */}

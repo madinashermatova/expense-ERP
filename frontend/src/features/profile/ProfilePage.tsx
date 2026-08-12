@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/features/auth/store';
 import { useThemeStore } from '@/lib/themeStore';
@@ -17,10 +17,15 @@ import {
 } from 'lucide-react';
 
 export const ProfilePage = () => {
+<<<<<<< HEAD
+=======
+  const { i18n } = useTranslation(['common']);
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
   const { user } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
   const { i18n } = useTranslation();
 
+<<<<<<< HEAD
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,6 +33,11 @@ export const ProfilePage = () => {
 
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
+=======
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    localStorage.setItem('language', e.target.value);
+    i18n.changeLanguage(e.target.value);
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {

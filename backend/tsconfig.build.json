@@ -1,4 +1,18 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  /*
+   * `prisma.config.ts` va `prisma/seed.ts` build dan chiqariladi: ular faqat CLI
+   * uchun (`prisma migrate`, `npm run seed`) va ts-node bilan ishlaydi. Ular
+   * kompilyatsiyaga kirsa TypeScript umumiy ildizni `backend/` deb hisoblaydi va
+   * chiqish `dist/src/**` bo'lib qoladi — natijada `node dist/main` ham, i18n
+   * fayllarining yo'li ham (`dist/i18n`) buziladi.
+   */
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "**/*spec.ts",
+    "prisma.config.ts",
+    "prisma/**"
+  ]
 }

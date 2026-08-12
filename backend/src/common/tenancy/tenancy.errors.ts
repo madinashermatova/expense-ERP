@@ -9,7 +9,9 @@ export class TenantContextMissingError extends InternalServerErrorException {
     super({
       statusCode: 500,
       code: 'TENANT_CONTEXT_MISSING',
-      message: `Tenant konteksti aniqlanmagan: ${model}.${operation}`,
+      messageKey: 'errors.TENANT_CONTEXT_MISSING',
+      // Texnik tafsilot faqat logda va `details` da — foydalanuvchiga tarjima chiqadi
+      details: { context: [`${model}.${operation}`] },
     });
   }
 }
@@ -22,7 +24,8 @@ export class CrossTenantWriteError extends InternalServerErrorException {
     super({
       statusCode: 500,
       code: 'CROSS_TENANT_WRITE',
-      message: `${model}: kontekst companyId=${expected}, lekin yozuvda ${received}`,
+      messageKey: 'errors.CROSS_TENANT_WRITE',
+      details: { context: [`${model}: ${expected} ≠ ${received}`] },
     });
   }
 }

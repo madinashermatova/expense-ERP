@@ -8,6 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Audit } from '../../common/audit/audit.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Paginated } from '../../common/dto/pagination.dto';
 import { Role } from '../../generated/prisma/enums';
@@ -32,12 +33,14 @@ export class BranchesController {
   }
 
   @Roles(Role.ADMIN)
+  @Audit({ action: 'branch.create', entityType: 'Branch', model: 'branch' })
   @Post()
   create(@Body() dto: CreateBranchDto): Promise<BranchView> {
     return this.branches.create(dto);
   }
 
   @Roles(Role.ADMIN)
+  @Audit({ action: 'branch.update', entityType: 'Branch', model: 'branch' })
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -47,12 +50,14 @@ export class BranchesController {
   }
 
   @Roles(Role.ADMIN)
+  @Audit({ action: 'branch.archive', entityType: 'Branch', model: 'branch' })
   @Post(':id/archive')
   archive(@Param('id', ParseUUIDPipe) id: string): Promise<BranchView> {
     return this.branches.archive(id);
   }
 
   @Roles(Role.ADMIN)
+  @Audit({ action: 'branch.restore', entityType: 'Branch', model: 'branch' })
   @Post(':id/restore')
   restore(@Param('id', ParseUUIDPipe) id: string): Promise<BranchView> {
     return this.branches.restore(id);

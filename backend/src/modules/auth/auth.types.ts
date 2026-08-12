@@ -1,3 +1,4 @@
+import { AppLanguage } from '../../common/i18n/languages';
 import { Language, Role } from '../../generated/prisma/enums';
 
 /** JWT access token ichidagi ma'lumot */
@@ -23,6 +24,8 @@ export interface AuthenticatedUser {
   branchId: string | null;
   email: string;
   employeeId: string | null;
+  /** Xato xabarlari va bildirishnomalar tili (TZ 4.3) */
+  language: AppLanguage;
 }
 
 export interface PublicUser {

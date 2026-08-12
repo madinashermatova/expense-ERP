@@ -37,3 +37,9 @@
   justify-content: space-between;
   margin-bottom: 8px;
 }
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

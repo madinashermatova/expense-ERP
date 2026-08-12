@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
 import { useAuthStore } from '@/features/auth/store';
 import { DynamicsChart, CategoryPieChart, BranchBarChart } from './components/Charts';
@@ -14,11 +15,22 @@ import {
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Link } from 'react-router-dom';
+=======
+import React from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { useAuthStore } from '@/features/auth/store';
+import { DynamicsChart, CategoryPieChart } from './components/Charts';
+import { useDashboardStats, useDashboardCharts } from './api';
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import styles from './DashboardPage.module.css';
 
 export const DashboardPage = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER';
+  const [period, setPeriod] = React.useState('this_month');
+
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(period);
+  const { data: charts, isLoading: chartsLoading } = useDashboardCharts(period);
 
   const [period, setPeriod] = useState('month');
   const [selectedBranch, setSelectedBranch] = useState(isAdmin ? 'all' : (user?.branchId || 'b1'));
@@ -44,6 +56,7 @@ export const DashboardPage = () => {
     <div className={styles.container}>
       {/* Top Header Controls */}
       <div className={styles.header}>
+<<<<<<< HEAD
         <div>
           <h2 className={styles.headerTitle}>
             {isAdmin ? 'Kompaniya bo\'yicha umumiy sharh' : `${user?.branchName || 'Chilonzor filiali'} ko'rsatkichlari`}
@@ -83,12 +96,26 @@ export const DashboardPage = () => {
             <option value="month">Shu oy (Avgust)</option>
             <option value="quarter">3-Chorak</option>
             <option value="year">2026-Yil</option>
+=======
+        <h1 className={styles.title}>Dashboard</h1>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* Davr tanlagich */}
+          <select 
+            value={period}
+            onChange={e => setPeriod(e.target.value)}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid rgb(var(--border))' }}
+          >
+            <option value="this_month">Shu oy</option>
+            <option value="last_month">O'tgan oy</option>
+            <option value="year">Yil</option>
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
           </select>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className={styles.kpiGrid}>
+<<<<<<< HEAD
         {/* KPI 1: Total Spend */}
         <div className={styles.kpiCard}>
           <div className={styles.kpiHeader}>
@@ -186,10 +213,47 @@ export const DashboardPage = () => {
             <div style={{ width: '78%', height: '100%', backgroundColor: 'rgb(var(--success))' }} />
           </div>
         </div>
+=======
+        <Card>
+          <CardContent style={{ paddingTop: '24px' }}>
+            <div className={styles.kpiLabel}>Jami sarf (davr)</div>
+            <div className={styles.kpiValue}>
+              {statsLoading ? '...' : `${new Intl.NumberFormat('uz-UZ').format(stats?.totalExpense || 0)} so'm`}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent style={{ paddingTop: '24px' }}>
+            <div className={styles.kpiLabel}>Tasdiq kutayotgan (1-bosqich)</div>
+            <div className={styles.kpiValue} style={{ color: 'rgb(var(--warning))' }}>
+              {statsLoading ? '...' : `${stats?.pending1 || 0} ta`}
+            </div>
+          </CardContent>
+        </Card>
+        {isAdmin && (
+          <Card>
+            <CardContent style={{ paddingTop: '24px' }}>
+              <div className={styles.kpiLabel}>Yakuniy tasdiqda (2-bosqich)</div>
+              <div className={styles.kpiValue} style={{ color: 'rgb(var(--info))' }}>
+                {statsLoading ? '...' : `${stats?.pending2 || 0} ta`}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        <Card>
+          <CardContent style={{ paddingTop: '24px' }}>
+            <div className={styles.kpiLabel}>Byudjet bajarilishi</div>
+            <div className={styles.kpiValue} style={{ color: 'rgb(var(--success))' }}>
+              {statsLoading ? '...' : `${stats?.budgetPercent || 0}%`}
+            </div>
+          </CardContent>
+        </Card>
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
       </div>
 
       {/* Main Charts Grid */}
       <div className={styles.chartsGrid}>
+<<<<<<< HEAD
         {/* Dynamic Area Chart (12 months) */}
         <div className={styles.chartCard}>
           <div className={styles.chartHeader}>
@@ -216,6 +280,25 @@ export const DashboardPage = () => {
               <span style={{ fontSize: '12px', color: 'rgb(var(--muted-foreground))' }}>
                 Asosiy xarajat yo'nalishlari
               </span>
+=======
+        <Card>
+          <CardHeader>
+            <CardTitle>Xarajatlar dinamikasi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={styles.chartContainer}>
+              {chartsLoading ? <div>Yuklanmoqda...</div> : <DynamicsChart data={charts?.dynamics || []} />}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Kategoriyalar ulushi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={styles.chartContainer}>
+              {chartsLoading ? <div>Yuklanmoqda...</div> : <CategoryPieChart data={charts?.categories || []} />}
+>>>>>>> 09480eebc3624593477022b1f8609048dbaad256
             </div>
           </div>
           <div className={styles.chartBody}>

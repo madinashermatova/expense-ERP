@@ -27,7 +27,6 @@ import {
   LogOut,
   Send,
   UserCheck,
-  Bell,
   Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';

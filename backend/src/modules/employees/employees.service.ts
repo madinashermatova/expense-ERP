@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PasswordService } from '../../common/crypto/password.service';
 import {
   Paginated,
@@ -26,6 +20,12 @@ import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { ListEmployeesDto } from './dto/list-employees.dto';
 import { TransferEmployeeDto } from './dto/transfer-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import {
+  conflict,
+  forbidden,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 export interface EmployeeView {
   id: string;
@@ -128,19 +128,12 @@ export class EmployeesService {
       where: { id: dto.branchId },
     });
     if (!branch) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'BRANCH_NOT_FOUND',
-        message: 'Filial topilmadi',
+      throw unprocessable('BRANCH_NOT_FOUND', {
         details: { branchId: ['topilmadi'] },
       });
     }
     if (branch.status === BranchStatus.ARCHIVED) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'BRANCH_ARCHIVED',
-        message: "Arxivlangan filialga xodim qo'shib bo'lmaydi",
-      });
+      throw unprocessable('BRANCH_ARCHIVED');
     }
 
     await this.assertPhoneFree(dto.phone);
@@ -247,11 +240,7 @@ export class EmployeesService {
       where: { employeeId: id },
     });
     if (!user) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'USER_NOT_FOUND',
-        message: 'Xodimning hisobi topilmadi',
-      });
+      throw notFoundError('USER_NOT_FOUND');
     }
 
     // Direktor faqat WORKER parolini tiklay oladi
@@ -285,39 +274,24 @@ export class EmployeesService {
     const employee = await this.ensureExists(id);
 
     if (employee.branchId === dto.toBranchId) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'SAME_BRANCH',
-        message: 'Xodim allaqachon shu filialda',
-      });
+      throw conflict('SAME_BRANCH');
     }
 
     const target = await this.prisma.db.branch.findUnique({
       where: { id: dto.toBranchId },
     });
     if (!target) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'BRANCH_NOT_FOUND',
-        message: 'Maqsad filial topilmadi',
+      throw unprocessable('BRANCH_NOT_FOUND', {
         details: { toBranchId: ['topilmadi'] },
       });
     }
     if (target.status === BranchStatus.ARCHIVED) {
-      throw new BadRequestException({
-        statusCode: 422,
-        code: 'BRANCH_ARCHIVED',
-        message: "Arxivlangan filialga ko'chirib bo'lmaydi",
-      });
+      throw unprocessable('BRANCH_ARCHIVED');
     }
 
     const userId = this.tenantContext.userId;
     if (!userId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'FORBIDDEN',
-        message: 'Amalni bajaruvchi aniqlanmadi',
-      });
+      throw forbidden('FORBIDDEN');
     }
 
     const updated = await this.prisma.db.$transaction(async (tx) => {
@@ -363,11 +337,7 @@ export class EmployeesService {
   private assertCanAssignRole(role: Role): void {
     if (!this.branchScope.isDirector) return;
     if (role !== Role.WORKER) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'ROLE_FORBIDDEN',
-        message: 'Filial direktori faqat ishchi rolini bera oladi',
-      });
+      throw forbidden('ROLE_FORBIDDEN');
     }
   }
 
@@ -380,12 +350,7 @@ export class EmployeesService {
       where: { phone, ...(exceptId ? { id: { not: exceptId } } : {}) },
     });
     if (existing) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'PHONE_TAKEN',
-        message: "Bu telefon raqami allaqachon ro'yxatdan o'tgan",
-        details: { phone: ['band'] },
-      });
+      throw conflict('PHONE_TAKEN', { details: { phone: ['band'] } });
     }
   }
 
@@ -397,10 +362,7 @@ export class EmployeesService {
       where: { OR: [{ email }, ...(username ? [{ username }] : [])] },
     });
     if (existing) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'LOGIN_TAKEN',
-        message: 'Bu email yoki username allaqachon band',
+      throw conflict('LOGIN_TAKEN', {
         details:
           existing.email === email
             ? { email: ['band'] }
@@ -489,10 +451,6 @@ export class EmployeesService {
   }
 
   private notFound(): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'EMPLOYEE_NOT_FOUND',
-      message: 'Xodim topilmadi',
-    });
+    return notFoundError('EMPLOYEE_NOT_FOUND');
   }
 }

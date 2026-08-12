@@ -33,6 +33,29 @@ export default tseslint.config(
     },
   },
   {
+    /*
+     * TZ 4.3 — foydalanuvchiga ko'rinadigan matn kodda qolmasligi kerak.
+     *
+     * Tekshiruv aynan `message:` maydonidagi satrga qaratilgan: xato va validatsiya
+     * xabarlari shu maydon orqali javobga tushadi, ya'ni i18n kaliti (`errors.*`,
+     * `validation.*`) yoki `validationMessage(...)` chaqiruvi bo'lishi kerak.
+     * Log va izohlar bu qoidaga kirmaydi — ular foydalanuvchiga ko'rinmaydi.
+     */
+    files: ['src/**/*.ts'],
+    ignores: ['src/config/**', 'src/i18n/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "Property[key.name='message'] > :matches(Literal, TemplateLiteral)",
+          message:
+            "Xabar matni kodda qolmasin: i18n kalitini bering (`messageKey`) yoki `validationMessage('validation.KEY')` ishlatilsin (TZ 4.3).",
+        },
+      ],
+    },
+  },
+  {
     // Testlarda supertest `res.body` ni `any` qaytaradi va Prisma fixture larida
     // qisman obyektlar ishlatiladi — bu qoidalar test kodida shovqin hosil qiladi.
     files: ['test/**/*.ts', 'prisma/seed.ts'],

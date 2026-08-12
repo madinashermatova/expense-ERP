@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { cronDisabled } from '../../common/cron/cron.guard';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import {
@@ -28,6 +29,7 @@ export class CurrencyCron {
 
   @Cron('0 9 * * *', { name: 'currency-daily', timeZone: 'Asia/Tashkent' })
   async syncDaily(): Promise<void> {
+    if (cronDisabled()) return;
     await this.runFor(new Date());
   }
 

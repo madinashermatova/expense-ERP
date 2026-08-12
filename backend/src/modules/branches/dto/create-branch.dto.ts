@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { validationMessage } from '../../../common/errors/validation-error';
 
 export class CreateBranchDto {
   /** TZ 3.6 — 2–5 ta lotin harfi, kompaniya doirasida unikal, keyin o'zgarmaydi */
@@ -15,7 +16,7 @@ export class CreateBranchDto {
     typeof value === 'string' ? value.toUpperCase().trim() : value,
   )
   @Matches(/^[A-Z]{2,5}$/, {
-    message: "Filial kodi 2–5 ta lotin harfidan iborat bo'lishi kerak",
+    message: validationMessage('validation.BRANCH_CODE_FORMAT'),
   })
   code!: string;
 
@@ -32,7 +33,7 @@ export class CreateBranchDto {
   @IsOptional()
   @IsString()
   @Matches(/^\+998\d{9}$/, {
-    message: "Telefon +998XXXXXXXXX formatida bo'lishi kerak",
+    message: validationMessage('validation.PHONE_FORMAT'),
   })
   phone?: string;
 

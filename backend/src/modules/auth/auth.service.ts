@@ -1,15 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   ConflictException,
-  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
   Logger,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { AuditService } from '../../common/audit/audit.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PasswordService } from '../../common/crypto/password.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
@@ -23,6 +22,11 @@ import {
   PublicUser,
   RefreshTokenPayload,
 } from './auth.types';
+import {
+  appError,
+  forbidden,
+  unauthorized,
+} from '../../common/errors/app-error';
 
 /** Login natijasi bir nechta kompaniyaga to'g'ri kelganda */
 export class MultipleCompaniesException extends ConflictException {
@@ -30,7 +34,7 @@ export class MultipleCompaniesException extends ConflictException {
     super({
       statusCode: HttpStatus.CONFLICT,
       code: 'MULTIPLE_COMPANIES',
-      message: 'Bu login bir nechta kompaniyada mavjud — kompaniyani tanlang',
+      messageKey: 'errors.MULTIPLE_COMPANIES',
       details: { companies: companies.map((c) => `${c.slug}:${c.name}`) },
     });
   }
@@ -45,6 +49,7 @@ export class AuthService {
     private readonly password: PasswordService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<EnvironmentVariables, true>,
+    private readonly audit: AuditService,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -104,29 +109,18 @@ export class AuthService {
     }
 
     if (!user.isActive) {
-      throw new ForbiddenException({
-        statusCode: HttpStatus.FORBIDDEN,
-        code: 'ACCOUNT_INACTIVE',
-        message: 'Hisob faol emas — administratoringizga murojaat qiling',
-      });
+      throw forbidden('ACCOUNT_INACTIVE');
     }
 
     if (user.company && user.company.status === CompanyStatus.SUSPENDED) {
-      throw new ForbiddenException({
-        statusCode: HttpStatus.FORBIDDEN,
-        code: 'COMPANY_SUSPENDED',
-        message: "Kompaniya hisobi to'xtatilgan",
-      });
+      throw forbidden('COMPANY_SUSPENDED');
     }
 
     // TZ 2.2 — ishchi Web ERP ga kira olmaydi (to'g'ri parol bilan ham)
     if (meta.channel === Channel.WEB && user.role === Role.WORKER) {
       await this.resetFailedAttempts(user.id);
-      throw new ForbiddenException({
-        statusCode: HttpStatus.FORBIDDEN,
-        code: 'WEB_ACCESS_DENIED',
-        message:
-          'Ishchi hisobi Web ERP ga kira olmaydi — Telegram botdan foydalaning',
+      throw forbidden('WEB_ACCESS_DENIED', {
+        messageKey: 'errors.WEB_ACCESS_DENIED_BOT',
       });
     }
 
@@ -137,6 +131,30 @@ export class AuthService {
       { id: user.id, companyId: user.companyId, role: user.role, branchId },
       meta,
     );
+
+    /*
+     * TZ 3.14 — login audit jurnaliga tushadi. Kontekst shu yerda qo'lda beriladi:
+     * so'rov `@Public` bo'lgani uchun guard uni to'ldirmagan, `companyId` esa aynan
+     * hozir ma'lum bo'ldi. Platforma egasida `companyId` yo'q — u yozilmaydi.
+     */
+    if (user.companyId) {
+      await this.tenantContext.runAsync(
+        {
+          companyId: user.companyId,
+          userId: user.id,
+          role: user.role,
+          branchId,
+          channel: meta.channel,
+          ip: meta.ip ?? null,
+        },
+        () =>
+          this.audit.log({
+            action: 'auth.login',
+            entityType: 'User',
+            entityId: user.id,
+          }),
+      );
+    }
 
     return {
       ...tokens,
@@ -263,10 +281,8 @@ export class AuthService {
         }),
     );
     if (!user) {
-      throw new UnauthorizedException({
-        statusCode: HttpStatus.UNAUTHORIZED,
-        code: 'UNAUTHORIZED',
-        message: 'Foydalanuvchi topilmadi',
+      throw unauthorized('UNAUTHORIZED', {
+        messageKey: 'errors.UNAUTHORIZED_USER_NOT_FOUND',
       });
     }
     return this.toPublicUser(user);
@@ -336,15 +352,10 @@ export class AuthService {
   private assertNotLocked(lockedUntil: Date | null): void {
     if (!lockedUntil || lockedUntil <= new Date()) return;
     const retryAfter = Math.ceil((lockedUntil.getTime() - Date.now()) / 1000);
-    throw new HttpException(
-      {
-        statusCode: HttpStatus.TOO_MANY_REQUESTS,
-        code: 'LOGIN_LOCKED',
-        message: "Juda ko'p urinish — biroz kutib qayta urinib ko'ring",
-        retryAfter,
-      },
-      HttpStatus.TOO_MANY_REQUESTS,
-    );
+    throw appError('LOGIN_LOCKED', {
+      status: HttpStatus.TOO_MANY_REQUESTS,
+      retryAfter,
+    });
   }
 
   /** TZ 3.1 — 5 ta muvaffaqiyatsiz urinishdan keyin 15 daqiqa blok */
@@ -379,20 +390,12 @@ export class AuthService {
     );
   }
 
-  private invalidCredentials(): UnauthorizedException {
-    return new UnauthorizedException({
-      statusCode: HttpStatus.UNAUTHORIZED,
-      code: 'INVALID_CREDENTIALS',
-      message: "Login yoki parol noto'g'ri",
-    });
+  private invalidCredentials(): HttpException {
+    return unauthorized('INVALID_CREDENTIALS');
   }
 
-  private invalidRefresh(): UnauthorizedException {
-    return new UnauthorizedException({
-      statusCode: HttpStatus.UNAUTHORIZED,
-      code: 'INVALID_REFRESH_TOKEN',
-      message: 'Sessiya muddati tugagan — qayta kiring',
-    });
+  private invalidRefresh(): HttpException {
+    return unauthorized('INVALID_REFRESH_TOKEN');
   }
 
   private toPublicUser(user: {

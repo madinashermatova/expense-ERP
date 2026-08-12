@@ -6,6 +6,10 @@ import { API, createHttpApp } from '../helpers/http-app';
 import { truncateAll } from '../helpers/test-context';
 import { seedCompany, SeededCompany } from '../helpers/seed-fixtures';
 import { loginAs, Session } from '../helpers/auth-helper';
+import {
+  countDefaultCategories,
+  DEFAULT_CATEGORY_TREE,
+} from '../../src/modules/categories/default-categories';
 
 describe('Kategoriyalar (TZ 3.4)', () => {
   let app: INestApplication;
@@ -173,5 +177,105 @@ describe('Kategoriyalar (TZ 3.4)', () => {
       .get(API(`/categories/${betaCategory.id}`))
       .set(...admin.header)
       .expect(404);
+  });
+
+  describe('standart to‘plam (TZ 3.4)', () => {
+    /** Yangi kompaniya: kategoriyalar hali yaratilmagan */
+    const emptyCompany = async () => {
+      const beta = await seedCompany(prisma, 'beta', 'beta.uz');
+      await prisma.raw.category.deleteMany({
+        where: { companyId: beta.companyId },
+      });
+      return {
+        company: beta,
+        session: await loginAs(app, beta.adminEmail),
+      };
+    };
+
+    it('bo‘sh kompaniyaga standart daraxtni yuklaydi', async () => {
+      const { company, session } = await emptyCompany();
+
+      const res = await http()
+        .post(API('/categories/apply-defaults'))
+        .set(...session.header)
+        .expect(201);
+
+      expect(res.body.created).toBe(countDefaultCategories());
+
+      const rows = await prisma.raw.category.findMany({
+        where: { companyId: company.companyId },
+      });
+      expect(rows).toHaveLength(countDefaultCategories());
+      // Ikki daraja: bosh kategoriyalar va ularning ichkilari
+      expect(rows.filter((row) => row.parentId === null)).toHaveLength(
+        DEFAULT_CATEGORY_TREE.length,
+      );
+      // Qoidalar ham ko‘chadi: chek majburiy bo‘lgan kategoriyalar bor
+      expect(rows.some((row) => row.receiptRequired)).toBe(true);
+      expect(rows.some((row) => row.commentRequired)).toBe(true);
+    });
+
+    it('ikkinchi chaqiruv dublikat yasamaydi (idempotent)', async () => {
+      const { company, session } = await emptyCompany();
+
+      await http()
+        .post(API('/categories/apply-defaults'))
+        .set(...session.header)
+        .expect(201);
+      const second = await http()
+        .post(API('/categories/apply-defaults'))
+        .set(...session.header)
+        .expect(201);
+
+      expect(second.body.created).toBe(0);
+      const count = await prisma.raw.category.count({
+        where: { companyId: company.companyId },
+      });
+      expect(count).toBe(countDefaultCategories());
+    });
+
+    it('kategoriyasi bor kompaniyada hech narsa o‘zgarmaydi', async () => {
+      const before = await prisma.raw.category.count({
+        where: { companyId: alfa.companyId },
+      });
+
+      const res = await http()
+        .post(API('/categories/apply-defaults'))
+        .set(...admin.header)
+        .expect(201);
+
+      expect(res.body.created).toBe(0);
+      const after = await prisma.raw.category.count({
+        where: { companyId: alfa.companyId },
+      });
+      expect(after).toBe(before);
+    });
+
+    it('direktor standart to‘plamni yuklay olmaydi', async () => {
+      const res = await http()
+        .post(API('/categories/apply-defaults'))
+        .set(...director.header)
+        .expect(403);
+
+      expect(res.body.code).toBe('FORBIDDEN');
+    });
+
+    it('boshqa kompaniyaning daraxtiga tegmaydi (tenant izolyatsiyasi)', async () => {
+      const { company, session } = await emptyCompany();
+
+      await http()
+        .post(API('/categories/apply-defaults'))
+        .set(...session.header)
+        .expect(201);
+
+      const alfaCount = await prisma.raw.category.count({
+        where: { companyId: alfa.companyId },
+      });
+      const betaCount = await prisma.raw.category.count({
+        where: { companyId: company.companyId },
+      });
+      expect(alfaCount).toBe(2);
+      expect(betaCount).toBe(countDefaultCategories());
+    });
   });
 });

@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { AuditService } from '../../common/audit/audit.service';
 import {
   Paginated,
@@ -24,16 +19,30 @@ import {
   ExpenseStatus,
   PaymentMethod,
   RateSource,
+  Role,
 } from '../../generated/prisma/enums';
+import { BudgetsService, BudgetWarning } from '../budgets/budgets.service';
 import { CurrencyService } from '../currency/currency.service';
 import { FilesService, FileView } from '../files/files.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification-types';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateExpenseDto, ExpenseShareDto } from './dto/create-expense.dto';
 import {
   EXPENSE_SORT_FIELDS,
   ExpenseSortField,
   ListExpensesDto,
 } from './dto/list-expenses.dto';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { SPEND_COUNTED_STATUSES } from './expense-status';
 import { NumberingService } from './numbering.service';
+import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
+import {
+  AppErrorInit,
+  conflict,
+  forbidden,
+  notFound as notFoundError,
+  unprocessable,
+} from '../../common/errors/app-error';
 
 /** Dublikat ogohlantirish oynasi (TZ 3.6) — bloklamaydi, faqat ogohlantiradi */
 const DUPLICATE_WINDOW_MINUTES = 10;
@@ -78,6 +87,8 @@ export interface ExpenseView {
 export interface CreateExpenseResult extends ExpenseView {
   /** Yaqin 10 daqiqada shunga o'xshash yozuv bo'lsa to'ldiriladi (bloklamaydi) */
   duplicateWarning?: { expenseId: string; globalNumber: string };
+  /** Limit yumshoq: oshib ketsa ham yozuv yaratiladi, faqat ogohlantiriladi (TZ 3.10) */
+  budgetWarning?: BudgetWarning[];
 }
 
 type ExpenseRow = Prisma.ExpenseGetPayload<{
@@ -120,6 +131,9 @@ export class ExpensesService {
     private readonly files: FilesService,
     private readonly audit: AuditService,
     private readonly branchScope: BranchScopeService,
+    private readonly budgets: BudgetsService,
+    private readonly notifications: NotificationsService,
+    private readonly settings: SettingsService,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -131,29 +145,21 @@ export class ExpensesService {
     const companyId = this.tenantContext.requireCompanyId('Expense', 'create');
     const userId = this.tenantContext.userId;
     if (!userId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'FORBIDDEN',
-        message: 'Foydalanuvchi aniqlanmadi',
-      });
+      throw forbidden('FORBIDDEN');
     }
 
     const amount = Money.round2(dto.amount);
     if (!Money.isPositive(amount)) {
-      throw this.unprocessable(
-        'AMOUNT_NOT_POSITIVE',
-        "Summa noldan katta bo'lishi kerak",
-        { amount: [dto.amount] },
-      );
+      throw this.unprocessable('AMOUNT_NOT_POSITIVE', {
+        details: { amount: [dto.amount] },
+      });
     }
 
     const date = atUtcMidnight(dto.date);
     if (date.getTime() > atUtcMidnight(new Date()).getTime()) {
-      throw this.unprocessable(
-        'DATE_IN_FUTURE',
-        'Kelajakdagi sana bilan xarajat kiritib bo‘lmaydi',
-        { date: [dto.date] },
-      );
+      throw this.unprocessable('DATE_IN_FUTURE', {
+        details: { date: [dto.date] },
+      });
     }
 
     this.branchScope.assertCanWrite(dto.branchId);
@@ -161,58 +167,43 @@ export class ExpensesService {
     const branch = await this.prisma.db.branch.findUnique({
       where: { id: dto.branchId },
     });
-    if (!branch) throw this.notFound('Filial topilmadi');
+    if (!branch) throw this.notFound('errors.BRANCH_NOT_FOUND');
     if (branch.status !== BranchStatus.ACTIVE) {
-      throw this.unprocessable(
-        'BRANCH_ARCHIVED',
-        'Arxivlangan filialga xarajat kiritib bo‘lmaydi',
-        { branchId: [dto.branchId] },
-      );
+      throw this.unprocessable('BRANCH_ARCHIVED', {
+        details: { branchId: [dto.branchId] },
+      });
     }
 
     const category = await this.prisma.db.category.findUnique({
       where: { id: dto.categoryId },
     });
-    if (!category) throw this.notFound('Kategoriya topilmadi');
+    if (!category) throw this.notFound('errors.CATEGORY_NOT_FOUND');
     if (category.status !== CategoryStatus.ACTIVE) {
-      throw this.unprocessable(
-        'CATEGORY_ARCHIVED',
-        'Arxivlangan kategoriyaga xarajat kiritib bo‘lmaydi',
-        { categoryId: [dto.categoryId] },
-      );
+      throw this.unprocessable('CATEGORY_ARCHIVED', {
+        details: { categoryId: [dto.categoryId] },
+      });
     }
 
     if (category.commentRequired && !dto.comment?.trim()) {
-      throw this.unprocessable(
-        'COMMENT_REQUIRED',
-        'Bu kategoriya uchun izoh majburiy',
-        { comment: [category.nameUz] },
-      );
+      throw this.unprocessable('COMMENT_REQUIRED', {
+        details: { comment: [category.nameUz] },
+      });
     }
 
     if (
       category.maxAmountPerEntry !== null &&
       amount.greaterThan(category.maxAmountPerEntry)
     ) {
-      throw this.unprocessable(
-        'CATEGORY_LIMIT_EXCEEDED',
-        `Bu kategoriya uchun bir martalik chegara ${Money.toString(category.maxAmountPerEntry)}`,
-        { amount: [Money.toString(amount)] },
-      );
+      throw this.unprocessable('CATEGORY_LIMIT_EXCEEDED', {
+        args: { limit: Money.toString(category.maxAmountPerEntry) },
+        details: { amount: [Money.toString(amount)] },
+      });
     }
 
     await this.loadEmployees(dto.employeeIds, dto.branchId);
     const shares = this.resolveShares(amount, dto.employeeIds, dto.shares);
 
-    /*
-     * Isbot majburiy bo'lgan kategoriya (TZ 3.6): fayl JSON tanasi bilan birga kela
-     * olmaydi, shuning uchun yozuv `DRAFT` da tug'iladi va `POST /expenses/:id/submit`
-     * chekni tekshirib tasdiqlash oqimiga uzatadi. Raqamlar baribir shu yerda beriladi —
-     * TZ ularni "yaratilganda" talab qiladi va keyin hech qachon o'zgarmaydi.
-     */
-    const status = category.receiptRequired
-      ? ExpenseStatus.DRAFT
-      : ExpenseStatus.DIRECTOR_PENDING;
+    const status = this.initialStatus(category.receiptRequired);
 
     // Kurs snapshot i — keyin kurs o'zgarsa ham bu xarajat o'zgarmaydi (TZ 3.5)
     const conversion = await this.currency.convertToUzs(
@@ -296,6 +287,24 @@ export class ExpensesService {
         globalNumber: duplicate.globalNumber,
       };
     }
+
+    await this.notifyApprovers(created);
+
+    /*
+     * Yangi yozuv hali `APPROVED` emas, ya'ni sarfda hisoblanmaydi. Shunga qaramay
+     * foydalanuvchiga "bu xarajat limitdan oshiradi" deb aytish kerak (TZ 3.10), shuning
+     * uchun summasi `extraUzs` sifatida qo'shib baholanadi. Bildirishnoma bu yerda
+     * yuborilmaydi — u sarf haqiqatan o'zgarganda, ya'ni yakuniy tasdiqda ketadi.
+     */
+    const warnings = await this.budgets.evaluate({
+      branchId: branch.id,
+      categoryId: category.id,
+      employeeIds: dto.employeeIds,
+      date,
+      extraUzs: conversion.amountUzs,
+    });
+    if (warnings.length > 0) view.budgetWarning = warnings;
+
     return view;
   }
 
@@ -325,6 +334,36 @@ export class ExpensesService {
       page,
       limit,
     );
+  }
+
+  /**
+   * Eksport uchun qatorlar — sahifalashsiz (TZ 3.13 E1).
+   *
+   * Ro'yxat bilan **bir xil** filtr va filial doirasi ishlatiladi: eksportdagi qatorlar
+   * soni ekrandagi natija bilan aynan mos kelishi kerak, shuning uchun bu yerda alohida
+   * so'rov qurilmaydi.
+   */
+  async listForExport(
+    query: ListExpensesDto,
+    take: number,
+  ): Promise<ExpenseView[]> {
+    const branchId = this.branchScope.resolveListFilter(query.branchId);
+    const rows = await this.prisma.db.expense.findMany({
+      where: this.buildWhere(query, branchId),
+      include: EXPENSE_INCLUDE,
+      orderBy: this.buildOrderBy(query),
+      take,
+    });
+
+    return rows.map((row) => this.toView(row));
+  }
+
+  /** Eksportni fon rejimiga o'tkazish kerakligini aniqlash uchun (TZ 3.13) */
+  async countForExport(query: ListExpensesDto): Promise<number> {
+    const branchId = this.branchScope.resolveListFilter(query.branchId);
+    return this.prisma.db.expense.count({
+      where: this.buildWhere(query, branchId),
+    });
   }
 
   async findOne(id: string): Promise<ExpenseView> {
@@ -358,7 +397,7 @@ export class ExpensesService {
     const expense = await this.requireEditable(id);
 
     if (files.length === 0) {
-      throw this.unprocessable('NO_FILES', 'Fayl yuborilmadi');
+      throw this.unprocessable('NO_FILES');
     }
 
     const saved = await this.files.attachToExpense(expense.id, files, userId!);
@@ -384,7 +423,7 @@ export class ExpensesService {
       where: { id: fileId },
     });
     if (!file || file.expenseId !== expense.id) {
-      throw this.notFound('Fayl topilmadi');
+      throw this.notFound('errors.FILE_NOT_FOUND');
     }
 
     await this.files.removeExpenseFile(fileId);
@@ -397,72 +436,252 @@ export class ExpensesService {
     });
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // Tahrirlash (TZ 3.8)
+  // ───────────────────────────────────────────────────────────────────────────
+
   /**
-   * `DRAFT` dan tasdiqlash oqimiga uzatadi. Isbot majburiy bo'lgan kategoriyada
-   * kamida bitta fayl bo'lishi shart (TZ 3.6).
+   * Tasdiqlangan xarajatni tahrirlash — `approvedAt` dan boshlab
+   * `expense.editWindowHours` (sukut 24 soat) ichida. Qaror chiqmagan yozuvlar
+   * (`DRAFT`, `DIRECTOR_PENDING`, `NEEDS_FIX`) oynasiz tahrirlanadi.
+   *
+   * `ADMIN_PENDING` ataylab tahrirlanmaydi: direktor qarori allaqachon chiqqan va
+   * uni jimgina o'zgartirish tasdiqlashning ma'nosini yo'qotardi — buning uchun
+   * `request-fix` bor.
    */
-  async submit(id: string): Promise<ExpenseView> {
+  async update(id: string, dto: UpdateExpenseDto): Promise<ExpenseView> {
     const userId = this.tenantContext.userId;
+    const reason = dto.reason.trim();
+
     const expense = await this.prisma.db.expense.findUnique({
       where: { id },
-      include: { category: true },
+      include: { shares: true },
     });
     if (!expense || expense.deletedAt) throw this.notFound();
 
     this.branchScope.assertCanWrite(expense.branchId);
+    await this.assertEditable(expense.status, expense.approvedAt);
 
-    if (expense.status !== ExpenseStatus.DRAFT) {
-      throw this.unprocessable(
-        'INVALID_STATUS_TRANSITION',
-        'Faqat qoralama holatidagi xarajatni yuborish mumkin',
-        { status: [expense.status] },
-      );
+    const category = dto.categoryId
+      ? await this.requireActiveCategory(dto.categoryId)
+      : null;
+
+    const amount = dto.amount ? Money.round2(dto.amount) : expense.amount;
+    if (!Money.isPositive(amount)) {
+      throw this.unprocessable('AMOUNT_NOT_POSITIVE', {
+        details: { amount: [dto.amount ?? ''] },
+      });
     }
 
-    if (expense.category.receiptRequired) {
-      const fileCount = await this.prisma.db.expenseFile.count({
-        where: { expenseId: expense.id },
+    const date = dto.date ? atUtcMidnight(dto.date) : expense.date;
+    if (date.getTime() > atUtcMidnight(new Date()).getTime()) {
+      throw this.unprocessable('DATE_IN_FUTURE', {
+        details: { date: [dto.date ?? ''] },
       });
-      if (fileCount === 0) {
-        throw this.unprocessable(
-          'RECEIPT_REQUIRED',
-          'Bu kategoriya uchun chek yoki kvitansiya majburiy',
-          { files: [expense.category.nameUz] },
-        );
+    }
+
+    const currency = dto.currency ?? expense.currency;
+    const effectiveCategory =
+      category ??
+      (await this.prisma.db.category.findUniqueOrThrow({
+        where: { id: expense.categoryId },
+      }));
+
+    if (effectiveCategory.commentRequired) {
+      const comment = dto.comment !== undefined ? dto.comment : expense.comment;
+      if (!comment?.trim()) {
+        throw this.unprocessable('COMMENT_REQUIRED', {
+          details: { comment: [effectiveCategory.nameUz] },
+        });
       }
     }
 
-    const updated = await this.prisma.db.expense.update({
-      where: { id },
-      data: {
-        status: ExpenseStatus.DIRECTOR_PENDING,
-        statusHistory: {
-          create: {
+    if (
+      effectiveCategory.maxAmountPerEntry !== null &&
+      amount.greaterThan(effectiveCategory.maxAmountPerEntry)
+    ) {
+      throw this.unprocessable('CATEGORY_LIMIT_EXCEEDED', {
+        args: { limit: Money.toString(effectiveCategory.maxAmountPerEntry) },
+        details: { amount: [Money.toString(amount)] },
+      });
+    }
+
+    // Qaytarilgan summadan pastga tushib ketmasin (DB check constraint ham bor)
+    if (amount.lessThan(expense.refundedAmount)) {
+      throw this.unprocessable('AMOUNT_BELOW_REFUNDED', {
+        args: { refunded: Money.toString(expense.refundedAmount) },
+        details: { amount: [Money.toString(amount)] },
+      });
+    }
+
+    /*
+     * Kurs snapshot i faqat **kirish ma'lumoti o'zgarganda** qayta hisoblanadi:
+     * valyuta yoki sana tuzatilgan bo'lsa asl snapshot noto'g'ri kirishga tayangan edi.
+     * Faqat summa o'zgarsa eski kurs saqlanadi — TZ 3.5 tarixiy kursni muzlatadi.
+     */
+    const rateChanged =
+      (dto.currency !== undefined && dto.currency !== expense.currency) ||
+      (dto.date !== undefined && date.getTime() !== expense.date.getTime());
+
+    const conversion = rateChanged
+      ? await this.currency.convertToUzs(amount, currency, date)
+      : {
+          amountUzs: Money.toUzs(amount, expense.rateUsed),
+          rateUsed: expense.rateUsed,
+          rateSource: expense.rateSource,
+        };
+
+    const employeeIds =
+      dto.employeeIds ?? expense.shares.map((share) => share.employeeId);
+    if (dto.employeeIds) {
+      await this.loadEmployees(dto.employeeIds, expense.branchId);
+    }
+
+    const sharesChanged =
+      dto.employeeIds !== undefined ||
+      dto.shares !== undefined ||
+      !Money.equals(amount, expense.amount) ||
+      rateChanged;
+
+    const shares = sharesChanged
+      ? this.resolveShares(amount, employeeIds, dto.shares)
+      : null;
+
+    const before = {
+      categoryId: expense.categoryId,
+      amount: Money.toString(expense.amount),
+      currency: expense.currency,
+      amountUzs: Money.toString(expense.amountUzs),
+      date: expense.date.toISOString().slice(0, 10),
+      comment: expense.comment,
+      paymentMethod: expense.paymentMethod,
+    };
+    const after = {
+      categoryId: effectiveCategory.id,
+      amount: Money.toString(amount),
+      currency,
+      amountUzs: Money.toString(conversion.amountUzs),
+      date: date.toISOString().slice(0, 10),
+      comment:
+        dto.comment !== undefined
+          ? dto.comment.trim() || null
+          : expense.comment,
+      paymentMethod: dto.paymentMethod ?? expense.paymentMethod,
+    };
+
+    const updated = await this.prisma.db.$transaction(async (tx) => {
+      if (shares) {
+        await tx.expenseShare.deleteMany({ where: { expenseId: id } });
+        await tx.expenseShare.createMany({
+          data: shares.map((share) => ({
             companyId: expense.companyId,
-            fromStatus: ExpenseStatus.DRAFT,
-            toStatus: ExpenseStatus.DIRECTOR_PENDING,
-            byUserId: userId!,
-            channel: this.tenantContext.channel,
-          },
+            expenseId: id,
+            employeeId: share.employeeId,
+            amount: share.amount,
+            amountUzs: Money.toUzs(share.amount, conversion.rateUsed),
+          })),
+        });
+      }
+
+      return tx.expense.update({
+        where: { id },
+        data: {
+          categoryId: after.categoryId,
+          amount,
+          currency,
+          rateUsed: conversion.rateUsed,
+          rateSource: conversion.rateSource,
+          amountUzs: conversion.amountUzs,
+          date,
+          comment: after.comment,
+          paymentMethod: after.paymentMethod,
+          version: { increment: 1 },
         },
-      },
-      include: EXPENSE_INCLUDE,
+        include: EXPENSE_INCLUDE,
+      });
     });
 
     await this.audit.log({
-      action: 'expense.submit',
+      action: 'expense.update',
       entityType: 'Expense',
       entityId: id,
       changes: [
-        {
-          field: 'status',
-          old: ExpenseStatus.DRAFT,
-          new: ExpenseStatus.DIRECTOR_PENDING,
-        },
+        ...this.audit.diff(before, after),
+        { field: 'reason', old: null, new: reason },
       ],
     });
 
+    /*
+     * TZ 3.8 — summa tahrirlansa limit ogohlantirishlari qayta baholanadi.
+     * Sarfning o'zi so'rov vaqtida hisoblanadi, shuning uchun qayta hisoblash shart emas;
+     * lekin tahrir yozuvni chegaradan **o'tkazib yuborishi** mumkin va bu holda xabar
+     * ketishi kerak. Faqat sarfga kiradigan statuslar uchun — hali tasdiqlanmagan yozuv
+     * sarfga ta'sir qilmaydi.
+     */
+    if (SPEND_COUNTED_STATUSES.includes(expense.status)) {
+      await this.budgets.reevaluateForExpense(id);
+    }
+
+    // Tahrirlash ham status tarixida iz qoldiradi — sabab shu yerda saqlanadi
+    await this.prisma.db.expenseStatusHistory.create({
+      data: {
+        companyId: expense.companyId,
+        expenseId: id,
+        fromStatus: expense.status,
+        toStatus: expense.status,
+        byUserId: userId!,
+        reason,
+        channel: this.tenantContext.channel,
+      },
+    });
+
     return this.toView(updated);
+  }
+
+  /** Tahrirlash oynasi ochiqmi (TZ 3.8) */
+  private async assertEditable(
+    status: ExpenseStatus,
+    approvedAt: Date | null,
+  ): Promise<void> {
+    const editableWithoutWindow: ExpenseStatus[] = [
+      ExpenseStatus.DRAFT,
+      ExpenseStatus.DIRECTOR_PENDING,
+      ExpenseStatus.NEEDS_FIX,
+    ];
+    if (editableWithoutWindow.includes(status)) return;
+
+    if (status !== ExpenseStatus.APPROVED) {
+      throw this.unprocessable('EXPENSE_NOT_EDITABLE', {
+        args: { status },
+        details: { status: [status] },
+      });
+    }
+
+    const { hours } = await this.settings.get<{ hours: number }>(
+      SETTING_KEYS.expenseEditWindowHours,
+    );
+    const deadline = new Date(
+      (approvedAt ?? new Date()).getTime() + hours * 3_600_000,
+    );
+
+    if (Date.now() > deadline.getTime()) {
+      throw this.unprocessable('EDIT_WINDOW_CLOSED', {
+        details: { approvedAt: [deadline.toISOString()] },
+      });
+    }
+  }
+
+  private async requireActiveCategory(categoryId: string) {
+    const category = await this.prisma.db.category.findUnique({
+      where: { id: categoryId },
+    });
+    if (!category) throw this.notFound('errors.CATEGORY_NOT_FOUND');
+    if (category.status !== CategoryStatus.ACTIVE) {
+      throw this.unprocessable('CATEGORY_ARCHIVED', {
+        details: { categoryId: [categoryId] },
+      });
+    }
+    return category;
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -481,7 +700,7 @@ export class ExpensesService {
     this.branchScope.assertCanWrite(expense.branchId);
 
     if (expense.deletedAt) {
-      throw this.conflict('ALREADY_DELETED', "Xarajat allaqachon o'chirilgan");
+      throw this.conflict('ALREADY_DELETED');
     }
 
     // Tasdiqlangan yoki qaytarilgan xarajat moliyaviy tarixning bir qismi —
@@ -491,10 +710,7 @@ export class ExpensesService {
       expense.status === ExpenseStatus.PARTIALLY_REFUNDED ||
       expense.status === ExpenseStatus.REFUNDED
     ) {
-      throw this.conflict(
-        'EXPENSE_NOT_DELETABLE',
-        "Tasdiqlangan xarajatni o'chirib bo‘lmaydi",
-      );
+      throw this.conflict('EXPENSE_NOT_DELETABLE');
     }
 
     await this.prisma.db.expense.update({
@@ -516,6 +732,72 @@ export class ExpensesService {
   // Ichki yordamchilar
   // ───────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Yangi xarajat haqida navbatdagi tasdiqlovchiga xabar (TZ 3.11).
+   *
+   * `DRAFT` da xabar yuborilmaydi — yozuv hali tugallanmagan va `submit` dan keyin
+   * tasdiqlash oqimiga tushadi, o'sha yerda xabar ketadi.
+   */
+  private async notifyApprovers(expense: ExpenseRow): Promise<void> {
+    if (expense.status === ExpenseStatus.DRAFT) return;
+
+    const payload = {
+      expenseId: expense.id,
+      globalNumber: expense.globalNumber,
+      amount: Money.toString(expense.amount),
+    };
+
+    // Direktor kiritgan ariza darhol 2-bosqichda bo'ladi (TZ 3.7)
+    if (expense.status === ExpenseStatus.ADMIN_PENDING) {
+      await this.notifications.notifyAdmins(
+        NOTIFICATION_TYPES.expenseCreated,
+        payload,
+      );
+      return;
+    }
+
+    const directors = await this.prisma.db.user.findMany({
+      where: {
+        role: Role.DIRECTOR,
+        isActive: true,
+        employee: { branchId: expense.branchId },
+      },
+      select: { id: true },
+    });
+
+    if (directors.length === 0) {
+      // Filialda direktor yo'q — ariza baribir ko'rilishi kerak
+      await this.notifications.notifyAdmins(
+        NOTIFICATION_TYPES.expenseCreated,
+        payload,
+      );
+      return;
+    }
+
+    await this.notifications.notifyUsers(
+      directors.map((d) => d.id),
+      NOTIFICATION_TYPES.expenseCreated,
+      payload,
+    );
+  }
+
+  /**
+   * Yangi yozuv qaysi statusda tug'iladi.
+   *
+   * - Isbot majburiy bo'lgan kategoriya (TZ 3.6): fayl JSON tanasi bilan birga kela
+   *   olmaydi, shuning uchun yozuv `DRAFT` da qoladi va chek yuklangach
+   *   `POST /expenses/:id/submit` uni oqimga uzatadi. Raqamlar baribir yaratilishda
+   *   beriladi — TZ ularni "yaratilganda" talab qiladi.
+   * - Direktor o'zi kiritgan xarajatni o'zi tasdiqlay olmaydi (TZ 3.7), shuning uchun
+   *   1-bosqich o'tkazib yuboriladi va yozuv to'g'ridan-to'g'ri `ADMIN_PENDING` bo'ladi.
+   */
+  private initialStatus(receiptRequired: boolean): ExpenseStatus {
+    if (receiptRequired) return ExpenseStatus.DRAFT;
+    return this.tenantContext.role === Role.DIRECTOR
+      ? ExpenseStatus.ADMIN_PENDING
+      : ExpenseStatus.DIRECTOR_PENDING;
+  }
+
   /** Fayl qo'shish/olib tashlash faqat yozuv hali yakunlanmagan bo'lsa mumkin */
   private async requireEditable(id: string) {
     const expense = await this.prisma.db.expense.findUnique({ where: { id } });
@@ -530,10 +812,7 @@ export class ExpensesService {
       ExpenseStatus.NEEDS_FIX,
     ];
     if (!editable.includes(expense.status)) {
-      throw this.conflict(
-        'EXPENSE_LOCKED',
-        'Yakunlangan xarajat fayllarini o‘zgartirib bo‘lmaydi',
-      );
+      throw this.conflict('EXPENSE_LOCKED');
     }
 
     return expense;
@@ -546,11 +825,9 @@ export class ExpensesService {
   private async loadEmployees(employeeIds: string[], branchId: string) {
     const unique = [...new Set(employeeIds)];
     if (unique.length !== employeeIds.length) {
-      throw this.unprocessable(
-        'DUPLICATE_EMPLOYEE',
-        'Bitta xodim ro‘yxatda ikki marta ko‘rsatilgan',
-        { employeeIds },
-      );
+      throw this.unprocessable('DUPLICATE_EMPLOYEE', {
+        details: { employeeIds },
+      });
     }
 
     const employees = await this.prisma.db.employee.findMany({
@@ -558,29 +835,29 @@ export class ExpensesService {
     });
 
     if (employees.length !== unique.length) {
-      throw this.unprocessable('EMPLOYEE_NOT_FOUND', 'Xodim topilmadi', {
-        employeeIds: unique.filter((id) => !employees.some((e) => e.id === id)),
+      throw this.unprocessable('EMPLOYEE_NOT_FOUND', {
+        details: {
+          employeeIds: unique.filter(
+            (id) => !employees.some((e) => e.id === id),
+          ),
+        },
       });
     }
 
     const wrongBranch = employees.filter((e) => e.branchId !== branchId);
     if (wrongBranch.length > 0) {
-      throw this.unprocessable(
-        'EMPLOYEE_WRONG_BRANCH',
-        'Xodim tanlangan filialga tegishli emas',
-        { employeeIds: wrongBranch.map((e) => e.id) },
-      );
+      throw this.unprocessable('EMPLOYEE_WRONG_BRANCH', {
+        details: { employeeIds: wrongBranch.map((e) => e.id) },
+      });
     }
 
     const inactive = employees.filter(
       (e) => e.status !== EmployeeStatus.ACTIVE,
     );
     if (inactive.length > 0) {
-      throw this.unprocessable(
-        'EMPLOYEE_INACTIVE',
-        'Nofaol xodimga xarajat taqsimlab bo‘lmaydi',
-        { employeeIds: inactive.map((e) => e.id) },
-      );
+      throw this.unprocessable('EMPLOYEE_INACTIVE', {
+        details: { employeeIds: inactive.map((e) => e.id) },
+      });
     }
 
     return employees;
@@ -609,11 +886,9 @@ export class ExpensesService {
       given.size !== employeeIds.length ||
       !employeeIds.every((id) => given.has(id))
     ) {
-      throw this.unprocessable(
-        'SHARES_MISMATCH',
-        'Ulushlar ro‘yxati tanlangan xodimlarga mos kelmadi',
-        { shares: employeeIds },
-      );
+      throw this.unprocessable('SHARES_MISMATCH', {
+        details: { shares: employeeIds },
+      });
     }
 
     const shares = manual.map((s) => ({
@@ -623,21 +898,18 @@ export class ExpensesService {
 
     for (const share of shares) {
       if (!Money.isPositive(share.amount)) {
-        throw this.unprocessable(
-          'SHARE_NOT_POSITIVE',
-          "Har bir ulush noldan katta bo'lishi kerak",
-          { shares: [share.employeeId] },
-        );
+        throw this.unprocessable('SHARE_NOT_POSITIVE', {
+          details: { shares: [share.employeeId] },
+        });
       }
     }
 
     const total = Money.sum(shares.map((s) => s.amount));
     if (!Money.equals(total, amount)) {
-      throw this.unprocessable(
-        'SHARES_SUM_MISMATCH',
-        `Ulushlar yig'indisi (${Money.toString(total)}) umumiy summaga (${Money.toString(amount)}) teng emas`,
-        { shares: [Money.toString(total)] },
-      );
+      throw this.unprocessable('SHARES_SUM_MISMATCH', {
+        args: { total: Money.toString(total), amount: Money.toString(amount) },
+        details: { shares: [Money.toString(total)] },
+      });
     }
 
     return shares;
@@ -761,23 +1033,22 @@ export class ExpensesService {
     };
   }
 
-  private notFound(message = 'Xarajat topilmadi'): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'NOT_FOUND',
-      message,
-    });
+  /** `messageKey` — bir xil kod turli kontekstda boshqacha o'qiladi (TZ 5.4) */
+  private notFound(messageKey = 'errors.EXPENSE_NOT_FOUND'): HttpException {
+    return notFoundError('NOT_FOUND', { messageKey });
   }
 
   private unprocessable(
     code: string,
-    message: string,
-    details?: Record<string, string[]>,
-  ): BadRequestException {
-    return new BadRequestException({ statusCode: 422, code, message, details });
+    init: Omit<AppErrorInit, 'status'> = {},
+  ): HttpException {
+    return unprocessable(code, init);
   }
 
-  private conflict(code: string, message: string): BadRequestException {
-    return new BadRequestException({ statusCode: 409, code, message });
+  private conflict(
+    code: string,
+    init: Omit<AppErrorInit, 'status'> = {},
+  ): HttpException {
+    return conflict(code, init);
   }
 }
