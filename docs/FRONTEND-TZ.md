@@ -135,6 +135,40 @@ type Role = 'PLATFORM_OWNER' | 'ADMIN' | 'DIRECTOR' | 'WORKER';
 `429` javobida `Retry-After` sarlavhasi bo'ladi → formada taymer bilan
 "15 daqiqadan keyin qayta urinib ko'ring" ko'rsatiladi, tugma bloklanadi.
 
+Ikki xil 429 bor, ularni `code` bo'yicha ajrating:
+- `LOGIN_LOCKED` — 5 ta noto'g'ri urinishdan keyin hisob bloklangan (`retryAfter` bor)
+- `TOO_MANY_REQUESTS` — IP bo'yicha rate limit (5 req/min)
+
+### Login xato kodlari (backend implementatsiyasi bo'yicha)
+
+| `code` | Status | Frontend nima qiladi |
+|---|---|---|
+| `INVALID_CREDENTIALS` | 401 | "Login yoki parol noto'g'ri" (qaysi biri ekani aytilmaydi) |
+| `WEB_ACCESS_DENIED` | 403 | "Bu tizim faqat Telegram bot orqali ishlaydi" ekrani |
+| `ACCOUNT_INACTIVE` | 403 | "Hisob faol emas — administratoringizga murojaat qiling" |
+| `COMPANY_SUSPENDED` | 403 | "Kompaniya hisobi to'xtatilgan" |
+| `LOGIN_LOCKED` | 429 | Taymer, tugma bloklangan |
+| `MULTIPLE_COMPANIES` | 409 | **Kompaniya tanlash** qadami (quyida) |
+| `VALIDATION_FAILED` | 422 | `details` maydonlarga tarqatiladi |
+
+### Kompaniya tanlash (`MULTIPLE_COMPANIES`)
+
+Bir xil login bir nechta kompaniyada mavjud bo'lishi mumkin (`UNIQUE(companyId, email)` —
+email global unikal emas). Bunday holda login `409` qaytaradi:
+
+```json
+{
+  "statusCode": 409,
+  "code": "MULTIPLE_COMPANIES",
+  "message": "Bu login bir nechta kompaniyada mavjud — kompaniyani tanlang",
+  "details": { "companies": ["alfa:Alfa Savdo MChJ", "beta:Beta Logistika MChJ"] }
+}
+```
+
+Frontend `companies` ro'yxatini (`slug:nom` formatida) ko'rsatadi va tanlangan `slug` ni
+`companySlug` maydoni bilan **o'sha login+parolni qayta yuboradi**. Parol qayta so'ralmaydi —
+foydalanuvchi kiritganini saqlab turing.
+
 ---
 
 ## 4. API konvensiyalari
@@ -190,7 +224,7 @@ Mutatsiyadan keyin `invalidateQueries({ queryKey: ['expenses'] })` + tegishli
 ## 5. Endpointlar (frontend ishlatadigan to'liq ro'yxat)
 
 ```
-POST   /auth/login              { login, password } → { accessToken, user }
+POST   /auth/login              { login, password, companySlug? } → { accessToken, user }
 POST   /auth/refresh            → { accessToken }
 POST   /auth/logout
 GET    /auth/me                 → User
