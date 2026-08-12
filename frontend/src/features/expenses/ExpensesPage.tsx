@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   createColumnHelper,
   flexRender,
@@ -49,9 +50,11 @@ const columns = [
   }),
 ];
 
+
 export const ExpensesPage = () => {
   const [page, setPage] = useState(1);
   const { data, isLoading, isError } = useExpenses({ page, limit: 10 });
+  const navigate = useNavigate();
 
   const table = useReactTable({
     data: data?.items || [],
@@ -63,7 +66,7 @@ export const ExpensesPage = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Xarajatlar</h1>
-        <Button style={{ gap: '8px' }}>
+        <Button style={{ gap: '8px' }} onClick={() => navigate('/expenses/create')}>
           <Plus size={16} /> Yangi xarajat
         </Button>
       </div>

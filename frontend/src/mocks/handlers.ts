@@ -61,4 +61,29 @@ export const handlers = [
       totalPages: Math.ceil(100 / limit)
     });
   }),
+
+  http.get('*/api/branches', async () => {
+    return HttpResponse.json([
+      { id: 'b1', code: 'TOS', name: 'Toshkent' },
+      { id: 'b2', code: 'SAM', name: 'Samarqand' },
+    ]);
+  }),
+
+  http.get('*/api/categories', async () => {
+    return HttpResponse.json([
+      { id: 'c1', name: 'Transport', receiptRequired: true, maxAmountPerEntry: '500000.00' },
+      { id: 'c2', name: 'Oziq-ovqat', receiptRequired: true },
+      { id: 'c3', name: 'Texnika', receiptRequired: true },
+    ]);
+  }),
+
+  http.get('*/api/employees', async () => {
+    return HttpResponse.json({
+      items: [
+        { id: 'e1', fullName: 'Ali Valiyev', branchId: 'b1' },
+        { id: 'e2', fullName: 'Vali Aliyev', branchId: 'b1' },
+        { id: 'e3', fullName: 'Hasan Husanov', branchId: 'b2' },
+      ]
+    });
+  }),
 ];

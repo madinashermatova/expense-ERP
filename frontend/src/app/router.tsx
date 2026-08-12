@@ -5,6 +5,7 @@ import { AuthLayout } from './layouts/AuthLayout';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { ExpensesPage } from '@/features/expenses/ExpensesPage';
+import { ExpenseCreatePage } from '@/features/expenses/ExpenseCreatePage';
 
 export const router = createBrowserRouter([
   {
@@ -18,6 +19,10 @@ export const router = createBrowserRouter([
       {
         path: 'expenses',
         element: <ExpensesPage />,
+      },
+      {
+        path: 'expenses/create',
+        element: <ExpenseCreatePage />,
       },
       // ... boshqa modullar shu yerda qo'shiladi
     ],

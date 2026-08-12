@@ -15,3 +15,35 @@ export const useExpenses = (params: ExpenseListParams) => {
     }
   });
 };
+
+export const useBranches = () => {
+  return useQuery({
+    queryKey: ['branches'],
+    queryFn: async () => {
+      const response = await apiClient.get('/branches');
+      return response.data;
+    }
+  });
+};
+
+export const useCategories = () => {
+  return useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await apiClient.get('/categories');
+      return response.data;
+    }
+  });
+};
+
+export const useEmployees = (branchId?: string) => {
+  return useQuery({
+    queryKey: ['employees', branchId],
+    queryFn: async () => {
+      const response = await apiClient.get('/employees', { params: { branchId } });
+      return response.data.items;
+    },
+    enabled: !!branchId
+  });
+};
+
