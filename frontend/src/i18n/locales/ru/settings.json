@@ -1,0 +1,26 @@
+{
+  "title": "Настройки",
+  "tabs": {
+    "employees": "Сотрудники",
+    "categories": "Категории",
+    "branches": "Филиалы"
+  },
+  "employees": {
+    "fullName": "Ф.И.О",
+    "branch": "Филиал",
+    "role": "Роль",
+    "newEmployee": "Новый сотрудник",
+    "tempPasswordDesc": "Этот временный пароль больше не будет показан. Пожалуйста, скопируйте его."
+  },
+  "branches": {
+    "code": "Код",
+    "name": "Название",
+    "newBranch": "Новый филиал"
+  },
+  "categories": {
+    "name": "Название",
+    "limit": "Лимит",
+    "receiptRequired": "Нужен чек",
+    "newCategory": "Новая категория"
+  }
+}

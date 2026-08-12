@@ -1,0 +1,26 @@
+{
+  "title": "Sozlamalar",
+  "tabs": {
+    "employees": "Xodimlar",
+    "categories": "Kategoriyalar",
+    "branches": "Filiallar"
+  },
+  "employees": {
+    "fullName": "F.I.Sh",
+    "branch": "Filial",
+    "role": "Rol",
+    "newEmployee": "Yangi xodim",
+    "tempPasswordDesc": "Ushbu vaqtinchalik parol qayta ko'rsatilmaydi. Iltimos nusxalab oling."
+  },
+  "branches": {
+    "code": "Kodi",
+    "name": "Nomi",
+    "newBranch": "Yangi filial"
+  },
+  "categories": {
+    "name": "Nomi",
+    "limit": "Limit",
+    "receiptRequired": "Chek talabi",
+    "newCategory": "Yangi kategoriya"
+  }
+}

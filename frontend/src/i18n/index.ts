@@ -8,16 +8,21 @@ import refundsRu from './locales/ru/refunds.json';
 import editRequestsUz from './locales/uz/editRequests.json';
 import editRequestsRu from './locales/ru/editRequests.json';
 
+import settingsUz from './locales/uz/settings.json';
+import settingsRu from './locales/ru/settings.json';
+
 const resources = {
   uz: {
     common: commonUz,
     refunds: refundsUz,
     editRequests: editRequestsUz,
+    settings: settingsUz,
   },
   ru: {
     common: commonRu,
     refunds: refundsRu,
     editRequests: editRequestsRu,
+    settings: settingsRu,
   }
 };
 

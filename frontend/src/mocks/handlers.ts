@@ -74,28 +74,41 @@ export const handlers = [
   }),
 
   http.get('*/api/branches', async () => {
+    await delay(300);
     return HttpResponse.json([
-      { id: 'b1', code: 'TOS', name: 'Toshkent' },
-      { id: 'b2', code: 'SAM', name: 'Samarqand' },
+      { id: 'b1', code: 'TASH', name: 'Toshkent bosh ofis' },
+      { id: 'b2', code: 'SAM', name: 'Samarqand filiali' }
     ]);
+  }),
+  http.post('*/api/branches', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true }, { status: 201 });
   }),
 
   http.get('*/api/categories', async () => {
+    await delay(300);
     return HttpResponse.json([
-      { id: 'c1', name: 'Transport', receiptRequired: true, maxAmountPerEntry: '500000.00' },
-      { id: 'c2', name: 'Oziq-ovqat', receiptRequired: true },
-      { id: 'c3', name: 'Texnika', receiptRequired: true },
+      { id: 'c1', name: 'Kanselyariya', maxAmountPerEntry: 500000, receiptRequired: true, parentId: null },
+      { id: 'c2', name: 'Yo\'l kira', maxAmountPerEntry: null, receiptRequired: false, parentId: null }
     ]);
   }),
+  http.post('*/api/categories', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true }, { status: 201 });
+  }),
 
-  http.get('*/api/employees', async () => {
+  http.get('*/api/employees', async ({ request }) => {
+    await delay(300);
     return HttpResponse.json({
       items: [
-        { id: 'e1', fullName: 'Ali Valiyev', branchId: 'b1' },
-        { id: 'e2', fullName: 'Vali Aliyev', branchId: 'b1' },
-        { id: 'e3', fullName: 'Hasan Husanov', branchId: 'b2' },
+        { id: 'e1', fullName: 'Azizov Alisher', branchId: 'b1', role: 'WORKER' },
+        { id: 'e2', fullName: 'Karimova Malika', branchId: 'b1', role: 'ACCOUNTANT' }
       ]
     });
+  }),
+  http.post('*/api/employees', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true, tempPassword: 'generated-pass-42' }, { status: 201 });
   }),
 
   http.post('*/api/expenses/:id/approve', async () => {
