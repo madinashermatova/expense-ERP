@@ -34,6 +34,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { TelegramModule } from './modules/telegram/telegram.module';
 import { PlansModule } from './modules/plans/plans.module';
 
 @Module({
@@ -101,6 +102,7 @@ import { PlansModule } from './modules/plans/plans.module';
     ReportsModule,
     ExportsModule,
     AuditModule,
+    TelegramModule,
   ],
   controllers: [HealthController],
   providers: [

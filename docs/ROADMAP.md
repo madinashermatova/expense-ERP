@@ -562,21 +562,60 @@ bildirishnomalar yoqilishi, eslatma vaqti, tahrirlash oynasi.
 
 ---
 
-## S16 — Telegram bot ⬜ (TZ 3.12, 3.16.5)
+## S16 — Telegram bot 🔄 (TZ 3.12, 3.16.5)
 
-**Nima quriladi:**
-- Telegraf modul, **token → companyId** xaritasi (umumiy bot + kompaniya boti)
-- Login sahnasi: login → parol → `deleteMessage` → `TelegramAccountLink`
-- **Hisobni almashtirish** (parolsiz), qo'shish, chiqish, hammasidan chiqish
-- Redis sessiya (`bot:{botId}:{telegramId}`), bot restartdan keyin oqim davom etadi
-- Xarajat qo'shish sahnasi (9 qadam, har qadamda ⬅️ / ❌)
-- Tasdiqlash kartochkasi + inline tugmalar + idempotentlik
-- Refund va EditRequest sahnalari, statistika, til almashtirish
+Bosqich hajmi katta, shuning uchun uchga bo'lindi: **S16.1** infratuzilma va kirish,
+**S16.2** xarajat oqimi va statistika, **S16.3** tasdiqlash/refund/tahrirlash sahnalari.
 
-**Qabul mezoni:** parol xabari o'chiriladi va loglarda yo'q; hisob almashtirilganda
-cross-tenant ma'lumot oqmaydi; javob ≤ 2 s (p95).
+### S16.1 — Infratuzilma, kirish, hisoblar ✅
 
-**Commit:** `feat(telegram): login, hisob almashtirish, xarajat oqimi`
+**Nima qurildi:**
+- `BotDirectoryService` — **token → companyId** xaritasi: umumiy bot (env token) va
+  kompaniya boti (`Company.telegramBotToken`, AES-256-GCM bilan shifrlangan)
+- `EncryptionService` (`common/crypto`) — qaytariladigan maxfiy qiymatlar uchun
+- `BotLauncherService` — bir jarayonda bir nechta Telegraf instansi, graceful stop
+- `BotSessionService` — Redis sessiya `bot:{botId}:{telegramId}` + DB `TelegramSession`
+- `BotRouterService` + `LoginFlowHandler` + `AccountsFlowHandler`, `MenuPresenter`
+- Rolga mos menyular (ishchi / direktor / admin), uz-ru matnlar (`bot-texts.ts`)
+
+**Natija:** `test:int` — 298/298 yashil (yangi: bot 16), `test:unit` — 53/53.
+
+**S16.1 da qabul qilingan qarorlar:**
+- **Telegraf `Scenes` ishlatilmadi.** Holat baribir Redis da saqlanishi shart, sahna
+  qadamlari esa bizga `flowState` union i sifatida kerak. O'z routeri transportdan
+  mustaqil bo'ldi: testlar tarmoqqa chiqmaydi, `BotTransport` ni almashtirib tekshiradi.
+- **`companyId` sessiyadan olinmaydi.** Har yangilanishda `activeLinkId` orqali bazadan
+  hisob qayta o'qiladi va amal `runAsync` konteksti ichida bajariladi — Redis dagi
+  qiymat eskirgan yoki bog'lanish bekor qilingan bo'lsa cross-tenant oqish bo'lmaydi.
+- **Redis yonma-yon DB ga ham yozadi** (`save` bitta funksiyada ikkalasini yozadi):
+  Redis tozalansa ham til va faol hisob yo'qolmaydi, ikki manba esa ajralib ketolmaydi.
+- **Parol sessiyada saqlanmaydi.** Bitta login bir nechta kompaniyada topilganda
+  parol har nomzodga tekshiriladi, keyin sessiyada faqat nomzod `userId` lari va
+  `verifiedAt` qoladi (2 daqiqa) — kompaniya tanlangach parol qayta so'ralmaydi.
+- **Bloklash `telegramId` bo'yicha** (`TelegramLoginAttempt`), `User` bo'yicha emas:
+  botda hujumchi login nomlarini almashtirib urinishi mumkin.
+- **Kompaniya boti tekshiruvi parol tasdiqlangandan keyin**: aks holda "bu bot boshqa
+  kompaniya uchun" javobi login mavjudligini oshkor qilardi.
+- **Menyu tugmasi oqimdan ustun turadi** — pastdagi klaviatura oqim davomida ham
+  ekranda qoladi va TZ 3.12.2 hisobni oqim o'rtasida almashtirishni talab qiladi.
+  Inline tugma esa hech qachon oqimning matn qadamiga tushmaydi.
+- **"Hisob qo'shish" sozlamalarda ham bor**: bitta hisobda menyuda "Hisobni
+  almashtirish" ko'rinmaydi (TZ 3.12.2), ya'ni ikkinchi hisobni qo'shish yo'li qolmasdi.
+
+**Commit:** `feat(telegram): bot infratuzilmasi, kirish va hisoblar`
+
+### S16.2 — Xarajat qo'shish oqimi, "Mening xarajatlarim", statistika ⬜
+
+- Xarajat qo'shish sahnasi (9 qadam, har qadamda ⬅️ / ❌, rasm/hujjat yuklash)
+- Ro'yxatlar va oylik statistika, til almashtirish sayqali
+
+### S16.3 — Tasdiqlash, refund, tahrirlash sahnalari ⬜
+
+- Tasdiqlash kartochkasi + inline tugmalar + idempotentlik, navigatsiya (⬅️ ➡️)
+- Refund va EditRequest sahnalari
+
+**Qabul mezoni (butun S16):** parol xabari o'chiriladi va loglarda yo'q; hisob
+almashtirilganda cross-tenant ma'lumot oqmaydi; javob ≤ 2 s (p95).
 
 ---
 

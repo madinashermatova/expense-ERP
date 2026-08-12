@@ -19,5 +19,10 @@ process.env.DISABLE_QUEUE_WORKER = 'true';
 // Har test fayli o'z Redis DB sini ishlatadi — navbatlar bir-biriga tegmasligi uchun
 process.env.REDIS_DB = process.env.REDIS_TEST_DB ?? '1';
 
+// Telegram polling testlarda hech qachon ko'tarilmaydi: router to'g'ridan-to'g'ri
+// chaqirib sinaladi, tarmoqqa chiqish esa testni beqaror qilardi (`bot-launcher.service.ts`)
+process.env.BOT_ENABLED = 'false';
+process.env.DISABLE_BOT_POLLING = 'true';
+
 // Integratsion testlar alohida bucket ishlatadi — dev fayllari bilan aralashmasligi uchun
 process.env.S3_BUCKET = 'erp-files-test';
