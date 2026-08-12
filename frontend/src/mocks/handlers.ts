@@ -1,44 +1,6 @@
 import { http, HttpResponse, delay } from 'msw';
 
 export const handlers = [
-  http.post('*/api/auth/login', async ({ request }) => {
-    await delay(500);
-    const body = (await request.json()) as any;
-    
-    if (body.login === 'multi' && body.password === 'password' && !body.companySlug) {
-      return new HttpResponse(
-        JSON.stringify({ 
-          code: 'MULTIPLE_COMPANIES', 
-          message: 'Bu login bir nechta kompaniyada mavjud — kompaniyani tanlang',
-          details: { companies: ["alfa:Alfa Savdo MChJ", "beta:Beta Logistika MChJ"] }
-        }),
-        { status: 409, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if ((body.login === 'admin' || body.login === 'multi') && body.password === 'password') {
-      return HttpResponse.json({
-        accessToken: 'mock-jwt-token-12345',
-        user: {
-          id: 'u1',
-          login: body.login,
-          role: 'ADMIN',
-          fullName: 'Tizim Administratori'
-        }
-      });
-    }
-
-    return new HttpResponse(
-      JSON.stringify({ code: 'INVALID_CREDENTIALS', message: 'Login yoki parol noto\'g\'ri' }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
-  }),
-
-  http.post('*/api/auth/logout', async () => {
-    await delay(300);
-    return HttpResponse.json({ success: true });
-  }),
-
   http.get('*/api/expenses', async ({ request }) => {
     await delay(500);
     const url = new URL(request.url);
@@ -71,44 +33,6 @@ export const handlers = [
       limit,
       totalPages: Math.ceil(100 / limit)
     });
-  }),
-
-  http.get('*/api/branches', async () => {
-    await delay(300);
-    return HttpResponse.json([
-      { id: 'b1', code: 'TASH', name: 'Toshkent bosh ofis' },
-      { id: 'b2', code: 'SAM', name: 'Samarqand filiali' }
-    ]);
-  }),
-  http.post('*/api/branches', async () => {
-    await delay(500);
-    return HttpResponse.json({ success: true }, { status: 201 });
-  }),
-
-  http.get('*/api/categories', async () => {
-    await delay(300);
-    return HttpResponse.json([
-      { id: 'c1', name: 'Kanselyariya', maxAmountPerEntry: 500000, receiptRequired: true, parentId: null },
-      { id: 'c2', name: 'Yo\'l kira', maxAmountPerEntry: null, receiptRequired: false, parentId: null }
-    ]);
-  }),
-  http.post('*/api/categories', async () => {
-    await delay(500);
-    return HttpResponse.json({ success: true }, { status: 201 });
-  }),
-
-  http.get('*/api/employees', async ({ request }) => {
-    await delay(300);
-    return HttpResponse.json({
-      items: [
-        { id: 'e1', fullName: 'Azizov Alisher', branchId: 'b1', role: 'WORKER' },
-        { id: 'e2', fullName: 'Karimova Malika', branchId: 'b1', role: 'ACCOUNTANT' }
-      ]
-    });
-  }),
-  http.post('*/api/employees', async () => {
-    await delay(500);
-    return HttpResponse.json({ success: true, tempPassword: 'generated-pass-42' }, { status: 201 });
   }),
 
   http.get('*/api/budgets', async () => {
@@ -224,5 +148,17 @@ export const handlers = [
       { group: 'Toshkent bosh ofis', totalAmount: 45000000, count: 12 },
       { group: 'Samarqand filiali', totalAmount: 12000000, count: 5 }
     ]);
+  }),
+
+  // Audit
+  http.get('*/api/audit', async () => {
+    await delay(400);
+    return HttpResponse.json({
+      items: [
+        { id: 'a1', createdAt: '2026-08-12T10:00:00Z', userFullName: 'Azizov Alisher', action: 'CREATE', entityType: 'EXPENSE', entityId: 'exp-123', details: { amount: 500000 } },
+        { id: 'a2', createdAt: '2026-08-11T14:30:00Z', userFullName: 'Karimova Malika', action: 'UPDATE', entityType: 'EMPLOYEE', entityId: 'emp-456', details: { role: 'DIRECTOR' } },
+      ],
+      total: 2,
+    });
   }),
 ];

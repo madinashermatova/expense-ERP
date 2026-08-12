@@ -21,7 +21,7 @@ export const useBranches = () => {
     queryKey: ['branches'],
     queryFn: async () => {
       const response = await apiClient.get('/branches');
-      return response.data;
+      return response.data.items || response.data; // fallback for old mock
     }
   });
 };
@@ -31,7 +31,7 @@ export const useCategories = () => {
     queryKey: ['categories'],
     queryFn: async () => {
       const response = await apiClient.get('/categories');
-      return response.data;
+      return response.data; // returns array directly
     }
   });
 };
@@ -41,9 +41,9 @@ export const useEmployees = (branchId?: string) => {
     queryKey: ['employees', branchId],
     queryFn: async () => {
       const response = await apiClient.get('/employees', { params: { branchId } });
-      return response.data.items;
+      return response.data.items || response.data;
     },
-    enabled: !!branchId
+    enabled: branchId !== undefined ? !!branchId : true
   });
 };
 

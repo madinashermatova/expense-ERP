@@ -39,6 +39,7 @@ export const AppLayout = () => {
     { to: '/refunds', icon: <Undo2 size={20} />, label: "Qaytarishlar" },
     { to: '/edit-requests', icon: <PencilLine size={20} />, label: "Tahrirlash" },
     { to: '/reports', icon: <BarChart3 size={20} />, label: "Hisobotlar" },
+    { to: '/audit', icon: <Settings size={20} />, label: "Audit jurnali" },
   ];
 
   if (user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER') {

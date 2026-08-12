@@ -1,0 +1,10 @@
+{
+  "title": "Audit jurnali",
+  "columns": {
+    "date": "Sana",
+    "user": "Foydalanuvchi",
+    "action": "Amal",
+    "entity": "Obyekt",
+    "details": "Tafsilotlar"
+  }
+}

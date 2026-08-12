@@ -14,6 +14,9 @@ import settingsRu from './locales/ru/settings.json';
 import reportsUz from './locales/uz/reports.json';
 import reportsRu from './locales/ru/reports.json';
 
+import auditUz from './locales/uz/audit.json';
+import auditRu from './locales/ru/audit.json';
+
 const resources = {
   uz: {
     common: commonUz,
@@ -21,6 +24,7 @@ const resources = {
     editRequests: editRequestsUz,
     settings: settingsUz,
     reports: reportsUz,
+    audit: auditUz,
   },
   ru: {
     common: commonRu,
@@ -28,6 +32,7 @@ const resources = {
     editRequests: editRequestsRu,
     settings: settingsRu,
     reports: reportsRu,
+    audit: auditRu,
   }
 };
 

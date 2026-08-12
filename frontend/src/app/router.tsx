@@ -11,6 +11,7 @@ import { SettingsPage } from '@/features/settings/SettingsPage';
 import { RefundsPage } from '@/features/refunds/RefundsPage';
 import { EditRequestsPage } from '@/features/edit-requests/EditRequestsPage';
 import { ReportsPage } from '@/features/reports/ReportsPage';
+import { AuditPage } from '@/features/audit/AuditPage';
 
 export const router = createBrowserRouter([
   {
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: <ReportsPage />,
+      },
+      {
+        path: 'audit',
+        element: <AuditPage />,
       },
       {
         path: 'settings',
