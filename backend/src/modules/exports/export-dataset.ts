@@ -6,7 +6,8 @@ import { Language } from '../../generated/prisma/enums';
  * `money` va `number` katakchalari faylga **raqam** bo'lib tushadi (TZ 3.13 qabul
  * mezoni: `typeof === number`), `date` esa sana formatida — matn emas.
  */
-export type ExportColumnType = 'text' | 'number' | 'money' | 'date' | 'datetime';
+export type ExportColumnType =
+  'text' | 'number' | 'money' | 'date' | 'datetime';
 
 export interface ExportColumn {
   key: string;

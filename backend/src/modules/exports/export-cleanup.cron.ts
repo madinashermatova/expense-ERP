@@ -64,11 +64,13 @@ export class ExportCleanupCron {
         );
       }
 
-      await this.tenantContext.runUnscoped('cron: eksport kalitini bo\'shatish', () =>
-        this.prisma.raw.exportJob.update({
-          where: { id: job.id },
-          data: { storageKey: null },
-        }),
+      await this.tenantContext.runUnscoped(
+        "cron: eksport kalitini bo'shatish",
+        () =>
+          this.prisma.raw.exportJob.update({
+            where: { id: job.id },
+            data: { storageKey: null },
+          }),
       );
 
       removed += 1;

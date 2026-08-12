@@ -103,9 +103,11 @@ export class ExportsService {
   // ───────────────────────────────────────────────────────────────────────────
 
   async create(dto: CreateExportDto): Promise<ExportJobView> {
-    const companyId = this.tenantContext.requireCompanyId('ExportJob', 'create');
+    const companyId = this.tenantContext.requireCompanyId(
+      'ExportJob',
+      'create',
+    );
     const userId = this.tenantContext.userId as string;
-    const definition = EXPORT_CATALOG[dto.type];
     const filters = dto.filters ?? new ExportFiltersDto();
 
     this.assertAllowed(dto);
@@ -230,7 +232,12 @@ export class ExportsService {
       this.prisma.db.exportJob.count({ where }),
     ]);
 
-    return paginate(rows.map((row) => this.toView(row)), total, page, limit);
+    return paginate(
+      rows.map((row) => this.toView(row)),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findOne(id: string): Promise<ExportJobView> {
@@ -283,9 +290,7 @@ export class ExportsService {
 
     await this.notifications.notifyUsers(
       [userId],
-      failed
-        ? NOTIFICATION_TYPES.exportFailed
-        : NOTIFICATION_TYPES.exportReady,
+      failed ? NOTIFICATION_TYPES.exportFailed : NOTIFICATION_TYPES.exportReady,
       {
         exportJobId: job.id,
         title: definition.titleUz,
@@ -343,7 +348,9 @@ export class ExportsService {
           finishedAt: new Date(),
         },
       });
-      this.logger.error(`Eksport ${exportJobId} navbatga tushmadi: ${String(error)}`);
+      this.logger.error(
+        `Eksport ${exportJobId} navbatga tushmadi: ${String(error)}`,
+      );
     }
   }
 

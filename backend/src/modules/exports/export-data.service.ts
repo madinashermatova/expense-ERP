@@ -66,7 +66,7 @@ export class ExportDataService {
       case ExportType.E7:
         return this.employees(filters);
       case ExportType.E8:
-        return this.branches(filters);
+        return this.branches();
       case ExportType.E9:
         return this.auditLog(filters);
       case ExportType.E10:
@@ -123,25 +123,141 @@ export class ExportDataService {
     );
 
     const columns: ExportColumn[] = [
-      { key: 'globalNumber', headerUz: 'Raqam', headerRu: 'Номер', type: 'text', width: 14 },
-      { key: 'branchNumber', headerUz: 'Filial raqami', headerRu: 'Номер филиала', type: 'text', width: 16 },
-      { key: 'date', headerUz: 'Sana', headerRu: 'Дата', type: 'date', width: 12 },
-      { key: 'branchName', headerUz: 'Filial', headerRu: 'Филиал', type: 'text', width: 18 },
-      { key: 'categoryName', headerUz: 'Kategoriya', headerRu: 'Категория', type: 'text', width: 20 },
-      { key: 'employees', headerUz: 'Xodimlar', headerRu: 'Сотрудники', type: 'text', width: 28 },
-      { key: 'shares', headerUz: 'Taqsimlash', headerRu: 'Распределение', type: 'text', width: 28 },
-      { key: 'amount', headerUz: 'Summa', headerRu: 'Сумма', type: 'money', width: 14 },
-      { key: 'currency', headerUz: 'Valyuta', headerRu: 'Валюта', type: 'text', width: 10 },
-      { key: 'rateUsed', headerUz: 'Kurs', headerRu: 'Курс', type: 'number', width: 12 },
-      { key: 'amountUzs', headerUz: 'Summa (UZS)', headerRu: 'Сумма (UZS)', type: 'money', width: 16, total: true },
-      { key: 'refundedAmount', headerUz: 'Qaytarilgan', headerRu: 'Возвращено', type: 'money', width: 14 },
-      { key: 'effectiveUzs', headerUz: 'Sof summa (UZS)', headerRu: 'Итого (UZS)', type: 'money', width: 16, total: true },
-      { key: 'paymentMethod', headerUz: "To'lov usuli", headerRu: 'Способ оплаты', type: 'text', width: 14 },
-      { key: 'status', headerUz: 'Status', headerRu: 'Статус', type: 'text', width: 18 },
-      { key: 'comment', headerUz: 'Izoh', headerRu: 'Комментарий', type: 'text', width: 30 },
-      { key: 'createdByName', headerUz: 'Kiritdi', headerRu: 'Создал', type: 'text', width: 20 },
-      { key: 'channel', headerUz: 'Kanal', headerRu: 'Канал', type: 'text', width: 10 },
-      { key: 'createdAt', headerUz: 'Yaratilgan', headerRu: 'Создано', type: 'datetime', width: 18 },
+      {
+        key: 'globalNumber',
+        headerUz: 'Raqam',
+        headerRu: 'Номер',
+        type: 'text',
+        width: 14,
+      },
+      {
+        key: 'branchNumber',
+        headerUz: 'Filial raqami',
+        headerRu: 'Номер филиала',
+        type: 'text',
+        width: 16,
+      },
+      {
+        key: 'date',
+        headerUz: 'Sana',
+        headerRu: 'Дата',
+        type: 'date',
+        width: 12,
+      },
+      {
+        key: 'branchName',
+        headerUz: 'Filial',
+        headerRu: 'Филиал',
+        type: 'text',
+        width: 18,
+      },
+      {
+        key: 'categoryName',
+        headerUz: 'Kategoriya',
+        headerRu: 'Категория',
+        type: 'text',
+        width: 20,
+      },
+      {
+        key: 'employees',
+        headerUz: 'Xodimlar',
+        headerRu: 'Сотрудники',
+        type: 'text',
+        width: 28,
+      },
+      {
+        key: 'shares',
+        headerUz: 'Taqsimlash',
+        headerRu: 'Распределение',
+        type: 'text',
+        width: 28,
+      },
+      {
+        key: 'amount',
+        headerUz: 'Summa',
+        headerRu: 'Сумма',
+        type: 'money',
+        width: 14,
+      },
+      {
+        key: 'currency',
+        headerUz: 'Valyuta',
+        headerRu: 'Валюта',
+        type: 'text',
+        width: 10,
+      },
+      {
+        key: 'rateUsed',
+        headerUz: 'Kurs',
+        headerRu: 'Курс',
+        type: 'number',
+        width: 12,
+      },
+      {
+        key: 'amountUzs',
+        headerUz: 'Summa (UZS)',
+        headerRu: 'Сумма (UZS)',
+        type: 'money',
+        width: 16,
+        total: true,
+      },
+      {
+        key: 'refundedAmount',
+        headerUz: 'Qaytarilgan',
+        headerRu: 'Возвращено',
+        type: 'money',
+        width: 14,
+      },
+      {
+        key: 'effectiveUzs',
+        headerUz: 'Sof summa (UZS)',
+        headerRu: 'Итого (UZS)',
+        type: 'money',
+        width: 16,
+        total: true,
+      },
+      {
+        key: 'paymentMethod',
+        headerUz: "To'lov usuli",
+        headerRu: 'Способ оплаты',
+        type: 'text',
+        width: 14,
+      },
+      {
+        key: 'status',
+        headerUz: 'Status',
+        headerRu: 'Статус',
+        type: 'text',
+        width: 18,
+      },
+      {
+        key: 'comment',
+        headerUz: 'Izoh',
+        headerRu: 'Комментарий',
+        type: 'text',
+        width: 30,
+      },
+      {
+        key: 'createdByName',
+        headerUz: 'Kiritdi',
+        headerRu: 'Создал',
+        type: 'text',
+        width: 20,
+      },
+      {
+        key: 'channel',
+        headerUz: 'Kanal',
+        headerRu: 'Канал',
+        type: 'text',
+        width: 10,
+      },
+      {
+        key: 'createdAt',
+        headerUz: 'Yaratilgan',
+        headerRu: 'Создано',
+        type: 'datetime',
+        width: 18,
+      },
     ];
 
     const data: ExportRow[] = rows.map((row) => ({
@@ -177,18 +293,55 @@ export class ExportDataService {
   // ───────────────────────────────────────────────────────────────────────────
 
   private async byBranch(filters: ExportFiltersDto): Promise<ExportDataset> {
-    const rows = await this.reports.byBranch(
-      this.toReportQuery(filters) as GroupedReportDto,
-    );
+    const rows = await this.reports.byBranch(this.toReportQuery(filters));
 
     return {
       columns: [
-        { key: 'group', headerUz: 'Filial', headerRu: 'Филиал', type: 'text', width: 24 },
-        { key: 'count', headerUz: 'Xarajatlar soni', headerRu: 'Кол-во расходов', type: 'number', width: 16, total: true },
-        { key: 'totalAmount', headerUz: 'Jami (UZS)', headerRu: 'Итого (UZS)', type: 'money', width: 18, total: true },
-        { key: 'share', headerUz: 'Ulush, %', headerRu: 'Доля, %', type: 'number', width: 10 },
-        { key: 'employeeCount', headerUz: 'Xodimlar', headerRu: 'Сотрудники', type: 'number', width: 12, total: true },
-        { key: 'avgPerEmployee', headerUz: "Bir xodimga o'rtacha", headerRu: 'Средн. на сотрудника', type: 'money', width: 20 },
+        {
+          key: 'group',
+          headerUz: 'Filial',
+          headerRu: 'Филиал',
+          type: 'text',
+          width: 24,
+        },
+        {
+          key: 'count',
+          headerUz: 'Xarajatlar soni',
+          headerRu: 'Кол-во расходов',
+          type: 'number',
+          width: 16,
+          total: true,
+        },
+        {
+          key: 'totalAmount',
+          headerUz: 'Jami (UZS)',
+          headerRu: 'Итого (UZS)',
+          type: 'money',
+          width: 18,
+          total: true,
+        },
+        {
+          key: 'share',
+          headerUz: 'Ulush, %',
+          headerRu: 'Доля, %',
+          type: 'number',
+          width: 10,
+        },
+        {
+          key: 'employeeCount',
+          headerUz: 'Xodimlar',
+          headerRu: 'Сотрудники',
+          type: 'number',
+          width: 12,
+          total: true,
+        },
+        {
+          key: 'avgPerEmployee',
+          headerUz: "Bir xodimga o'rtacha",
+          headerRu: 'Средн. на сотрудника',
+          type: 'money',
+          width: 20,
+        },
       ],
       rows: rows.map((row) => ({
         group: row.group,
@@ -202,16 +355,40 @@ export class ExportDataService {
   }
 
   private async byCategory(filters: ExportFiltersDto): Promise<ExportDataset> {
-    const rows = await this.reports.byCategory(
-      this.toReportQuery(filters) as GroupedReportDto,
-    );
+    const rows = await this.reports.byCategory(this.toReportQuery(filters));
 
     return {
       columns: [
-        { key: 'group', headerUz: 'Kategoriya', headerRu: 'Категория', type: 'text', width: 26 },
-        { key: 'count', headerUz: 'Xarajatlar soni', headerRu: 'Кол-во расходов', type: 'number', width: 16, total: true },
-        { key: 'totalAmount', headerUz: 'Jami (UZS)', headerRu: 'Итого (UZS)', type: 'money', width: 18, total: true },
-        { key: 'share', headerUz: 'Ulush, %', headerRu: 'Доля, %', type: 'number', width: 10 },
+        {
+          key: 'group',
+          headerUz: 'Kategoriya',
+          headerRu: 'Категория',
+          type: 'text',
+          width: 26,
+        },
+        {
+          key: 'count',
+          headerUz: 'Xarajatlar soni',
+          headerRu: 'Кол-во расходов',
+          type: 'number',
+          width: 16,
+          total: true,
+        },
+        {
+          key: 'totalAmount',
+          headerUz: 'Jami (UZS)',
+          headerRu: 'Итого (UZS)',
+          type: 'money',
+          width: 18,
+          total: true,
+        },
+        {
+          key: 'share',
+          headerUz: 'Ulush, %',
+          headerRu: 'Доля, %',
+          type: 'number',
+          width: 10,
+        },
       ],
       rows: rows.map((row) => ({
         group: row.group,
@@ -223,17 +400,47 @@ export class ExportDataService {
   }
 
   private async byEmployee(filters: ExportFiltersDto): Promise<ExportDataset> {
-    const rows = await this.reports.byEmployee(
-      this.toReportQuery(filters) as GroupedReportDto,
-    );
+    const rows = await this.reports.byEmployee(this.toReportQuery(filters));
 
     return {
       columns: [
-        { key: 'group', headerUz: 'Xodim', headerRu: 'Сотрудник', type: 'text', width: 26 },
-        { key: 'branchName', headerUz: 'Filial', headerRu: 'Филиал', type: 'text', width: 20 },
-        { key: 'count', headerUz: 'Xarajatlar soni', headerRu: 'Кол-во расходов', type: 'number', width: 16, total: true },
-        { key: 'totalAmount', headerUz: 'Jami (UZS)', headerRu: 'Итого (UZS)', type: 'money', width: 18, total: true },
-        { key: 'share', headerUz: 'Ulush, %', headerRu: 'Доля, %', type: 'number', width: 10 },
+        {
+          key: 'group',
+          headerUz: 'Xodim',
+          headerRu: 'Сотрудник',
+          type: 'text',
+          width: 26,
+        },
+        {
+          key: 'branchName',
+          headerUz: 'Filial',
+          headerRu: 'Филиал',
+          type: 'text',
+          width: 20,
+        },
+        {
+          key: 'count',
+          headerUz: 'Xarajatlar soni',
+          headerRu: 'Кол-во расходов',
+          type: 'number',
+          width: 16,
+          total: true,
+        },
+        {
+          key: 'totalAmount',
+          headerUz: 'Jami (UZS)',
+          headerRu: 'Итого (UZS)',
+          type: 'money',
+          width: 18,
+          total: true,
+        },
+        {
+          key: 'share',
+          headerUz: 'Ulush, %',
+          headerRu: 'Доля, %',
+          type: 'number',
+          width: 10,
+        },
       ],
       rows: rows.map((row) => ({
         group: row.group,
@@ -252,12 +459,51 @@ export class ExportDataService {
 
     return {
       columns: [
-        { key: 'scope', headerUz: 'Kesim', headerRu: 'Разрез', type: 'text', width: 14 },
-        { key: 'scopeName', headerUz: 'Nomi', headerRu: 'Название', type: 'text', width: 26 },
-        { key: 'limit', headerUz: 'Limit (UZS)', headerRu: 'Лимит (UZS)', type: 'money', width: 18, total: true },
-        { key: 'actual', headerUz: 'Fakt (UZS)', headerRu: 'Факт (UZS)', type: 'money', width: 18, total: true },
-        { key: 'variance', headerUz: 'Farq (UZS)', headerRu: 'Отклонение (UZS)', type: 'money', width: 18, total: true },
-        { key: 'usedPercent', headerUz: 'Bajarilishi, %', headerRu: 'Использовано, %', type: 'number', width: 14 },
+        {
+          key: 'scope',
+          headerUz: 'Kesim',
+          headerRu: 'Разрез',
+          type: 'text',
+          width: 14,
+        },
+        {
+          key: 'scopeName',
+          headerUz: 'Nomi',
+          headerRu: 'Название',
+          type: 'text',
+          width: 26,
+        },
+        {
+          key: 'limit',
+          headerUz: 'Limit (UZS)',
+          headerRu: 'Лимит (UZS)',
+          type: 'money',
+          width: 18,
+          total: true,
+        },
+        {
+          key: 'actual',
+          headerUz: 'Fakt (UZS)',
+          headerRu: 'Факт (UZS)',
+          type: 'money',
+          width: 18,
+          total: true,
+        },
+        {
+          key: 'variance',
+          headerUz: 'Farq (UZS)',
+          headerRu: 'Отклонение (UZS)',
+          type: 'money',
+          width: 18,
+          total: true,
+        },
+        {
+          key: 'usedPercent',
+          headerUz: 'Bajarilishi, %',
+          headerRu: 'Использовано, %',
+          type: 'number',
+          width: 14,
+        },
       ],
       rows: rows.map((row) => ({
         scope: row.scope,
@@ -295,19 +541,98 @@ export class ExportDataService {
 
     return {
       columns: [
-        { key: 'globalNumber', headerUz: 'Xarajat raqami', headerRu: 'Номер расхода', type: 'text', width: 16 },
-        { key: 'branchName', headerUz: 'Filial', headerRu: 'Филиал', type: 'text', width: 18 },
-        { key: 'categoryName', headerUz: 'Kategoriya', headerRu: 'Категория', type: 'text', width: 20 },
-        { key: 'expenseDate', headerUz: 'Xarajat sanasi', headerRu: 'Дата расхода', type: 'date', width: 14 },
-        { key: 'amount', headerUz: 'Qaytarish summasi', headerRu: 'Сумма возврата', type: 'money', width: 16 },
-        { key: 'currency', headerUz: 'Valyuta', headerRu: 'Валюта', type: 'text', width: 10 },
-        { key: 'amountUzs', headerUz: 'Summa (UZS)', headerRu: 'Сумма (UZS)', type: 'money', width: 16, total: true },
-        { key: 'status', headerUz: 'Status', headerRu: 'Статус', type: 'text', width: 18 },
-        { key: 'reason', headerUz: 'Sabab', headerRu: 'Причина', type: 'text', width: 30 },
-        { key: 'rejectReason', headerUz: 'Rad etish sababi', headerRu: 'Причина отказа', type: 'text', width: 26 },
-        { key: 'requestedBy', headerUz: "So'ragan", headerRu: 'Запросил', type: 'text', width: 20 },
-        { key: 'createdAt', headerUz: 'Yaratilgan', headerRu: 'Создано', type: 'datetime', width: 18 },
-        { key: 'approvedAt', headerUz: 'Tasdiqlangan', headerRu: 'Утверждено', type: 'datetime', width: 18 },
+        {
+          key: 'globalNumber',
+          headerUz: 'Xarajat raqami',
+          headerRu: 'Номер расхода',
+          type: 'text',
+          width: 16,
+        },
+        {
+          key: 'branchName',
+          headerUz: 'Filial',
+          headerRu: 'Филиал',
+          type: 'text',
+          width: 18,
+        },
+        {
+          key: 'categoryName',
+          headerUz: 'Kategoriya',
+          headerRu: 'Категория',
+          type: 'text',
+          width: 20,
+        },
+        {
+          key: 'expenseDate',
+          headerUz: 'Xarajat sanasi',
+          headerRu: 'Дата расхода',
+          type: 'date',
+          width: 14,
+        },
+        {
+          key: 'amount',
+          headerUz: 'Qaytarish summasi',
+          headerRu: 'Сумма возврата',
+          type: 'money',
+          width: 16,
+        },
+        {
+          key: 'currency',
+          headerUz: 'Valyuta',
+          headerRu: 'Валюта',
+          type: 'text',
+          width: 10,
+        },
+        {
+          key: 'amountUzs',
+          headerUz: 'Summa (UZS)',
+          headerRu: 'Сумма (UZS)',
+          type: 'money',
+          width: 16,
+          total: true,
+        },
+        {
+          key: 'status',
+          headerUz: 'Status',
+          headerRu: 'Статус',
+          type: 'text',
+          width: 18,
+        },
+        {
+          key: 'reason',
+          headerUz: 'Sabab',
+          headerRu: 'Причина',
+          type: 'text',
+          width: 30,
+        },
+        {
+          key: 'rejectReason',
+          headerUz: 'Rad etish sababi',
+          headerRu: 'Причина отказа',
+          type: 'text',
+          width: 26,
+        },
+        {
+          key: 'requestedBy',
+          headerUz: "So'ragan",
+          headerRu: 'Запросил',
+          type: 'text',
+          width: 20,
+        },
+        {
+          key: 'createdAt',
+          headerUz: 'Yaratilgan',
+          headerRu: 'Создано',
+          type: 'datetime',
+          width: 18,
+        },
+        {
+          key: 'approvedAt',
+          headerUz: 'Tasdiqlangan',
+          headerRu: 'Утверждено',
+          type: 'datetime',
+          width: 18,
+        },
       ],
       rows: rows.map((row) => ({
         globalNumber: row.expense.globalNumber,
@@ -338,13 +663,55 @@ export class ExportDataService {
 
     return {
       columns: [
-        { key: 'fullName', headerUz: 'F.I.Sh.', headerRu: 'Ф.И.О.', type: 'text', width: 28 },
-        { key: 'position', headerUz: 'Lavozim', headerRu: 'Должность', type: 'text', width: 20 },
-        { key: 'branchName', headerUz: 'Filial', headerRu: 'Филиал', type: 'text', width: 20 },
-        { key: 'phone', headerUz: 'Telefon', headerRu: 'Телефон', type: 'text', width: 16 },
-        { key: 'hiredAt', headerUz: 'Ishga qabul', headerRu: 'Принят', type: 'date', width: 14 },
-        { key: 'status', headerUz: 'Status', headerRu: 'Статус', type: 'text', width: 12 },
-        { key: 'language', headerUz: 'Til', headerRu: 'Язык', type: 'text', width: 8 },
+        {
+          key: 'fullName',
+          headerUz: 'F.I.Sh.',
+          headerRu: 'Ф.И.О.',
+          type: 'text',
+          width: 28,
+        },
+        {
+          key: 'position',
+          headerUz: 'Lavozim',
+          headerRu: 'Должность',
+          type: 'text',
+          width: 20,
+        },
+        {
+          key: 'branchName',
+          headerUz: 'Filial',
+          headerRu: 'Филиал',
+          type: 'text',
+          width: 20,
+        },
+        {
+          key: 'phone',
+          headerUz: 'Telefon',
+          headerRu: 'Телефон',
+          type: 'text',
+          width: 16,
+        },
+        {
+          key: 'hiredAt',
+          headerUz: 'Ishga qabul',
+          headerRu: 'Принят',
+          type: 'date',
+          width: 14,
+        },
+        {
+          key: 'status',
+          headerUz: 'Status',
+          headerRu: 'Статус',
+          type: 'text',
+          width: 12,
+        },
+        {
+          key: 'language',
+          headerUz: 'Til',
+          headerRu: 'Язык',
+          type: 'text',
+          width: 8,
+        },
       ],
       rows: rows.map((row) => ({
         fullName: row.fullName,
@@ -358,7 +725,7 @@ export class ExportDataService {
     };
   }
 
-  private async branches(_filters: ExportFiltersDto): Promise<ExportDataset> {
+  private async branches(): Promise<ExportDataset> {
     const rows = await this.prisma.db.branch.findMany({
       include: { _count: { select: { employees: true } } },
       orderBy: { name: 'asc' },
@@ -367,13 +734,56 @@ export class ExportDataService {
 
     return {
       columns: [
-        { key: 'code', headerUz: 'Kod', headerRu: 'Код', type: 'text', width: 10 },
-        { key: 'name', headerUz: 'Nomi', headerRu: 'Название', type: 'text', width: 26 },
-        { key: 'address', headerUz: 'Manzil', headerRu: 'Адрес', type: 'text', width: 30 },
-        { key: 'phone', headerUz: 'Telefon', headerRu: 'Телефон', type: 'text', width: 16 },
-        { key: 'openedAt', headerUz: 'Ochilgan', headerRu: 'Открыт', type: 'date', width: 14 },
-        { key: 'status', headerUz: 'Status', headerRu: 'Статус', type: 'text', width: 12 },
-        { key: 'employeeCount', headerUz: 'Xodimlar', headerRu: 'Сотрудники', type: 'number', width: 12, total: true },
+        {
+          key: 'code',
+          headerUz: 'Kod',
+          headerRu: 'Код',
+          type: 'text',
+          width: 10,
+        },
+        {
+          key: 'name',
+          headerUz: 'Nomi',
+          headerRu: 'Название',
+          type: 'text',
+          width: 26,
+        },
+        {
+          key: 'address',
+          headerUz: 'Manzil',
+          headerRu: 'Адрес',
+          type: 'text',
+          width: 30,
+        },
+        {
+          key: 'phone',
+          headerUz: 'Telefon',
+          headerRu: 'Телефон',
+          type: 'text',
+          width: 16,
+        },
+        {
+          key: 'openedAt',
+          headerUz: 'Ochilgan',
+          headerRu: 'Открыт',
+          type: 'date',
+          width: 14,
+        },
+        {
+          key: 'status',
+          headerUz: 'Status',
+          headerRu: 'Статус',
+          type: 'text',
+          width: 12,
+        },
+        {
+          key: 'employeeCount',
+          headerUz: 'Xodimlar',
+          headerRu: 'Сотрудники',
+          type: 'number',
+          width: 12,
+          total: true,
+        },
       ],
       rows: rows.map((row) => ({
         code: row.code,
@@ -394,7 +804,9 @@ export class ExportDataService {
   private async auditLog(filters: ExportFiltersDto): Promise<ExportDataset> {
     const rows = await this.prisma.db.auditLog.findMany({
       where: this.auditWhere(filters),
-      include: { user: { select: { employee: { select: { fullName: true } } } } },
+      include: {
+        user: { select: { employee: { select: { fullName: true } } } },
+      },
       orderBy: { createdAt: 'desc' },
       take: MAX_EXPORT_ROWS,
     });
@@ -433,16 +845,70 @@ export class ExportDataService {
 
     return {
       columns: [
-        { key: 'createdAt', headerUz: 'Vaqt', headerRu: 'Время', type: 'datetime', width: 18 },
-        { key: 'userName', headerUz: 'Foydalanuvchi', headerRu: 'Пользователь', type: 'text', width: 24 },
-        { key: 'action', headerUz: 'Amal', headerRu: 'Действие', type: 'text', width: 18 },
-        { key: 'entityType', headerUz: 'Obyekt', headerRu: 'Объект', type: 'text', width: 16 },
-        { key: 'entityId', headerUz: 'Obyekt ID', headerRu: 'ID объекта', type: 'text', width: 38 },
-        { key: 'field', headerUz: 'Maydon', headerRu: 'Поле', type: 'text', width: 18 },
-        { key: 'oldValue', headerUz: 'Eski qiymat', headerRu: 'Старое значение', type: 'text', width: 24 },
-        { key: 'newValue', headerUz: 'Yangi qiymat', headerRu: 'Новое значение', type: 'text', width: 24 },
+        {
+          key: 'createdAt',
+          headerUz: 'Vaqt',
+          headerRu: 'Время',
+          type: 'datetime',
+          width: 18,
+        },
+        {
+          key: 'userName',
+          headerUz: 'Foydalanuvchi',
+          headerRu: 'Пользователь',
+          type: 'text',
+          width: 24,
+        },
+        {
+          key: 'action',
+          headerUz: 'Amal',
+          headerRu: 'Действие',
+          type: 'text',
+          width: 18,
+        },
+        {
+          key: 'entityType',
+          headerUz: 'Obyekt',
+          headerRu: 'Объект',
+          type: 'text',
+          width: 16,
+        },
+        {
+          key: 'entityId',
+          headerUz: 'Obyekt ID',
+          headerRu: 'ID объекта',
+          type: 'text',
+          width: 38,
+        },
+        {
+          key: 'field',
+          headerUz: 'Maydon',
+          headerRu: 'Поле',
+          type: 'text',
+          width: 18,
+        },
+        {
+          key: 'oldValue',
+          headerUz: 'Eski qiymat',
+          headerRu: 'Старое значение',
+          type: 'text',
+          width: 24,
+        },
+        {
+          key: 'newValue',
+          headerUz: 'Yangi qiymat',
+          headerRu: 'Новое значение',
+          type: 'text',
+          width: 24,
+        },
         { key: 'ip', headerUz: 'IP', headerRu: 'IP', type: 'text', width: 16 },
-        { key: 'channel', headerUz: 'Kanal', headerRu: 'Канал', type: 'text', width: 10 },
+        {
+          key: 'channel',
+          headerUz: 'Kanal',
+          headerRu: 'Канал',
+          type: 'text',
+          width: 10,
+        },
       ],
       rows: data,
     };
@@ -469,15 +935,69 @@ export class ExportDataService {
 
     return {
       columns: [
-        { key: 'globalNumber', headerUz: 'Xarajat raqami', headerRu: 'Номер расхода', type: 'text', width: 16 },
-        { key: 'branchName', headerUz: 'Filial', headerRu: 'Филиал', type: 'text', width: 18 },
-        { key: 'expenseDate', headerUz: 'Xarajat sanasi', headerRu: 'Дата расхода', type: 'date', width: 14 },
-        { key: 'fromStatus', headerUz: 'Oldingi status', headerRu: 'Прежний статус', type: 'text', width: 18 },
-        { key: 'toStatus', headerUz: 'Yangi status', headerRu: 'Новый статус', type: 'text', width: 18 },
-        { key: 'byName', headerUz: 'Kim', headerRu: 'Кто', type: 'text', width: 24 },
-        { key: 'reason', headerUz: 'Sabab', headerRu: 'Причина', type: 'text', width: 30 },
-        { key: 'channel', headerUz: 'Kanal', headerRu: 'Канал', type: 'text', width: 10 },
-        { key: 'createdAt', headerUz: 'Vaqt', headerRu: 'Время', type: 'datetime', width: 18 },
+        {
+          key: 'globalNumber',
+          headerUz: 'Xarajat raqami',
+          headerRu: 'Номер расхода',
+          type: 'text',
+          width: 16,
+        },
+        {
+          key: 'branchName',
+          headerUz: 'Filial',
+          headerRu: 'Филиал',
+          type: 'text',
+          width: 18,
+        },
+        {
+          key: 'expenseDate',
+          headerUz: 'Xarajat sanasi',
+          headerRu: 'Дата расхода',
+          type: 'date',
+          width: 14,
+        },
+        {
+          key: 'fromStatus',
+          headerUz: 'Oldingi status',
+          headerRu: 'Прежний статус',
+          type: 'text',
+          width: 18,
+        },
+        {
+          key: 'toStatus',
+          headerUz: 'Yangi status',
+          headerRu: 'Новый статус',
+          type: 'text',
+          width: 18,
+        },
+        {
+          key: 'byName',
+          headerUz: 'Kim',
+          headerRu: 'Кто',
+          type: 'text',
+          width: 24,
+        },
+        {
+          key: 'reason',
+          headerUz: 'Sabab',
+          headerRu: 'Причина',
+          type: 'text',
+          width: 30,
+        },
+        {
+          key: 'channel',
+          headerUz: 'Kanal',
+          headerRu: 'Канал',
+          type: 'text',
+          width: 10,
+        },
+        {
+          key: 'createdAt',
+          headerUz: 'Vaqt',
+          headerRu: 'Время',
+          type: 'datetime',
+          width: 18,
+        },
       ],
       rows: rows.map((row) => ({
         globalNumber: row.expense.globalNumber,
@@ -550,7 +1070,9 @@ export class ExportDataService {
       // Kun oxirigacha: `createdAt` vaqt bilan saqlanadi, tun yarmidan keyingi
       // yozuvlar tushib qolmasligi kerak
       ...(filters.dateTo
-        ? { lte: new Date(atUtcMidnight(filters.dateTo).getTime() + 86_399_999) }
+        ? {
+            lte: new Date(atUtcMidnight(filters.dateTo).getTime() + 86_399_999),
+          }
         : {}),
     };
   }
@@ -592,7 +1114,11 @@ export class ExportDataService {
 }
 
 function stringify(value: unknown): string {
-  if (value === null) return '';
+  if (value === null || value === undefined) return '';
   if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return '';
 }

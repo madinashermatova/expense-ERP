@@ -12,11 +12,7 @@ import { Paginated } from '../../common/dto/pagination.dto';
 import { CreateExportDto } from './dto/create-export.dto';
 import { ListExportsDto } from './dto/list-exports.dto';
 import { EXPORT_CATALOG, ExportDefinition } from './export-catalog';
-import {
-  DownloadLink,
-  ExportJobView,
-  ExportsService,
-} from './exports.service';
+import { DownloadLink, ExportJobView, ExportsService } from './exports.service';
 
 /**
  * Eksport endpointlari (TZ 3.13).
@@ -49,17 +45,13 @@ export class ExportsController {
   }
 
   @Get(':id')
-  findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<ExportJobView> {
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<ExportJobView> {
     return this.exports.findOne(id);
   }
 
   @Get(':id/download')
   @HttpCode(200)
-  download(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<DownloadLink> {
+  download(@Param('id', ParseUUIDPipe) id: string): Promise<DownloadLink> {
     return this.exports.downloadLink(id);
   }
 }

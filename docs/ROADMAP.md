@@ -473,11 +473,39 @@ xatosiz ishlash (`botBlocked` belgisi), job payload da `companyId` majburiy.
 
 ---
 
-## S13 — Eksport E1–E10 ⬜ (TZ 3.13)
+## S13 — Eksport E1–E10 ✅ (TZ 3.13)
 
-**Nima:** `POST /exports` → `jobId`; `exceljs` bilan xlsx (raqam formati, jami qatori,
-freeze pane, avtofiltr), PDF (`pdfmake`); >1000 qator → fon rejimi; signed URL;
-24 soatdan keyin avtomatik tozalash (cron); har eksport → `audit_log`.
+**Nima:** `POST /exports` → eksport yozuvi; `GET /exports`, `GET /exports/:id`,
+`GET /exports/:id/download` (signed URL), `GET /exports/types`; `exceljs` bilan xlsx
+(raqam formati, jami qatori, freeze pane, avtofiltr), PDF (`pdfmake`); >1000 qator →
+fon rejimi (BullMQ `exports` navbati); 24 soatdan keyin avtomatik tozalash (cron);
+har eksport → `audit_log` (`action: "EXPORT"`).
+
+**Natija:** `test:int` — 262/262 yashil (yangi: eksport 12), `test:unit` — 47/47
+(yangi: `xlsx.writer` 6, `pdf.writer` 2).
+
+**S13 da qabul qilingan qarorlar:**
+- **Ruxsat `@Roles` da emas, katalogda.** Bitta endpoint E1–E10 ni qabul qiladi, ya'ni
+  ruxsat **turga** bog'liq (E9 — faqat admin). `export-catalog.ts` — turlar, ruxsat
+  etilgan rollar va formatlar yagona jadvalda; controller uni faqat o'qiydi.
+- **Ma'lumot mavjud servislardan olinadi** (`ExpensesService.listForExport`,
+  `ReportsService`) — shunda eksport ekrandagi jadval bilan bir xil filtr, bir xil
+  filial doirasi va bir xil hisoblash mantig'ini ishlatadi. Alohida SQL yozilganda
+  "qatorlar soni mos kelishi" mezoni birinchi o'zgarishdayoq buzilardi.
+- **Sinxron/fon chegarasi — 1000 qator**, lekin ikkala yo'l ham bitta `generate()` ni
+  chaqiradi: fon rejimidagi fayl sinxron fayldan farq qilmaydi.
+- **Job ichida rol va filial uzatiladi.** Processor so'rov konteksti tashqarisida
+  ishlaydi; faqat `companyId` uzatilganda direktor so'ragan faylga butun kompaniya
+  qatorlari tushib ketardi.
+- **Jami qatori formula bilan emas, hisoblangan qiymat bilan** — fayl PDF ga
+  aylantirilganda yoki formulani qo'llab-quvvatlamaydigan ko'rgichda ham son ko'rinadi.
+- **PDF uchun Roboto (pdfmake vfs) yuklanadi.** Standart Helvetica WinAnsi da ishlaydi
+  va kirill harflarini chiza olmaydi — ruscha hisobot bo'sh kvadratlarga aylanardi.
+  PDF da ustunlar 10 tagacha qisqaradi (A4 ga sig'maydi), to'liq ma'lumot xlsx da.
+- **Tozalash cron yozuvni emas, faqat `storageKey` ni o'chiradi** — eksport tarixi va
+  audit izi qoladi, muddati tugagan havola esa `EXPORT_NOT_READY` beradi.
+- **E9 `changes` ni maydon-boyicha qatorlarga yoyadi** (TZ 3.14) — bitta amalda uch
+  maydon o'zgargan bo'lsa, faylda uch qator.
 
 **Commit:** `feat(exports): E1–E10 xlsx/pdf, fon rejimi, signed URL`
 

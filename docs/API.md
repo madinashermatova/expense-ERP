@@ -6,8 +6,8 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S12 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
-tasdiqlash, tahrirlash, qaytarish, byudjet, bildirishnomalar, hisobotlar
+Holat: **S1–S13 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
+tasdiqlash, tahrirlash, qaytarish, byudjet, bildirishnomalar, hisobotlar, eksport
 
 ---
 
@@ -1099,11 +1099,103 @@ oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
 
 ---
 
+## Eksport (E1–E10)
+
+Eksport ekrandagi filtrlarni aynan takrorlaydi va rol hamda filial doirasiga bo'ysunadi:
+direktor eksportida faqat o'z filiali qatorlari bo'ladi.
+
+| Tur | Nima | Formatlar | Kim |
+|---|---|---|---|
+| `E1` | Xarajatlar ro'yxati | xlsx, pdf | ADMIN, DIRECTOR |
+| `E2` | Hisobot: filiallar bo'yicha | xlsx, pdf | ADMIN |
+| `E3` | Hisobot: kategoriyalar bo'yicha | xlsx, pdf | ADMIN, DIRECTOR |
+| `E4` | Hisobot: xodimlar bo'yicha | xlsx, pdf | ADMIN, DIRECTOR |
+| `E5` | Byudjet vs Fakt | xlsx, pdf | ADMIN, DIRECTOR |
+| `E6` | Qaytarishlar ro'yxati | xlsx | ADMIN, DIRECTOR |
+| `E7` | Xodimlar ro'yxati | xlsx | ADMIN, DIRECTOR |
+| `E8` | Filiallar ro'yxati | xlsx | ADMIN |
+| `E9` | Audit jurnali | xlsx | **faqat ADMIN** |
+| `E10` | Tasdiqlash tarixi | xlsx | ADMIN |
+
+### `POST /exports` → `201`
+
+```jsonc
+{
+  "type": "E1",
+  "format": "XLSX",          // XLSX | PDF
+  "language": "UZ",          // ixtiyoriy; sukut bo'yicha profil tili
+  "filters": {               // ixtiyoriy; ro'yxat/hisobot filtrlarining o'zi
+    "period": "current",     // current | previous (dateFrom/dateTo berilmasa)
+    "dateFrom": "2026-08-01", "dateTo": "2026-08-31",
+    "branchId": "uuid", "categoryId": "uuid", "employeeId": "uuid",
+    "status": ["APPROVED"], "paymentMethod": "CASH", "currency": "UZS",
+    "amountFrom": "100000", "amountTo": "5000000", "q": "EXP-000123",
+    "limit": 10              // TOP-N kesimlar uchun (E4)
+  }
+}
+```
+
+Javob — eksport yozuvi:
+
+```jsonc
+{
+  "id": "uuid", "type": "E1", "format": "XLSX",
+  "status": "DONE",          // QUEUED | RUNNING | DONE | FAILED
+  "filters": { },
+  "rowCount": 248, "error": null,
+  "createdAt": "2026-08-12T10:00:00.000Z",
+  "finishedAt": "2026-08-12T10:00:01.400Z",
+  "expiresAt": "2026-08-13T10:00:01.400Z",
+  "ready": true
+}
+```
+
+**1 000 qatordan katta eksport** darhol `status: "QUEUED"` bilan qaytadi (so'rov
+bloklanmaydi) va fon rejimida generatsiya qilinadi; tayyor bo'lgach `EXPORT_READY`
+bildirishnomasi keladi (xato bo'lsa — `EXPORT_FAILED`).
+
+Xatolar: `403 EXPORT_FORBIDDEN` (turga ruxsat yo'q), `422 EXPORT_FORMAT_UNSUPPORTED`,
+`403 BRANCH_FORBIDDEN` (direktor boshqa filial filtri bilan so'radi).
+
+### `GET /exports`
+
+Sahifalangan tarix. Bosh admin kompaniyaning barcha eksportlarini, qolganlar —
+o'zinikini ko'radi. Filtrlar: `type`, `status`.
+
+### `GET /exports/:id` → eksport yozuvi
+
+### `GET /exports/:id/download`
+
+```jsonc
+{
+  "url": "https://…?X-Amz-Signature=…",
+  "expiresAt": "2026-08-12T10:15:00.000Z",
+  "fileName": "E1_2026-08-12_15-00.xlsx"
+}
+```
+
+Havola vaqtinchalik (TTL 15 daq). Fayl **24 soatdan keyin** storagedan o'chiriladi —
+undan keyin `404 EXPORT_NOT_READY`, eksportni qaytadan so'rash kerak.
+Tayyor bo'lmagan eksport uchun ham `404 EXPORT_NOT_READY`.
+
+### `GET /exports/types`
+
+Katalog: tur, uz/ru nomi, ruxsat etilgan rollar va formatlar — frontend tanlov
+ro'yxatini shu javobdan quradi.
+
+### Fayl tuzilishi
+
+Sarlavha bloki (hisobot nomi, davr, filtrlar, kim va qachon — Asia/Tashkent) →
+ustun sarlavhalari (tanlangan tilda) → ma'lumot → **jami** qatori. Excelda summa
+katakchalari raqam formatida, sana — sana formatida, sarlavha qatori muzlatilgan va
+avtofiltr yoqilgan. Har bir eksport `audit_log` ga `action: "EXPORT"` bilan yoziladi.
+
+---
+
 ## ⏳ Rejada (keyingi bosqichlar)
 
 | Endpoint | Bosqich |
 |---|---|
-| `POST/GET /exports` | S13 |
 | `GET /audit` | S14 |
 | `GET/PATCH /settings` | S15 |
 
