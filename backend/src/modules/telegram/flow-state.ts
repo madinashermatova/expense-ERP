@@ -66,7 +66,47 @@ export interface ExpenseFlow {
   files?: PendingFile[];
 }
 
-export type FlowState = LoginFlow | ExpenseFlow;
+/**
+ * Qaror sababi (rad etish / tuzatish so'rash / qaytarishni rad etish).
+ * Sabab majburiy (TZ 3.7), shuning uchun matn kelishini kutish alohida qadam.
+ */
+export interface DecisionFlow {
+  name: 'decision';
+  step: 'reason';
+  kind: 'expense' | 'refund' | 'edit';
+  targetId: string;
+  action: 'reject' | 'fix';
+  /** Optimistik qulf uchun — kartochka ko'rsatilgan paytdagi versiya */
+  version?: number;
+  /** Kartochka qaysi navbatdan ochilgan — "allaqachon qayta ishlangan" ni aniqlash uchun */
+  stage?: 'director' | 'admin';
+}
+
+/** Pulni qaytarish so'rovi (TZ 3.9, bot tomoni) */
+export interface RefundFlow {
+  name: 'refund';
+  step: 'expense' | 'amount' | 'reason' | 'proof' | 'confirm';
+  page?: number;
+  expenseId?: string;
+  expenseNumber?: string;
+  /** Qaytarish mumkin bo'lgan eng ko'p summa (qaytarilgani chegirilgan) */
+  maxAmount?: string;
+  amount?: string;
+  reason?: string;
+  files?: PendingFile[];
+}
+
+/** Tahrirlash murojaati (TZ 3.8, bot tomoni) */
+export interface EditRequestFlow {
+  name: 'editRequest';
+  step: 'expense' | 'description';
+  page?: number;
+  expenseId?: string;
+  expenseNumber?: string;
+}
+
+export type FlowState =
+  LoginFlow | ExpenseFlow | DecisionFlow | RefundFlow | EditRequestFlow;
 
 export function isFlow<N extends FlowState['name']>(
   flow: FlowState | null,

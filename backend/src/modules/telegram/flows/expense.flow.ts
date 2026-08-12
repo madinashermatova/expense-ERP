@@ -30,6 +30,7 @@ import {
   parseDate,
 } from '../format';
 import { MenuPresenter } from '../menu.presenter';
+import { extractServiceMessage } from '../service-error';
 
 /** Bir sahifada ko'rsatiladigan xodim soni — Telegram inline klaviaturasi cheklangan */
 const EMPLOYEES_PER_PAGE = 8;
@@ -627,7 +628,7 @@ export class ExpenseFlowHandler {
     error: unknown,
   ): Promise<void> {
     const lang = langOf(session.language);
-    const message = extractMessage(error);
+    const message = extractServiceMessage(error);
 
     this.logger.warn(`Bot xarajati yaratilmadi: ${message}`);
     await this.render(
@@ -938,21 +939,4 @@ export class ExpenseFlowHandler {
       select: { commentRequired: true, receiptRequired: true },
     });
   }
-}
-
-/**
- * Servis xatosidan foydalanuvchiga ko'rsatiladigan matnni ajratadi.
- * Ichki tafsilotlar (stack, kod) botga chiqmaydi.
- */
-function extractMessage(error: unknown): string | null {
-  if (typeof error !== 'object' || error === null) return null;
-
-  const response = (error as { response?: unknown }).response;
-  if (typeof response === 'object' && response !== null) {
-    const message = (response as { message?: unknown }).message;
-    if (typeof message === 'string') return message;
-  }
-
-  const message = (error as { message?: unknown }).message;
-  return typeof message === 'string' ? message : null;
 }

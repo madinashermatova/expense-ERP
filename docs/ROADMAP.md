@@ -562,7 +562,7 @@ bildirishnomalar yoqilishi, eslatma vaqti, tahrirlash oynasi.
 
 ---
 
-## S16 — Telegram bot 🔄 (TZ 3.12, 3.16.5)
+## S16 — Telegram bot ✅ (TZ 3.12, 3.16.5)
 
 Bosqich hajmi katta, shuning uchun uchga bo'lindi: **S16.1** infratuzilma va kirish,
 **S16.2** xarajat oqimi va statistika, **S16.3** tasdiqlash/refund/tahrirlash sahnalari.
@@ -640,10 +640,35 @@ Bosqich hajmi katta, shuning uchun uchga bo'lindi: **S16.1** infratuzilma va kir
   `employeeId` ni o'z ichiga oladi, ya'ni bir ishchi natijasi boshqasiga ko'rinmaydi.
 - **To'lov usuli bot da so'ralmaydi** (TZ 3.12.3 da yo'q) — `CASH` qo'yiladi.
 
-### S16.3 — Tasdiqlash, refund, tahrirlash sahnalari ⬜
+### S16.3 — Tasdiqlash, refund, tahrirlash sahnalari ✅
 
-- Tasdiqlash kartochkasi + inline tugmalar + idempotentlik, navigatsiya (⬅️ ➡️)
-- Refund va EditRequest sahnalari
+**Nima qurildi:**
+- `ApprovalsFlowHandler` — tasdiqlash kartochkasi (filial, xodim, kategoriya, summa,
+  sana, izoh, chek soni), ⬅️ ➡️ navigatsiya, ✅ / ❌ / ✏️ tugmalari; qaytarish va
+  tahrirlash so'rovlari kartochkalari qarorlar bilan
+- `RequestsFlowHandler` — ishchi tomonidan qaytarish so'rovi (xarajat → summa →
+  sabab → isbot → tasdiqlash) va tahrirlash murojaati (xarajat → matn)
+
+**Natija:** `test:int` — 316/316 yashil (yangi: bot tasdiqlash/so'rovlar 9),
+`test:unit` — 53/53.
+
+**S16.3 da qabul qilingan qarorlar:**
+- **Idempotentlik ikki xil xatoni birlashtiradi.** Ikkinchi bosishda servis yoki
+  `ALREADY_PROCESSED` (409, status hali o'zgarmagan), yoki 403 "bu bosqich sizga
+  tegishli emas" (status keyingi bosqichga o'tib ketgan) qaytaradi. Bot kartochka
+  ochilgan bosqichni joriy status bilan solishtiradi va ikkalasida ham
+  "allaqachon qayta ishlangan" deydi (TZ 3.12.3 qabul mezoni).
+- **Sabab qadami alohida holat** (`DecisionFlow`) — sabab majburiy (≥10 belgi, TZ 3.7)
+  va matn keyingi xabarda keladi, ya'ni qaror ikki qadamda yakunlanadi.
+- **`rfd:`/`edt:` prefikslari ikki tomonga xizmat qiladi** — tasdiqlovchi qarorlari
+  (`ok`/`no`/`go`) va ishchining sahnasi (`exp`/`cancel`/`send`). Ajratish amal nomi
+  bo'yicha: prefiksni ikkiga bo'lish callback nomlarini uzaytirardi.
+- **Tasdiqlovchi ekranlariga rol tekshiruvi routerda** (`APPROVER_BUTTONS`):
+  `ExpensesService.list` ishchini o'z yozuvlari bilan cheklamaydi, eski klaviatura
+  yoki qo'lda yozilgan matn esa tugmani "bosishi" mumkin.
+- **Hisob almashtirish va chiqish oqimni o'zi bekor qiladi** (`FLOW_NEUTRAL_BUTTONS`) —
+  ular o'z ogohlantirishini beradi; qolgan menyu tugmalari esa ochiq oqimni bekor
+  qilib "Bekor qilindi" deydi, ya'ni yarim to'ldirilgan ma'lumot jim yo'qolmaydi.
 
 **Qabul mezoni (butun S16):** parol xabari o'chiriladi va loglarda yo'q; hisob
 almashtirilganda cross-tenant ma'lumot oqmaydi; javob ≤ 2 s (p95).

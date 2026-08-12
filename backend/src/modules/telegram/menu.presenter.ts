@@ -57,6 +57,15 @@ export class MenuPresenter {
     });
   }
 
+  /** Bog'langan hisoblar soni — kartochkalarda kompaniya ko'rsatish uchun */
+  async linkedAccountCount(update: BotUpdate): Promise<number> {
+    const accounts = await this.auth.listAccounts(
+      update.botId,
+      update.telegramId,
+    );
+    return accounts.length;
+  }
+
   greeting(account: ActiveAccount, session: BotSession): string {
     const lang = langOf(session.language);
     return t('loginSuccess', lang, {

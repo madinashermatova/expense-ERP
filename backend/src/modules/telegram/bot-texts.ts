@@ -289,6 +289,130 @@ const TEXTS = {
     uz: 'Fayl yuklanmadi, lekin xarajat saqlandi: {number}. Chekni web orqali biriktiring.',
     ru: 'Файл не загрузился, но расход сохранён: {number}. Прикрепите чек через веб.',
   },
+  approvalsEmpty: {
+    uz: 'Tasdiqlash kutayotgan ariza yo‘q.',
+    ru: 'Нет заявок, ожидающих согласования.',
+  },
+  approvalCard: {
+    uz: '🆕 Xarajat {number} ({index}/{total})\n🏢 Filial: {branch}\n👤 Xodim: {employees}\n📂 Kategoriya: {category}\n💰 Summa: {amount}\n📅 Sana: {date}',
+    ru: '🆕 Расход {number} ({index}/{total})\n🏢 Филиал: {branch}\n👤 Сотрудник: {employees}\n📂 Категория: {category}\n💰 Сумма: {amount}\n📅 Дата: {date}',
+  },
+  approvalComment: {
+    uz: '📝 Izoh: {comment}',
+    ru: '📝 Комментарий: {comment}',
+  },
+  approvalFiles: {
+    uz: '📎 Chek: {count} ta',
+    ru: '📎 Чек: {count} шт.',
+  },
+  approvalCompany: {
+    uz: '🏢 Kompaniya: {company}',
+    ru: '🏢 Компания: {company}',
+  },
+  approve: { uz: '✅ Tasdiqlash', ru: '✅ Одобрить' },
+  rejectAction: { uz: '❌ Rad etish', ru: '❌ Отклонить' },
+  requestFix: { uz: '✏️ Tuzatish so‘rash', ru: '✏️ Запросить правку' },
+  askReason: {
+    uz: 'Sababni yozing (kamida {min} belgi):',
+    ru: 'Напишите причину (минимум {min} символов):',
+  },
+  reasonTooShort: {
+    uz: 'Sabab kamida {min} belgidan iborat bo‘lishi kerak.',
+    ru: 'Причина должна быть не короче {min} символов.',
+  },
+  approvedDone: {
+    uz: '✅ {number} tasdiqlandi.',
+    ru: '✅ {number} одобрен.',
+  },
+  rejectedDone: {
+    uz: '❌ {number} rad etildi.',
+    ru: '❌ {number} отклонён.',
+  },
+  fixRequestedDone: {
+    uz: '✏️ {number} bo‘yicha tuzatish so‘raldi.',
+    ru: '✏️ По {number} запрошена правка.',
+  },
+  alreadyProcessed: {
+    uz: 'Ariza allaqachon qayta ishlangan.',
+    ru: 'Заявка уже обработана.',
+  },
+  refundsEmpty: {
+    uz: 'Qaytarish so‘rovi yo‘q.',
+    ru: 'Нет запросов на возврат.',
+  },
+  refundCard: {
+    uz: '↩️ Qaytarish {number} ({index}/{total})\n💰 Summa: {amount}\n📝 Sabab: {reason}\n📎 Isbot: {files} ta',
+    ru: '↩️ Возврат {number} ({index}/{total})\n💰 Сумма: {amount}\n📝 Причина: {reason}\n📎 Подтверждение: {files} шт.',
+  },
+  refundApproved: {
+    uz: '✅ Qaytarish so‘rovi tasdiqlandi.',
+    ru: '✅ Запрос на возврат одобрен.',
+  },
+  refundRejected: {
+    uz: '❌ Qaytarish so‘rovi rad etildi.',
+    ru: '❌ Запрос на возврат отклонён.',
+  },
+  refundChooseExpense: {
+    uz: '↩️ Qaysi xarajat bo‘yicha pul qaytarilyapti?',
+    ru: '↩️ По какому расходу возвращаются деньги?',
+  },
+  refundNoExpenses: {
+    uz: 'Qaytarish faqat tasdiqlangan xarajat bo‘yicha mumkin — bunday yozuv topilmadi.',
+    ru: 'Возврат возможен только по одобренному расходу — таких записей нет.',
+  },
+  refundAskAmount: {
+    uz: '💰 Qaytarilgan summani yuboring (eng ko‘pi {max}):',
+    ru: '💰 Отправьте сумму возврата (не более {max}):',
+  },
+  refundAmountTooBig: {
+    uz: 'Summa xarajat qoldig‘idan ({max}) oshmasligi kerak.',
+    ru: 'Сумма не должна превышать остаток расхода ({max}).',
+  },
+  refundAskReason: {
+    uz: '📝 Qaytarish sababini yozing (kamida {min} belgi):',
+    ru: '📝 Напишите причину возврата (минимум {min} символов):',
+  },
+  refundAskProof: {
+    uz: '📎 Isbotni yuboring (rasm yoki PDF) — majburiy:',
+    ru: '📎 Отправьте подтверждение (фото или PDF) — обязательно:',
+  },
+  refundSubmitted: {
+    uz: '↩️ Qaytarish so‘rovi yuborildi: {number}',
+    ru: '↩️ Запрос на возврат отправлен: {number}',
+  },
+  editRequestsEmpty: {
+    uz: 'Tahrirlash murojaati yo‘q.',
+    ru: 'Нет заявок на правку.',
+  },
+  editCard: {
+    uz: '✏️ Murojaat {number} ({index}/{total})\n👤 {employee}\n📝 {description}',
+    ru: '✏️ Заявка {number} ({index}/{total})\n👤 {employee}\n📝 {description}',
+  },
+  editApply: { uz: '✅ Qabul qilish', ru: '✅ Принять' },
+  editApplied: {
+    uz: '✅ Murojaat qabul qilindi.',
+    ru: '✅ Заявка принята.',
+  },
+  editRejected: {
+    uz: '❌ Murojaat rad etildi.',
+    ru: '❌ Заявка отклонена.',
+  },
+  editChooseExpense: {
+    uz: '✏️ Qaysi xarajatni tahrirlash kerak?',
+    ru: '✏️ Какой расход нужно исправить?',
+  },
+  editNoExpenses: {
+    uz: 'Murojaat yuborish uchun xarajat topilmadi.',
+    ru: 'Не найдено расходов для заявки.',
+  },
+  editAskDescription: {
+    uz: '📝 Nima o‘zgarishi kerak va nima uchun (kamida {min} belgi):',
+    ru: '📝 Что нужно изменить и почему (минимум {min} символов):',
+  },
+  editSubmitted: {
+    uz: '✏️ Murojaat yuborildi: {number}',
+    ru: '✏️ Заявка отправлена: {number}',
+  },
   myExpensesHeader: {
     uz: '📋 Oxirgi xarajatlaringiz:',
     ru: '📋 Ваши последние расходы:',

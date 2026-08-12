@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import { EnvironmentVariables } from '../../config/env.validation';
-import { Channel } from '../../generated/prisma/enums';
+import { Channel, Role } from '../../generated/prisma/enums';
 import { BotDirectoryService } from './bot-directory.service';
 import { BotSession, BotSessionService } from './bot-session.service';
 import {
@@ -16,6 +16,8 @@ import {
 } from './bot-texts';
 import { ActiveAccount, BotTransport, BotUpdate } from './bot-types';
 import { AccountsFlowHandler } from './flows/accounts.flow';
+import { ApprovalsFlowHandler } from './flows/approvals.flow';
+import { RequestsFlowHandler } from './flows/requests.flow';
 import { ExpenseFlowHandler } from './flows/expense.flow';
 import { ListsFlowHandler } from './flows/lists.flow';
 import { LoginFlowHandler } from './flows/login.flow';
@@ -48,6 +50,8 @@ export class BotRouterService {
     private readonly accounts: AccountsFlowHandler,
     private readonly expenseFlow: ExpenseFlowHandler,
     private readonly lists: ListsFlowHandler,
+    private readonly approvalsFlow: ApprovalsFlowHandler,
+    private readonly requests: RequestsFlowHandler,
     private readonly menu: MenuPresenter,
     private readonly tenantContext: TenantContextService,
     private readonly config: ConfigService<EnvironmentVariables, true>,
@@ -280,9 +284,62 @@ export class BotRouterService {
      * Oqim davomida menyu tugmasi bosilsa oqim bekor qilinadi va foydalanuvchi
      * bu haqda ogohlantiriladi — yarim to'ldirilgan xarajat jim yo'qolmaydi.
      */
-    if (button !== null && isFlow(session.flow, 'expense')) {
+    if (
+      button !== null &&
+      session.flow !== null &&
+      !FLOW_NEUTRAL_BUTTONS.has(button)
+    ) {
       await this.sessions.setFlow(session, null);
       await tx.sendMessage(update.chatId, t('cancelled', lang));
+    }
+
+    // Qaror kartochkalari va so'rov sahnalari — prefiks bo'yicha
+    if (
+      update.callbackData?.startsWith('apr:') ||
+      ((update.callbackData?.startsWith('rfd:') ||
+        update.callbackData?.startsWith('edt:')) &&
+        this.isDecisionCallback(update.callbackData))
+    ) {
+      await this.approvalsFlow.handleCallback(
+        tx,
+        update,
+        session,
+        active,
+        update.callbackData,
+      );
+      return;
+    }
+
+    if (update.callbackData?.startsWith('rfd:')) {
+      if (!isFlow(session.flow, 'refund')) {
+        await this.menu.showMain(tx, update, session, active);
+        return;
+      }
+      await this.requests.handleRefundCallback(
+        tx,
+        update,
+        session,
+        active,
+        session.flow,
+        update.callbackData,
+      );
+      return;
+    }
+
+    if (update.callbackData?.startsWith('edt:')) {
+      if (!isFlow(session.flow, 'editRequest')) {
+        await this.menu.showMain(tx, update, session, active);
+        return;
+      }
+      await this.requests.handleEditCallback(
+        tx,
+        update,
+        session,
+        active,
+        session.flow,
+        update.callbackData,
+      );
+      return;
     }
 
     if (update.callbackData?.startsWith('exp:')) {
@@ -307,14 +364,64 @@ export class BotRouterService {
       return;
     }
 
-    // Matn yoki fayl — agar xarajat oqimi ochiq bo'lsa, u qadamga tegishli
-    if (button === null && isFlow(session.flow, 'expense')) {
-      await this.expenseFlow.handleText(
+    // Matn yoki fayl — ochiq oqim qadamiga tegishli
+    if (button === null) {
+      if (isFlow(session.flow, 'expense')) {
+        await this.expenseFlow.handleText(
+          tx,
+          update,
+          session,
+          active,
+          session.flow,
+        );
+        return;
+      }
+
+      if (isFlow(session.flow, 'decision')) {
+        await this.approvalsFlow.handleReason(
+          tx,
+          update,
+          session,
+          active,
+          session.flow,
+        );
+        return;
+      }
+
+      if (isFlow(session.flow, 'refund')) {
+        await this.requests.handleRefundInput(
+          tx,
+          update,
+          session,
+          active,
+          session.flow,
+        );
+        return;
+      }
+
+      if (isFlow(session.flow, 'editRequest')) {
+        await this.requests.handleEditInput(
+          tx,
+          update,
+          session,
+          active,
+          session.flow,
+        );
+        return;
+      }
+    }
+
+    if (
+      button !== null &&
+      APPROVER_BUTTONS.has(button) &&
+      active.role === Role.WORKER
+    ) {
+      await this.menu.showMain(
         tx,
         update,
         session,
         active,
-        session.flow,
+        t('notAvailableYet', lang),
       );
       return;
     }
@@ -330,6 +437,53 @@ export class BotRouterService {
 
       case 'branchExpenses':
         await this.lists.branchExpenses(tx, update, session, active);
+        return;
+
+      /*
+       * Tasdiqlovchi ekranlari rolga bog'liq: ishchi menyusida bu tugmalar yo'q,
+       * lekin eski klaviatura yoki qo'lda yuborilgan matn orqali kelishi mumkin.
+       * `ExpensesService.list` ishchini o'z yozuvlari bilan cheklamaydi, shuning
+       * uchun tekshiruv aynan shu yerda.
+       */
+      case 'pendingApprovals':
+        await this.approvalsFlow.showApprovals(
+          tx,
+          update,
+          session,
+          active,
+          'director',
+        );
+        return;
+
+      case 'finalApprovals':
+        await this.approvalsFlow.showApprovals(
+          tx,
+          update,
+          session,
+          active,
+          'admin',
+        );
+        return;
+
+      case 'refundRequests':
+        await this.approvalsFlow.showRefundRequests(
+          tx,
+          update,
+          session,
+          active,
+        );
+        return;
+
+      case 'editRequests':
+        await this.approvalsFlow.showEditRequests(tx, update, session, active);
+        return;
+
+      case 'refund':
+        await this.requests.startRefund(tx, update, session, active);
+        return;
+
+      case 'editRequest':
+        await this.requests.startEditRequest(tx, update, session, active);
         return;
 
       case 'myStats':
@@ -407,6 +561,17 @@ export class BotRouterService {
     }
   }
 
+  /**
+   * `rfd:`/`edt:` prefikslari ikki joyda ishlatiladi: tasdiqlovchi qarorlari
+   * (`ok`/`no`/`go`) va ishchining so'rov sahnasi (`exp`/`cancel`/`send`).
+   * Ajratish aynan shu ro'yxat bilan — prefiksni ikkiga bo'lish kod o'qishni
+   * qiyinlashtirardi.
+   */
+  private isDecisionCallback(data: string): boolean {
+    const action = data.split(':')[1];
+    return action === 'ok' || action === 'no' || action === 'go';
+  }
+
   private async handleAccountCallback(
     tx: BotTransport,
     update: BotUpdate,
@@ -470,3 +635,27 @@ export class BotRouterService {
     );
   }
 }
+
+/**
+ * Bu tugmalar ochiq oqimni o'zi hal qiladi: hisob almashtirish va chiqish oqimni
+ * bekor qilib **o'z** ogohlantirishini beradi (TZ 3.12.2), sozlamalar va yordam esa
+ * oqimga umuman tegmaydi.
+ */
+const FLOW_NEUTRAL_BUTTONS = new Set<ButtonId>([
+  'switchAccount',
+  'logout',
+  'settings',
+  'help',
+]);
+
+/** Faqat tasdiqlovchi rollar uchun ekranlar (TZ 3.12.3 menyulari) */
+const APPROVER_BUTTONS = new Set<ButtonId>([
+  'pendingApprovals',
+  'finalApprovals',
+  'refundRequests',
+  'editRequests',
+  'branchExpenses',
+  'branchStats',
+  'companyStats',
+  'employees',
+]);
