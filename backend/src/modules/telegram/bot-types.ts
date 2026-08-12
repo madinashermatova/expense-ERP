@@ -41,6 +41,12 @@ export interface BotTransport {
   ): Promise<void>;
   deleteMessage(chatId: number, messageId: number): Promise<void>;
   answerCallback(callbackId: string, text?: string): Promise<void>;
+  /**
+   * Telegram serveridan fayl mazmunini oladi (chek/isbot uchun).
+   * Fayl turi mazmun bo'yicha aniqlanadi (`file-type.util.ts`), shuning uchun
+   * bu yerda faqat baytlar qaytadi.
+   */
+  downloadFile(fileId: string): Promise<Buffer>;
 }
 
 /** Faol hisob — barcha amallar konteksti shundan olinadi (TZ 3.12.2) */

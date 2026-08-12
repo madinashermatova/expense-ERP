@@ -16,6 +16,8 @@ import {
 } from './bot-texts';
 import { ActiveAccount, BotTransport, BotUpdate } from './bot-types';
 import { AccountsFlowHandler } from './flows/accounts.flow';
+import { ExpenseFlowHandler } from './flows/expense.flow';
+import { ListsFlowHandler } from './flows/lists.flow';
 import { LoginFlowHandler } from './flows/login.flow';
 import { isFlow } from './flow-state';
 import { addAccountLabel, LANGUAGE_KEYBOARD } from './keyboards';
@@ -44,6 +46,8 @@ export class BotRouterService {
     private readonly directory: BotDirectoryService,
     private readonly login: LoginFlowHandler,
     private readonly accounts: AccountsFlowHandler,
+    private readonly expenseFlow: ExpenseFlowHandler,
+    private readonly lists: ListsFlowHandler,
     private readonly menu: MenuPresenter,
     private readonly tenantContext: TenantContextService,
     private readonly config: ConfigService<EnvironmentVariables, true>,
@@ -272,7 +276,71 @@ export class BotRouterService {
       return;
     }
 
+    /*
+     * Oqim davomida menyu tugmasi bosilsa oqim bekor qilinadi va foydalanuvchi
+     * bu haqda ogohlantiriladi — yarim to'ldirilgan xarajat jim yo'qolmaydi.
+     */
+    if (button !== null && isFlow(session.flow, 'expense')) {
+      await this.sessions.setFlow(session, null);
+      await tx.sendMessage(update.chatId, t('cancelled', lang));
+    }
+
+    if (update.callbackData?.startsWith('exp:')) {
+      if (!isFlow(session.flow, 'expense')) {
+        await this.menu.showMain(
+          tx,
+          update,
+          session,
+          active,
+          t('nothingToCancel', lang),
+        );
+        return;
+      }
+      await this.expenseFlow.handleCallback(
+        tx,
+        update,
+        session,
+        active,
+        session.flow,
+        update.callbackData,
+      );
+      return;
+    }
+
+    // Matn yoki fayl — agar xarajat oqimi ochiq bo'lsa, u qadamga tegishli
+    if (button === null && isFlow(session.flow, 'expense')) {
+      await this.expenseFlow.handleText(
+        tx,
+        update,
+        session,
+        active,
+        session.flow,
+      );
+      return;
+    }
+
     switch (button) {
+      case 'addExpense':
+        await this.expenseFlow.start(tx, update, session, active);
+        return;
+
+      case 'myExpenses':
+        await this.lists.myExpenses(tx, update, session, active);
+        return;
+
+      case 'branchExpenses':
+        await this.lists.branchExpenses(tx, update, session, active);
+        return;
+
+      case 'myStats':
+        await this.lists.stats(tx, update, session, active, 'own');
+        return;
+
+      case 'branchStats':
+      case 'companyStats':
+        await this.lists.stats(tx, update, session, active, 'scoped');
+        return;
+
       case 'switchAccount':
         await this.accounts.showList(tx, update, session);
         return;

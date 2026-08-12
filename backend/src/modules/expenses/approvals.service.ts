@@ -218,9 +218,9 @@ export class ApprovalsService {
   }
 
   private assertRole(transition: Transition, role: Role): void {
-    if (role === Role.ADMIN || role === Role.DIRECTOR) {
-      if (transition.roles.includes(role)) return;
-    }
+    // Ro'yxat o'tishning o'zida turadi: ishchi ham `submit`/`cancel` qila oladi
+    // (TZ 3.7), lekin faqat `creatorOnly` bilan cheklangan o'tishlarda.
+    if (transition.roles.includes(role)) return;
 
     throw new ForbiddenException({
       statusCode: 403,

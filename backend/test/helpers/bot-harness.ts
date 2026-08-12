@@ -22,6 +22,7 @@ export class FakeTransport implements BotTransport {
   readonly sent: SentMessage[] = [];
   readonly deleted: { chatId: number; messageId: number }[] = [];
   readonly answered: string[] = [];
+  readonly downloaded: string[] = [];
 
   sendMessage(
     chatId: number,
@@ -42,10 +43,22 @@ export class FakeTransport implements BotTransport {
     return Promise.resolve();
   }
 
+  /** Haqiqiy PNG (1x1) — fayl turi mazmun bo'yicha aniqlanadi */
+  downloadFile(fileId: string): Promise<Buffer> {
+    this.downloaded.push(fileId);
+    return Promise.resolve(
+      Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    );
+  }
+
   reset(): void {
     this.sent.length = 0;
     this.deleted.length = 0;
     this.answered.length = 0;
+    this.downloaded.length = 0;
   }
 
   get last(): SentMessage {
@@ -89,6 +102,21 @@ export class BotUser {
         chatId: Number(this.telegramId),
         messageId: this.messageId,
         text,
+      },
+      this.tx,
+    );
+  }
+
+  /** Rasm yuboradi (chek/isbot qadamlari uchun) */
+  async sendPhoto(fileId: string): Promise<void> {
+    this.messageId += 1;
+    await this.router.handle(
+      {
+        botId: this.botId,
+        telegramId: this.telegramId,
+        chatId: Number(this.telegramId),
+        messageId: this.messageId,
+        photoFileId: fileId,
       },
       this.tx,
     );

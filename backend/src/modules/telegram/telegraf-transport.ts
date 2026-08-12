@@ -29,6 +29,23 @@ export class TelegrafTransport implements BotTransport {
     await this.telegram.answerCbQuery(callbackId, text);
   }
 
+  /**
+   * `getFileLink` vaqtinchalik URL qaytaradi; token URL ichida bo'lgani uchun u
+   * hech qayerda saqlanmaydi — bayt oqimi darhol xotiraga o'qiladi va S3 ga ketadi.
+   */
+  async downloadFile(fileId: string): Promise<Buffer> {
+    const link = await this.telegram.getFileLink(fileId);
+    const response = await fetch(link.href);
+
+    if (!response.ok) {
+      throw new Error(
+        `Telegram fayli yuklab olinmadi: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    return Buffer.from(await response.arrayBuffer());
+  }
+
   private markup(options: ReplyOptions) {
     if (options.inline) {
       return {

@@ -604,10 +604,41 @@ Bosqich hajmi katta, shuning uchun uchga bo'lindi: **S16.1** infratuzilma va kir
 
 **Commit:** `feat(telegram): bot infratuzilmasi, kirish va hisoblar`
 
-### S16.2 — Xarajat qo'shish oqimi, "Mening xarajatlarim", statistika ⬜
+### S16.2 — Xarajat qo'shish oqimi, ro'yxatlar, statistika ✅
 
-- Xarajat qo'shish sahnasi (9 qadam, har qadamda ⬅️ / ❌, rasm/hujjat yuklash)
-- Ro'yxatlar va oylik statistika, til almashtirish sayqali
+**Nima qurildi:**
+- `ExpenseFlowHandler` — kategoriya (2 daraja) → kim uchun (o'zim / boshqa xodim /
+  guruh) → taqsimlash (teng yoki qo'lda) → summa (`100 USD` ham) → sana → izoh →
+  chek → tasdiqlash ekrani; har qadamda ⬅️ / ❌
+- `ListsFlowHandler` — "Mening xarajatlarim", "Filial xarajatlari", statistika
+- `format.ts` — summa/sana ko'rsatish va foydalanuvchi kiritganini o'qish
+
+**Natija:** `test:int` — 307/307 yashil (yangi: bot xarajat oqimi 9), `test:unit` — 53/53.
+
+**S16.2 da qabul qilingan qarorlar:**
+- **Bot yozuvni o'zi yaratmaydi** — `ExpensesService.create` va `ApprovalsService.submit`
+  chaqiriladi: validatsiya, raqamlash, kurs snapshot i, byudjet ogohlantirishi va audit
+  bitta joyda qolishi kerak. Web bilan farq faqat kirish nuqtasida.
+- **`history` massivi bilan "Orqaga"** — qadamlar shartli (guruh tanlanmasa taqsimlash
+  bo'lmaydi), ya'ni "oldingi qadam" ni ro'yxatdan hisoblab bo'lmaydi. Orqaga qaytganda
+  kiritilgan ma'lumot saqlanadi.
+- **Fayl turi e'lon qilingan MIME dan olinmaydi** — Telegram rasmni qayta kodlaydi,
+  shuning uchun bot `mimetype` ni bo'sh qoldiradi va `FilesService` mazmun imzosidan
+  (magic bytes) turni aniqlaydi.
+- **Chek majburiy kategoriyada tartib web bilan bir xil**: yozuv `DRAFT` yaratiladi →
+  fayl biriktiriladi → `submit`. Fayl yuklanmasa xarajat yo'qolmaydi: qoralama qoladi
+  va foydalanuvchiga web orqali chek biriktirishi aytiladi.
+- **`Role.WORKER` holat mashinasiga qo'shildi** (`expense-status.ts`): TZ 3.7 jadvali
+  bo'yicha `DRAFT` ni ishchi yuboradi va `NEEDS_FIX` dan keyin ham ishchi qayta
+  yuboradi. S7 da bu o'tishlar faqat ADMIN/DIRECTOR ga berilgan edi — ishchi kanali
+  (bot) yo'q edi, natijada ishchining qoralamasi hech qachon oqimga tushmasdi.
+  O'tishlar `creatorOnly` — o'z yozuvi bilan cheklangan.
+- **Menyu tugmasi oqimni bekor qiladi va bu aytiladi** — yarim to'ldirilgan xarajat
+  jim yo'qolmasligi kerak.
+- **Ishchi statistikasi `employeeId` filtri bilan** olinadi: rol bo'yicha doira ishchini
+  cheklamaydi, ulush filtri esa aynan o'z xarajatlarini qoldiradi. Kesh kaliti ham
+  `employeeId` ni o'z ichiga oladi, ya'ni bir ishchi natijasi boshqasiga ko'rinmaydi.
+- **To'lov usuli bot da so'ralmaydi** (TZ 3.12.3 da yo'q) — `CASH` qo'yiladi.
 
 ### S16.3 — Tasdiqlash, refund, tahrirlash sahnalari ⬜
 

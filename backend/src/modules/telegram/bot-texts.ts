@@ -1,4 +1,4 @@
-import { Language, Role } from '../../generated/prisma/enums';
+import { ExpenseStatus, Language, Role } from '../../generated/prisma/enums';
 
 export type Lang = 'uz' | 'ru';
 
@@ -160,6 +160,155 @@ const TEXTS = {
     uz: 'Bu bo‘lim tez orada ishga tushadi.',
     ru: 'Этот раздел скоро будет доступен.',
   },
+  askCategory: {
+    uz: '📂 Kategoriyani tanlang:',
+    ru: '📂 Выберите категорию:',
+  },
+  askSubcategory: {
+    uz: '📂 {category} → quyi kategoriyani tanlang:',
+    ru: '📂 {category} → выберите подкатегорию:',
+  },
+  noCategories: {
+    uz: 'Faol kategoriya yo‘q — administratoringizga murojaat qiling.',
+    ru: 'Нет активных категорий — обратитесь к администратору.',
+  },
+  askTarget: {
+    uz: '👤 Xarajat kim uchun?',
+    ru: '👤 Для кого расход?',
+  },
+  targetSelf: { uz: "🙋 O'zim uchun", ru: '🙋 Для себя' },
+  targetOther: { uz: '👤 Boshqa xodim', ru: '👤 Другой сотрудник' },
+  targetGroup: { uz: '👥 Guruh', ru: '👥 Группа' },
+  askEmployee: {
+    uz: '👤 Xodimni tanlang:',
+    ru: '👤 Выберите сотрудника:',
+  },
+  askEmployees: {
+    uz: '👥 Xodimlarni belgilang (tanlangan: {count}), so‘ng "Davom etish":',
+    ru: '👥 Отметьте сотрудников (выбрано: {count}), затем «Продолжить»:',
+  },
+  noEmployees: {
+    uz: 'Filialda faol xodim topilmadi.',
+    ru: 'В филиале нет активных сотрудников.',
+  },
+  selectAtLeastOne: {
+    uz: 'Kamida bitta xodimni belgilang.',
+    ru: 'Отметьте хотя бы одного сотрудника.',
+  },
+  askSplit: {
+    uz: '➗ Summani qanday taqsimlaymiz?',
+    ru: '➗ Как распределим сумму?',
+  },
+  splitEqual: { uz: '➗ Teng bo‘lish', ru: '➗ Разделить равно' },
+  splitManual: { uz: '✍️ Qo‘lda', ru: '✍️ Вручную' },
+  askShare: {
+    uz: '✍️ {employee} uchun summa ({index}/{total}):',
+    ru: '✍️ Сумма для {employee} ({index}/{total}):',
+  },
+  askAmount: {
+    uz: '💰 Summani yuboring (masalan `150000` yoki `100 USD`):',
+    ru: '💰 Отправьте сумму (например `150000` или `100 USD`):',
+  },
+  amountInvalid: {
+    uz: 'Summa noto‘g‘ri. Musbat son yuboring, masalan 150000.',
+    ru: 'Неверная сумма. Отправьте положительное число, например 150000.',
+  },
+  sharesSumMismatch: {
+    uz: 'Ulushlar yig‘indisi {sum}, umumiy summa {total} — mos kelmadi. Qaytadan kiritamiz.',
+    ru: 'Сумма долей {sum}, а общая {total} — не совпадает. Введём заново.',
+  },
+  askDate: {
+    uz: '📅 Sanani tanlang yoki `KK.OO.YYYY` shaklida yuboring:',
+    ru: '📅 Выберите дату или отправьте в виде `ДД.ММ.ГГГГ`:',
+  },
+  dateToday: { uz: '📅 Bugun', ru: '📅 Сегодня' },
+  dateInvalid: {
+    uz: 'Sana noto‘g‘ri. Masalan: 06.08.2026.',
+    ru: 'Неверная дата. Например: 06.08.2026.',
+  },
+  askComment: {
+    uz: '📝 Izoh yuboring:',
+    ru: '📝 Отправьте комментарий:',
+  },
+  commentRequired: {
+    uz: '📝 Bu kategoriya uchun izoh majburiy — matn yuboring:',
+    ru: '📝 Для этой категории комментарий обязателен — отправьте текст:',
+  },
+  askReceipt: {
+    uz: '📎 Chek/isbot yuboring (rasm yoki PDF):',
+    ru: '📎 Отправьте чек/подтверждение (фото или PDF):',
+  },
+  receiptRequired: {
+    uz: '📎 Bu kategoriya uchun chek majburiy — rasm yoki PDF yuboring:',
+    ru: '📎 Для этой категории чек обязателен — отправьте фото или PDF:',
+  },
+  receiptAdded: {
+    uz: '📎 Qabul qilindi (jami {count}). Yana yuborishingiz yoki davom etishingiz mumkin.',
+    ru: '📎 Принято (всего {count}). Можно отправить ещё или продолжить.',
+  },
+  confirmHeader: {
+    uz: 'Tekshirib chiqing:',
+    ru: 'Проверьте данные:',
+  },
+  confirmSend: { uz: '✅ Yuborish', ru: '✅ Отправить' },
+  confirmEdit: { uz: '✏️ Tahrirlash', ru: '✏️ Изменить' },
+  back: { uz: '⬅️ Orqaga', ru: '⬅️ Назад' },
+  cancel: { uz: '❌ Bekor qilish', ru: '❌ Отмена' },
+  skip: { uz: '⏭ O‘tkazib yuborish', ru: '⏭ Пропустить' },
+  next: { uz: '➡️ Davom etish', ru: '➡️ Продолжить' },
+  expenseSubmitted: {
+    uz: 'Arizangiz {number} direktorga yuborildi.',
+    ru: 'Ваша заявка {number} отправлена директору.',
+  },
+  expenseSubmittedAdmin: {
+    uz: 'Arizangiz {number} yakuniy tasdiqqa yuborildi.',
+    ru: 'Ваша заявка {number} отправлена на финальное подтверждение.',
+  },
+  expenseDraft: {
+    uz: 'Xarajat {number} qoralama sifatida saqlandi — chek biriktirilgach yuboriladi.',
+    ru: 'Расход {number} сохранён как черновик — будет отправлен после чека.',
+  },
+  duplicateWarning: {
+    uz: '⚠️ Yaqinda shunga o‘xshash xarajat kiritilgan: {number}',
+    ru: '⚠️ Недавно уже вносили похожий расход: {number}',
+  },
+  budgetLimit: { uz: 'limit', ru: 'лимит' },
+  budgetWarningLine: {
+    uz: '⚠️ Byudjet: {message}',
+    ru: '⚠️ Бюджет: {message}',
+  },
+  branchMissing: {
+    uz: 'Hisobingizga filial biriktirilmagan — administratoringizga murojaat qiling.',
+    ru: 'К вашему аккаунту не привязан филиал — обратитесь к администратору.',
+  },
+  employeeMissing: {
+    uz: 'Hisobingiz xodim kartochkasiga bog‘lanmagan — administratoringizga murojaat qiling.',
+    ru: 'Ваш аккаунт не связан с карточкой сотрудника — обратитесь к администратору.',
+  },
+  fileFailed: {
+    uz: 'Fayl yuklanmadi, lekin xarajat saqlandi: {number}. Chekni web orqali biriktiring.',
+    ru: 'Файл не загрузился, но расход сохранён: {number}. Прикрепите чек через веб.',
+  },
+  myExpensesHeader: {
+    uz: '📋 Oxirgi xarajatlaringiz:',
+    ru: '📋 Ваши последние расходы:',
+  },
+  branchExpensesHeader: {
+    uz: '📋 Oxirgi xarajatlar:',
+    ru: '📋 Последние расходы:',
+  },
+  expensesEmpty: {
+    uz: 'Xarajat topilmadi.',
+    ru: 'Расходы не найдены.',
+  },
+  statsHeader: {
+    uz: '📊 Davr: {from} — {to}\n💰 Jami: {total}\n🧾 Yozuvlar: {count}\n↩️ Qaytarilgan: {refunded}',
+    ru: '📊 Период: {from} — {to}\n💰 Итого: {total}\n🧾 Записей: {count}\n↩️ Возвращено: {refunded}',
+  },
+  statsPending: {
+    uz: '⏳ Kutilmoqda: direktor {director}, admin {admin}',
+    ru: '⏳ Ожидают: директор {director}, админ {admin}',
+  },
   webLink: {
     uz: '🌐 Web ERP: {url}',
     ru: '🌐 Web ERP: {url}',
@@ -181,6 +330,31 @@ const ROLE_NAMES: Record<Role, Phrase> = {
 
 export function roleName(role: Role, lang: Lang): string {
   return ROLE_NAMES[role][lang];
+}
+
+const STATUS_NAMES: Record<ExpenseStatus, Phrase> = {
+  DRAFT: { uz: '📝 Qoralama', ru: '📝 Черновик' },
+  DIRECTOR_PENDING: {
+    uz: '⏳ Direktor tasdig‘i kutilmoqda',
+    ru: '⏳ Ожидает директора',
+  },
+  ADMIN_PENDING: {
+    uz: '⏳ Yakuniy tasdiq kutilmoqda',
+    ru: '⏳ Ожидает финального подтверждения',
+  },
+  NEEDS_FIX: { uz: '✏️ Tuzatish so‘raldi', ru: '✏️ Запрошено исправление' },
+  APPROVED: { uz: '✅ Tasdiqlangan', ru: '✅ Одобрен' },
+  REJECTED: { uz: '❌ Rad etilgan', ru: '❌ Отклонён' },
+  CANCELLED: { uz: '🚫 Bekor qilingan', ru: '🚫 Отменён' },
+  PARTIALLY_REFUNDED: {
+    uz: '↩️ Qisman qaytarilgan',
+    ru: '↩️ Частично возвращён',
+  },
+  REFUNDED: { uz: '↩️ Qaytarilgan', ru: '↩️ Возвращён' },
+};
+
+export function statusName(status: ExpenseStatus, lang: Lang): string {
+  return STATUS_NAMES[status][lang];
 }
 
 /**

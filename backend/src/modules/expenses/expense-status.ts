@@ -32,20 +32,29 @@ export interface Transition {
 
 const D = Role.DIRECTOR;
 const A = Role.ADMIN;
+const W = Role.WORKER;
 
 export const TRANSITIONS: readonly Transition[] = [
-  // Qoralama va tuzatishdan keyin qayta yuborish — oqim har doim 1-bosqichdan boshlanadi
+  /*
+   * Qoralama va tuzatishdan keyin qayta yuborish — oqim har doim 1-bosqichdan boshlanadi.
+   *
+   * Ishchi ham bu amalni bajaradi (TZ 3.7 jadvali: `DRAFT` — ishchi, `NEEDS_FIX` dan
+   * keyin "ishchi tuzatib qayta yuboradi"). U faqat **o'z** yozuvini yuboradi, shuning
+   * uchun `creatorOnly` — qoralama uni kiritgan shaxsga tegishli.
+   */
   {
     from: ExpenseStatus.DRAFT,
     action: 'submit',
     to: ExpenseStatus.DIRECTOR_PENDING,
-    roles: [A, D],
+    roles: [A, D, W],
+    creatorOnly: true,
   },
   {
     from: ExpenseStatus.NEEDS_FIX,
     action: 'submit',
     to: ExpenseStatus.DIRECTOR_PENDING,
-    roles: [A, D],
+    roles: [A, D, W],
+    creatorOnly: true,
   },
 
   // 1-bosqich: filial direktori (bosh admin ham bajara oladi)
@@ -92,26 +101,26 @@ export const TRANSITIONS: readonly Transition[] = [
     reasonRequired: true,
   },
 
-  // Bekor qilish — faqat kiritgan shaxs, faqat hali qaror chiqmagan holatda
+  // Bekor qilish — faqat kiritgan shaxs, faqat hali qaror chiqmagan holatda (TZ 3.7)
   {
     from: ExpenseStatus.DRAFT,
     action: 'cancel',
     to: ExpenseStatus.CANCELLED,
-    roles: [A, D],
+    roles: [A, D, W],
     creatorOnly: true,
   },
   {
     from: ExpenseStatus.DIRECTOR_PENDING,
     action: 'cancel',
     to: ExpenseStatus.CANCELLED,
-    roles: [A, D],
+    roles: [A, D, W],
     creatorOnly: true,
   },
   {
     from: ExpenseStatus.NEEDS_FIX,
     action: 'cancel',
     to: ExpenseStatus.CANCELLED,
-    roles: [A, D],
+    roles: [A, D, W],
     creatorOnly: true,
   },
 ];
