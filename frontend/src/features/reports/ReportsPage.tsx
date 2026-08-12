@@ -6,7 +6,9 @@ import { Input } from '@/components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Download } from 'lucide-react';
 import { useReports } from './api';
+import { useRequestExport } from '../exports/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import toast from 'react-hot-toast';
 import styles from './ReportsPage.module.css';
 
 export const ReportsPage = () => {
@@ -17,16 +19,22 @@ export const ReportsPage = () => {
 
   const { data, isLoading } = useReports({ type, startDate, endDate });
 
+  const exportMutation = useRequestExport();
+
   const handleExport = () => {
-    alert("Exporting to Excel...");
+    exportMutation.mutate({ type, format: 'Excel', filters: { startDate, endDate } }, {
+      onSuccess: () => {
+        toast.success("Eksport so'rovi yuborildi. Natijani 'Eksportlar' bo'limida ko'rishingiz mumkin.");
+      }
+    });
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>{t('title')}</h1>
-        <Button onClick={handleExport} style={{ gap: '8px' }}>
-          <Download size={16} /> {t('export')}
+        <Button onClick={handleExport} style={{ gap: '8px' }} disabled={exportMutation.isPending}>
+          <Download size={16} /> {exportMutation.isPending ? 'Kutmoqda...' : t('export')}
         </Button>
       </div>
 

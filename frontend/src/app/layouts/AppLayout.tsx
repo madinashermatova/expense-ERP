@@ -11,7 +11,19 @@ export const AppLayout = () => {
   const { accessToken, user } = useAuthStore();
   const logoutMutation = useLogout();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile && collapsed) setCollapsed(false);
+      if (mobile && !collapsed) setCollapsed(true);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [collapsed]);
 
   if (!accessToken) {
     return <Navigate to="/login" replace />;
@@ -50,6 +62,14 @@ export const AppLayout = () => {
 
   return (
     <div className={styles.layout}>
+      {/* Mobile backdrop */}
+      {!collapsed && (
+        <div 
+          className={styles.backdrop} 
+          onClick={() => setCollapsed(true)} 
+        />
+      )}
+      
       <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
         <div style={{ padding: collapsed ? '16px 0' : '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: '1px solid rgb(var(--border))', height: '56px' }}>
           {!collapsed && <span>Web ERP</span>}
@@ -62,6 +82,9 @@ export const AppLayout = () => {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => {
+                if (isMobile) setCollapsed(true);
+              }}
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
@@ -86,7 +109,16 @@ export const AppLayout = () => {
       
       <main className={styles.main}>
         <header className={styles.header}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+          {/* Mobile hamburger icon */}
+          <button 
+            className={styles.mobileMenuBtn} 
+            onClick={() => setCollapsed(!collapsed)} 
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--foreground))', display: isMobile ? 'block' : 'none', marginRight: 'auto' }}
+          >
+            <Menu size={24} />
+          </button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: !isMobile ? 'auto' : '0' }}>
             <select 
               value={localStorage.getItem('language') || 'uz'} 
               onChange={(e) => {
@@ -118,12 +150,12 @@ export const AppLayout = () => {
             </select>
 
             <NotificationBell />
-            <Link to="/profile" style={{ fontWeight: 500, color: 'inherit', textDecoration: 'none' }}>
+            <Link to="/profile" className={styles.hideOnMobile} style={{ fontWeight: 500, color: 'inherit', textDecoration: 'none' }}>
               {user?.fullName || 'Foydalanuvchi'}
             </Link>
             <Button variant="ghost" onClick={handleLogout} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <LogOut size={16} />
-              Chiqish
+              <span className={styles.hideOnMobile}>Chiqish</span>
             </Button>
           </div>
         </header>

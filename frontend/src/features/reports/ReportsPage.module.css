@@ -20,6 +20,7 @@
   display: flex;
   gap: 16px;
   align-items: flex-end;
+  flex-wrap: wrap;
   background-color: rgb(var(--card));
   padding: 16px;
   border-radius: var(--radius);

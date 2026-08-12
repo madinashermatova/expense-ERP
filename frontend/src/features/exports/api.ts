@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 
 export const useExports = () => {
@@ -22,6 +22,15 @@ export const useExports = () => {
         return 3000; // Poll every 3s if any is running/queued
       }
       return false;
+    }
+  });
+};
+
+export const useRequestExport = () => {
+  return useMutation({
+    mutationFn: async (payload: { type: string; format: string; filters: any }) => {
+      const { data } = await apiClient.post('/exports', payload);
+      return data;
     }
   });
 };

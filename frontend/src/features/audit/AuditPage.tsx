@@ -1,17 +1,34 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
+import { Input } from '@/components/ui/Input';
 import { useAuditLogs } from './api';
 import styles from './AuditPage.module.css';
 
 export const AuditPage = () => {
   const { t } = useTranslation(['audit', 'common']);
-  const { data: logs, isLoading } = useAuditLogs();
+  const [search, setSearch] = useState('');
+  
+  // Custom debounce logic if useDebounce is missing, but assuming it exists or fallback
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  React.useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const { data: logs, isLoading } = useAuditLogs(debouncedSearch);
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>{t('title')}</h1>
+        <div style={{ position: 'relative', width: '300px' }}>
+          <Input 
+            placeholder="Qidiruv (harakat, xodim...)" 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+          />
+        </div>
       </div>
 
       <div style={{ backgroundColor: 'rgb(var(--card))', borderRadius: 'var(--radius)', border: '1px solid rgb(var(--border))' }}>
