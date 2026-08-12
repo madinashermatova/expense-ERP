@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/features/auth/store';
 import toast from 'react-hot-toast';
+import i18n from '@/i18n';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
@@ -11,6 +12,10 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().accessToken;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Server xato xabarlarini shu tilda qaytaradi (backend: `x-lang` profil tilidan ustun)
+  if (config.headers) {
+    config.headers['x-lang'] = i18n.language === 'ru' ? 'ru' : 'uz';
   }
   return config;
 });
@@ -80,29 +85,29 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
     const errData = error.response?.data as any;
     
-    // Toast global errors if no details provided (except special codes handled by forms)
-    if (status && status !== 401) {
-      if (errData && !errData.details) {
-        if (errData.code === 'PLAN_LIMIT_EXCEEDED') {
-          // Can be handled globally with a special event or just toast for now
-          toast.error(errData.message || 'Tarif limiti tugadi');
-        } else if (status === 409 && errData.code === 'EXPENSE_ALREADY_PROCESSED') {
-          toast.error('Bu ariza allaqachon qayta ishlangan');
-        } else if (status === 429) {
-          // Handled mostly by forms, but we can show a global toast if not login
-          if (!originalRequest.url?.includes('/auth/login')) {
-            toast.error("Ko'p so'rov yuborildi, iltimos kuting");
-          }
-        } else if (status === 403 && errData.code !== 'WEB_ACCESS_DENIED' && errData.code !== 'ACCOUNT_INACTIVE' && errData.code !== 'COMPANY_SUSPENDED') {
-          toast.error(errData.message || 'Kirish taqiqlangan');
-        } else if (status >= 500) {
-          toast.error('Server xatosi yuz berdi');
-        } else {
-          // Generic fallback for other statuses like 400, 404 without details
-          if (!originalRequest.url?.includes('/auth/login')) {
-             toast.error(errData.message || 'Xatolik yuz berdi');
-          }
-        }
+    /*
+     * Xabar matni serverdan keladi va so'rov tilida bo'ladi (`x-lang`), shuning uchun
+     * bu yerda matn yozilmaydi — faqat tarmoq darajasidagi holatlar uchun zaxira.
+     */
+    const fallback = (key: string) => i18n.t(`errors.${key}`, { ns: 'common' });
+
+    if (!error.response) {
+      toast.error(fallback('network'));
+    } else if (status && status !== 401 && errData && !errData.details) {
+      const isLogin = originalRequest.url?.includes('/auth/login');
+      const silentCodes = [
+        'WEB_ACCESS_DENIED',
+        'ACCOUNT_INACTIVE',
+        'COMPANY_SUSPENDED',
+        'MULTIPLE_COMPANIES',
+      ];
+
+      if (status >= 500) {
+        toast.error(errData.message || fallback('server'));
+      } else if (status === 429) {
+        if (!isLogin) toast.error(errData.message || fallback('tooManyRequests'));
+      } else if (!silentCodes.includes(errData.code) && !isLogin) {
+        toast.error(errData.message || fallback('generic'));
       }
     }
 

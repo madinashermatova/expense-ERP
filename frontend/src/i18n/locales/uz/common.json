@@ -15,5 +15,11 @@
     "loading": "Yuklanmoqda...",
     "empty": "Ma'lumot topilmadi",
     "error": "Ma'lumotni yuklab bo'lmadi"
+  },
+  "errors": {
+    "network": "Server bilan aloqa yo'q",
+    "server": "Server xatosi yuz berdi",
+    "generic": "Xatolik yuz berdi",
+    "tooManyRequests": "Ko'p so'rov yuborildi, iltimos kuting"
   }
 }
