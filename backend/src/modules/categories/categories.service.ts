@@ -1,5 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { TenantContextService } from '../../common/tenancy/tenant-context.service';
+import { tenantData } from '../../common/tenancy/tenant-data';
+import { DEFAULT_CATEGORY_TREE } from './default-categories';
 import { CategoryStatus, Prisma } from '../../generated/prisma/client';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { ListCategoriesDto } from './dto/list-categories.dto';
@@ -25,7 +28,68 @@ export interface CategoryView {
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(CategoriesService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantContext: TenantContextService,
+  ) {}
+
+  /**
+   * Standart kategoriya daraxtini yuklaydi (TZ 3.4).
+   *
+   * Yangi kompaniyada ro'yxat bo'sh bo'ladi va adminni 21 marta forma to'ldirishga
+   * majburlash o'rniga tayyor to'plam beriladi — keyin uni tahrirlaydi, arxivlaydi
+   * yoki o'zining kategoriyalarini qo'shadi.
+   *
+   * **Idempotent:** kompaniyada allaqachon kategoriya bo'lsa hech narsa qilmaydi.
+   * Aks holda tugmani ikki marta bosish dublikat daraxt yasardi va `sortOrder`
+   * chalkashardi.
+   */
+  async applyDefaults(companyId?: string): Promise<{ created: number }> {
+    const target =
+      companyId ??
+      this.tenantContext.requireCompanyId('Category', 'applyDefaults');
+
+    return this.tenantContext.runAsync({ companyId: target }, async () => {
+      const existing = await this.prisma.db.category.count();
+      if (existing > 0) return { created: 0 };
+
+      let created = 0;
+
+      for (const [index, parent] of DEFAULT_CATEGORY_TREE.entries()) {
+        const row = await this.prisma.db.category.create({
+          data: tenantData<Prisma.CategoryUncheckedCreateInput>({
+            nameUz: parent.uz,
+            nameRu: parent.ru,
+            receiptRequired: parent.receiptRequired ?? false,
+            commentRequired: parent.commentRequired ?? false,
+            sortOrder: index,
+          }),
+        });
+        created += 1;
+
+        for (const [childIndex, child] of (parent.children ?? []).entries()) {
+          await this.prisma.db.category.create({
+            data: tenantData<Prisma.CategoryUncheckedCreateInput>({
+              parentId: row.id,
+              nameUz: child.uz,
+              nameRu: child.ru,
+              receiptRequired: child.receiptRequired ?? false,
+              commentRequired: child.commentRequired ?? false,
+              sortOrder: childIndex,
+            }),
+          });
+          created += 1;
+        }
+      }
+
+      this.logger.log(
+        `Standart kategoriyalar yuklandi: company=${target}, ${created} ta`,
+      );
+      return { created };
+    });
+  }
 
   /** Daraxt ko'rinishida qaytaradi (2 daraja) */
   async tree(query: ListCategoriesDto): Promise<CategoryView[]> {

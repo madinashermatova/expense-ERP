@@ -34,6 +34,20 @@ export class CategoriesController {
     return this.categories.findOne(id);
   }
 
+  /**
+   * Standart kategoriya daraxtini yuklaydi (TZ 3.4).
+   *
+   * Yangi kompaniya uchun: ro'yxat bo'sh bo'lsa tayyor to'plam yaratiladi, keyin
+   * admin uni tahrirlaydi. Ro'yxat bo'sh bo'lmasa hech narsa o'zgarmaydi —
+   * `{ created: 0 }` qaytadi.
+   */
+  @Roles(Role.ADMIN)
+  @Audit({ action: 'category.apply_defaults', entityType: 'Category' })
+  @Post('apply-defaults')
+  applyDefaults(): Promise<{ created: number }> {
+    return this.categories.applyDefaults();
+  }
+
   @Roles(Role.ADMIN)
   @Audit({
     action: 'category.create',
