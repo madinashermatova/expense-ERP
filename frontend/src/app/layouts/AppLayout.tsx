@@ -87,6 +87,36 @@ export const AppLayout = () => {
       <main className={styles.main}>
         <header className={styles.header}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+            <select 
+              value={localStorage.getItem('language') || 'uz'} 
+              onChange={(e) => {
+                localStorage.setItem('language', e.target.value);
+                window.location.reload();
+              }}
+              style={{ background: 'transparent', border: '1px solid rgb(var(--border))', borderRadius: '4px', padding: '4px 8px', color: 'rgb(var(--foreground))' }}
+            >
+              <option value="uz">UZ</option>
+              <option value="ru">RU</option>
+            </select>
+            
+            <select 
+              value={localStorage.getItem('theme') || 'system'} 
+              onChange={(e) => {
+                const newTheme = e.target.value;
+                localStorage.setItem('theme', newTheme);
+                if (newTheme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              }}
+              style={{ background: 'transparent', border: '1px solid rgb(var(--border))', borderRadius: '4px', padding: '4px 8px', color: 'rgb(var(--foreground))' }}
+            >
+              <option value="system">Auto</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+
             <NotificationBell />
             <Link to="/profile" style={{ fontWeight: 500, color: 'inherit', textDecoration: 'none' }}>
               {user?.fullName || 'Foydalanuvchi'}

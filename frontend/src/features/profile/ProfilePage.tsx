@@ -11,6 +11,7 @@ export const ProfilePage = () => {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    localStorage.setItem('language', e.target.value);
     i18n.changeLanguage(e.target.value);
   };
 
