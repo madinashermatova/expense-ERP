@@ -139,6 +139,14 @@ export class EnvironmentVariables {
   @toInt()
   UPLOAD_MAX_FILES_PER_EXPENSE = 5;
 
+  /**
+   * Swagger UI (`/api/docs`). Prodda ataylab yopiladi: endpoint ro'yxati va
+   * so'rov sxemalari hujum yuzasini kengaytiradi.
+   */
+  @IsBoolean()
+  @toBool()
+  SWAGGER_ENABLED = true;
+
   @IsBoolean()
   @toBool()
   BOT_ENABLED = false;

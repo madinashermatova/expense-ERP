@@ -729,6 +729,34 @@ almashtirilganda cross-tenant ma'lumot oqmaydi; javob ≤ 2 s (p95).
 
 ---
 
+## S17.1 — Swagger (interaktiv API hujjati) ✅
+
+**Nima qurildi:**
+- `@nestjs/swagger` + CLI plugin (`nest-cli.json`) — DTO klasslaridan so'rov
+  sxemalari, enum lar va majburiylik avtomatik chiqadi
+- `src/config/swagger.ts` — `/api/docs`, `/api/docs-json`; tavsifda auth, xato
+  formati, til tartibi va ro'yxat shakli tushuntirilgan
+- `SWAGGER_ENABLED` env (sukut `true`), `NODE_ENV=production` da baribir yopiq
+- `test/docs/swagger.int-spec.ts` — 5 test: 18 asosiy endpoint hujjatda,
+  DTO sxemasi bo'sh emas, bearer auth va `x-lang` ko'rsatilgan
+
+**Natija:** 61 endpoint, 27 sxema; `test:int` — 338/338, `test:unit` — 59/59.
+
+**S17.1 da qabul qilingan qarorlar:**
+- **Javob sxemalari hozircha yo'q.** Servislar `ExpenseView` kabi interfeys
+  qaytaradi, interfeys esa runtime da mavjud emas — plugin undan sxema yasay
+  olmaydi. Ularni klassga o'tkazish S18 ga qoldirildi; shu vaqtgacha javob
+  shakllari `docs/API.md` da (u allaqachon to'liq yozilgan).
+- **Testda plugin ham ishlaydi.** ts-jest uchun kichik `.js` o'ram yozildi
+  (`test/helpers/swagger-transformer.js`): aks holda testda DTO sxemalari bo'sh
+  chiqadi va plugin sozlamasi buzilgani sezilmay qoladi.
+- **Prodda yopiq.** Endpoint ro'yxati va so'rov sxemalari hujum yuzasini
+  kengaytiradi, shuning uchun ikki qatlamli tekshiruv (env + NODE_ENV).
+
+**Commit:** `feat(docs): Swagger UI va OpenAPI sxemasi`
+
+---
+
 ## S18 — Test, CI, deploy ⬜ (TZ 6, 7)
 
 **Nima:** qamrov chegaralari (pul mantiqi ≥ 90%, umumiy ≥ 75%), GitHub Actions

@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import { AppModule } from '../../src/app.module';
 import { validationExceptionFactory } from '../../src/common/errors/validation-error';
+import { setupSwagger } from '../../src/config/swagger';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
 
 export interface HttpTestApp {
@@ -19,7 +20,7 @@ export interface HttpTestApp {
  * Throttler ning o'zi `throttle.int-spec.ts` da alohida tekshiriladi.
  */
 export async function createHttpApp(
-  options: { throttling?: boolean } = {},
+  options: { throttling?: boolean; swagger?: boolean } = {},
 ): Promise<HttpTestApp> {
   // `@Throttle` dekoratori endpointda qattiq limit belgilagani uchun guard ni
   // override qilish yetarli emas — ThrottlerModule ning `skipIf` i ishlatiladi.
@@ -45,6 +46,9 @@ export async function createHttpApp(
       exceptionFactory: validationExceptionFactory,
     }),
   );
+  // Swagger yo'llari `init()` dan **oldin** ro'yxatga olinishi kerak (`main.ts` dagidek)
+  if (options.swagger) setupSwagger(app, 'api');
+
   await app.init();
 
   return {
