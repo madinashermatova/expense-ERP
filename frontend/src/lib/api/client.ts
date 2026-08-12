@@ -1,5 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/features/auth/store';
+import { handleMockRequest } from '@/lib/api/mockInterceptor';
+import i18n from '@/i18n';
+import toast from 'react-hot-toast';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',

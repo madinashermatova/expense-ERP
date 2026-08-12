@@ -5,39 +5,24 @@ import { useThemeStore } from '@/lib/themeStore';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import {
-  User,
-  Shield,
-  Building,
   KeyRound,
-  Globe,
-  Sun,
-  Moon,
   CheckCircle2,
   Lock
 } from 'lucide-react';
 
 export const ProfilePage = () => {
-<<<<<<< HEAD
-=======
-  const { i18n } = useTranslation(['common']);
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
   const { user } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
   const { i18n } = useTranslation();
 
-<<<<<<< HEAD
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordToast, setPasswordToast] = useState(false);
 
   const handleLanguageChange = (lang: string) => {
+    localStorage.setItem('language', lang);
     i18n.changeLanguage(lang);
-=======
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    localStorage.setItem('language', e.target.value);
-    i18n.changeLanguage(e.target.value);
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {

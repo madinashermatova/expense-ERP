@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React from 'react';
 import {
   AreaChart,
@@ -16,7 +15,7 @@ import {
   Legend
 } from 'recharts';
 
-const dynamicsData = [
+const defaultDynamicsData = [
   { name: 'Sen', amount: 9800000 },
   { name: 'Okt', amount: 14200000 },
   { name: 'Noy', amount: 12500000 },
@@ -31,7 +30,7 @@ const dynamicsData = [
   { name: 'Avg', amount: 14850000 },
 ];
 
-const categoryData = [
+const defaultCategoryData = [
   { name: 'Marketing & Reklama', value: 42500000, color: '#3b82f6' },
   { name: 'Ofis & Ma\'muriy', value: 26800000, color: '#10b981' },
   { name: 'Transport & Yoqilg\'i', value: 19400000, color: '#f59e0b' },
@@ -50,10 +49,12 @@ const branchCompareData = [
   { name: 'Buxoro', sarf: 9.8, limit: 15.0 },
 ];
 
-export const DynamicsChart = () => {
+export const DynamicsChart = ({ data }: { data?: any[] }) => {
+  const chartData = data && data.length > 0 ? data : defaultDynamicsData;
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={dynamicsData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
@@ -97,19 +98,21 @@ export const DynamicsChart = () => {
   );
 };
 
-export const CategoryPieChart = () => {
+export const CategoryPieChart = ({ data }: { data?: any[] }) => {
+  const chartData = data && data.length > 0 ? data : defaultCategoryData;
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
         <Pie
-          data={categoryData}
+          data={chartData}
           innerRadius={55}
           outerRadius={80}
           paddingAngle={4}
           dataKey="value"
         >
-          {categoryData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
+          {chartData.map((entry: any, index: number) => (
+            <Cell key={`cell-${index}`} fill={entry.color || ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'][index % 5]} />
           ))}
         </Pie>
         <Tooltip
@@ -165,45 +168,3 @@ export const BranchBarChart = () => {
     </ResponsiveContainer>
   );
 };
-=======
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-
-
-
-
-const COLORS = ['#2B55B4', '#218757', '#D68B07', '#CA2B2B'];
-
-export const DynamicsChart = ({ data }: { data: any[] }) => (
-  <ResponsiveContainer width="100%" height="100%">
-    <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgb(var(--border))" />
-      <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgb(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-      <YAxis tick={{ fontSize: 12, fill: 'rgb(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-      <Tooltip 
-        contentStyle={{ backgroundColor: 'rgb(var(--card))', borderRadius: '8px', border: '1px solid rgb(var(--border))' }} 
-      />
-      <Line type="monotone" dataKey="expense" stroke="rgb(var(--primary))" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-    </LineChart>
-  </ResponsiveContainer>
-);
-
-export const CategoryPieChart = ({ data }: { data: any[] }) => (
-  <ResponsiveContainer width="100%" height="100%">
-    <PieChart>
-      <Pie
-        data={data}
-        innerRadius={60}
-        outerRadius={80}
-        paddingAngle={5}
-        dataKey="value"
-      >
-        {data.map((_, index) => (
-          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-        ))}
-      </Pie>
-      <Tooltip contentStyle={{ backgroundColor: 'rgb(var(--card))', borderRadius: '8px', border: '1px solid rgb(var(--border))' }} />
-      <Legend wrapperStyle={{ fontSize: '12px' }} />
-    </PieChart>
-  </ResponsiveContainer>
-);
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256

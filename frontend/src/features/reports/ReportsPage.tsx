@@ -1,30 +1,14 @@
-<<<<<<< HEAD
 import React, { useState } from 'react';
-=======
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
-<<<<<<< HEAD
 import {
   FileSpreadsheet,
   Download,
-  Building,
-  FolderTree,
-  Users,
-  TrendingUp,
-  BarChart3,
-  Calendar,
   CheckCircle2
 } from 'lucide-react';
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -36,14 +20,6 @@ import {
   Legend
 } from 'recharts';
 import { MockService } from '@/mocks/mockService';
-=======
-import { Download } from 'lucide-react';
-import { useReports } from './api';
-import { useRequestExport } from '../exports/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import toast from 'react-hot-toast';
-import styles from './ReportsPage.module.css';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 
 export const ReportsPage = () => {
   const [reportType, setReportType] = useState<'by-branch' | 'by-category' | 'by-employee' | 'budget-vs-actual'>('by-branch');
@@ -61,7 +37,6 @@ export const ReportsPage = () => {
     { name: 'Buxoro filiali', count: 18, amount: 9800000, limit: 15000000, percent: 65 },
   ];
 
-<<<<<<< HEAD
   const categoryData = [
     { name: 'Marketing & Reklama', count: 35, amount: 42500000, color: '#3b82f6', percent: 28 },
     { name: 'Ofis & Ma\'muriy', count: 68, amount: 26800000, color: '#10b981', percent: 18 },
@@ -136,25 +111,6 @@ export const ReportsPage = () => {
             <FileSpreadsheet size={15} /> Excel (E2-E5)
           </Button>
         </div>
-=======
-  const exportMutation = useRequestExport();
-
-  const handleExport = () => {
-    exportMutation.mutate({ type, format: 'Excel', filters: { startDate, endDate } }, {
-      onSuccess: () => {
-        toast.success("Eksport so'rovi yuborildi. Natijani 'Eksportlar' bo'limida ko'rishingiz mumkin.");
-      }
-    });
-  };
-
-  return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>{t('title')}</h1>
-        <Button onClick={handleExport} style={{ gap: '8px' }} disabled={exportMutation.isPending}>
-          <Download size={16} /> {exportMutation.isPending ? 'Kutmoqda...' : t('export')}
-        </Button>
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
       </div>
 
       {/* Constructor Filter Card */}

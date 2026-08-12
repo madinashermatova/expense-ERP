@@ -1,14 +1,8 @@
-<<<<<<< HEAD
-import React, { useState, useEffect } from 'react';
-=======
-import React from 'react';
-import { useState } from 'react';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/features/auth/store';
 import { usePendingExpenses, useApproveExpense, useRejectExpense, useBulkApproveExpenses } from './api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
-<<<<<<< HEAD
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ExpenseDetailModal } from '@/components/shared/ExpenseDetailModal';
 import {
@@ -20,13 +14,8 @@ import {
   FileText,
   AlertTriangle,
   Keyboard,
-  Building,
-  Calendar,
-  Users
+  AlertCircle
 } from 'lucide-react';
-=======
-import { Check, X, Eye, AlertCircle } from 'lucide-react';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import styles from './ApprovalsPage.module.css';
 import { Dialog } from '@/components/ui/Dialog';
 
@@ -37,64 +26,34 @@ export const ApprovalsPage = () => {
   const [activeTab, setActiveTab] = useState<'1' | '2'>('1');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkErrors, setBulkErrors] = useState<any[]>([]);
 
   const { data, isLoading } = usePendingExpenses(activeTab);
   const approveMutation = useApproveExpense();
   const rejectMutation = useRejectExpense();
   const bulkApproveMutation = useBulkApproveExpenses();
 
-<<<<<<< HEAD
   const items = data?.items || [];
 
-  // Keyboard shortcut support (A: Approve, R: Reject)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
-      if (items.length === 0) return;
-
-      const firstItem = items[0];
-      if (e.key.toLowerCase() === 'a' && firstItem) {
-        // Approve first item
-        approveMutation.mutate(firstItem.id);
-      } else if (e.key.toLowerCase() === 'r' && firstItem) {
-        // Open modal for reject
-        setSelectedExpense(firstItem);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [items, approveMutation]);
-
-  const handleApprove = (id: string) => {
-=======
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [bulkErrors, setBulkErrors] = useState<any[]>([]);
-
   // Reset selection when tab changes
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedIds([]);
   }, [activeTab]);
 
-  const handleApprove = React.useCallback((id: string) => {
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
+  const handleApprove = useCallback((id: string) => {
     approveMutation.mutate(id, {
       onSuccess: () => setSelectedExpense(null)
     });
   }, [approveMutation]);
 
-<<<<<<< HEAD
-  const handleReject = (id: string, reason: string) => {
-    rejectMutation.mutate({ id, reason }, {
-      onSuccess: () => setSelectedExpense(null)
-=======
-  const handleReject = React.useCallback((id: string) => {
-    const reason = window.prompt("Rad etish sababini kiriting (kamida 10 belgi):");
-    if (reason && reason.length >= 10) {
-      rejectMutation.mutate({ id, reason }, {
+  const handleReject = useCallback((id: string, reason?: string) => {
+    const finalReason = reason || window.prompt("Rad etish sababini kiriting (kamida 10 belgi):");
+    if (finalReason && finalReason.length >= 10) {
+      rejectMutation.mutate({ id, reason: finalReason }, {
         onSuccess: () => setSelectedExpense(null)
       });
-    } else if (reason) {
+    } else if (finalReason) {
       alert("Sabab kamida 10 belgi bo'lishi kerak!");
     }
   }, [rejectMutation]);
@@ -103,10 +62,9 @@ export const ApprovalsPage = () => {
     if (selectedIds.length === 0) return;
     setBulkErrors([]);
     bulkApproveMutation.mutate(selectedIds, {
-      onSuccess: (data: any) => {
-        // qisman xatolar bo'lsa
-        if (data?.errors && data.errors.length > 0) {
-          setBulkErrors(data.errors);
+      onSuccess: (resData: any) => {
+        if (resData?.errors && resData.errors.length > 0) {
+          setBulkErrors(resData.errors);
         } else {
           setSelectedIds([]);
         }
@@ -117,33 +75,39 @@ export const ApprovalsPage = () => {
           setBulkErrors(err.response.data.details);
         }
       }
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
     });
   };
 
-  // Keyboard navigation for A (Approve) and R (Reject)
-  React.useEffect(() => {
+  // Keyboard shortcut support (A: Approve, R: Reject)
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Faqatgina modal ochiq va input maydonida bo'lmaganda ishlaydi
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (!selectedExpense) return;
-
-      if (e.key.toLowerCase() === 'a') {
-        handleApprove(selectedExpense.id);
-      } else if (e.key.toLowerCase() === 'r') {
-        handleReject(selectedExpense.id);
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      if (selectedExpense) {
+        if (e.key.toLowerCase() === 'a') {
+          handleApprove(selectedExpense.id);
+        } else if (e.key.toLowerCase() === 'r') {
+          handleReject(selectedExpense.id);
+        }
+      } else if (items.length > 0) {
+        const firstItem = items[0];
+        if (e.key.toLowerCase() === 'a' && firstItem) {
+          handleApprove(firstItem.id);
+        } else if (e.key.toLowerCase() === 'r' && firstItem) {
+          setSelectedExpense(firstItem);
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedExpense, handleApprove, handleReject]);
+  }, [items, selectedExpense, handleApprove, handleReject]);
 
   const toggleSelectAll = () => {
-    if (data?.items) {
-      if (selectedIds.length === data.items.length) {
+    if (items.length > 0) {
+      if (selectedIds.length === items.length) {
         setSelectedIds([]);
       } else {
-        setSelectedIds(data.items.map((item: any) => item.id));
+        setSelectedIds(items.map((item: any) => item.id));
       }
     }
   };
@@ -154,15 +118,14 @@ export const ApprovalsPage = () => {
     );
   };
 
-  const selectedTotal = data?.items
-    ?.filter((item: any) => selectedIds.includes(item.id))
-    .reduce((sum: number, item: any) => sum + Number(item.amount), 0) || 0;
+  const selectedTotal = items
+    .filter((item: any) => selectedIds.includes(item.id))
+    .reduce((sum: number, item: any) => sum + Number(item.amount), 0);
 
   return (
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-<<<<<<< HEAD
         <div>
           <h2 className={styles.title}>Tasdiqlash navbati</h2>
           <span style={{ fontSize: '13px', color: 'rgb(var(--muted-foreground))' }}>
@@ -171,6 +134,17 @@ export const ApprovalsPage = () => {
         </div>
 
         <div className={styles.headerActions}>
+          {selectedIds.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '13px' }}>
+                Tanlanganlar: {selectedIds.length} ta ({new Intl.NumberFormat('uz-UZ').format(selectedTotal)} UZS)
+              </div>
+              <Button onClick={handleBulkApprove} disabled={bulkApproveMutation.isPending} size="sm">
+                {bulkApproveMutation.isPending ? 'Tasdiqlanmoqda...' : 'Tanlanganlarni tasdiqlash'}
+              </Button>
+            </div>
+          )}
+
           <div className={styles.viewToggle}>
             <button
               className={`${styles.viewBtn} ${viewMode === 'cards' ? styles.viewBtnActive : ''}`}
@@ -186,19 +160,6 @@ export const ApprovalsPage = () => {
             </button>
           </div>
         </div>
-=======
-        <h1 className={styles.title}>Tasdiqlash navbati</h1>
-        {selectedIds.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ fontWeight: 'bold' }}>
-              Tanlanganlar: {selectedIds.length} ta ( {new Intl.NumberFormat('uz-UZ').format(selectedTotal)} UZS )
-            </div>
-            <Button onClick={handleBulkApprove} disabled={bulkApproveMutation.isPending}>
-              {bulkApproveMutation.isPending ? 'Tasdiqlanmoqda...' : 'Tanlanganlarni tasdiqlash'}
-            </Button>
-          </div>
-        )}
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
       </div>
 
       {/* Tabs */}
@@ -234,7 +195,6 @@ export const ApprovalsPage = () => {
 
       {/* Main Content */}
       {isLoading ? (
-<<<<<<< HEAD
         <div style={{ padding: '40px', textAlign: 'center', color: 'rgb(var(--muted-foreground))' }}>
           Yuklanmoqda...
         </div>
@@ -269,47 +229,6 @@ export const ApprovalsPage = () => {
                     <span style={{ fontSize: '11px', color: 'rgb(var(--muted-foreground))', fontFamily: 'JetBrains Mono' }}>
                       {item.branchNumber}
                     </span>
-=======
-        <div>Yuklanmoqda...</div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead style={{ width: '40px' }}>
-                <input 
-                  type="checkbox" 
-                  checked={data?.items?.length > 0 && selectedIds.length === data?.items?.length}
-                  onChange={toggleSelectAll}
-                />
-              </TableHead>
-              <TableHead>Raqam</TableHead>
-              <TableHead>Sana</TableHead>
-              <TableHead>Kategoriya</TableHead>
-              <TableHead>Xodim</TableHead>
-              <TableHead style={{ textAlign: 'right' }}>Summa</TableHead>
-              <TableHead style={{ textAlign: 'center' }}>Amallar</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data?.items?.map((item: any) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <input 
-                    type="checkbox" 
-                    checked={selectedIds.includes(item.id)}
-                    onChange={() => toggleSelect(item.id)}
-                  />
-                </TableCell>
-                <TableCell>
-                  <div style={{ fontFamily: 'monospace' }}>{item.globalNumber}</div>
-                </TableCell>
-                <TableCell>{item.date}</TableCell>
-                <TableCell>{item.category.name}</TableCell>
-                <TableCell>{item.employees?.[0]?.fullName} {item.employees?.length > 1 ? `(+${item.employees.length - 1})` : ''}</TableCell>
-                <TableCell>
-                  <div className={styles.amount}>
-                    {new Intl.NumberFormat('uz-UZ').format(Number(item.amount))} {item.currency}
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
                   </div>
                   <StatusBadge status={item.status} />
                 </div>
@@ -412,7 +331,13 @@ export const ApprovalsPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-<<<<<<< HEAD
+                <TableHead style={{ width: '40px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={items.length > 0 && selectedIds.length === items.length}
+                    onChange={toggleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Raqam</TableHead>
                 <TableHead>Sana</TableHead>
                 <TableHead>Filial</TableHead>
@@ -420,11 +345,6 @@ export const ApprovalsPage = () => {
                 <TableHead>Xodim</TableHead>
                 <TableHead style={{ textAlign: 'right' }}>Summa</TableHead>
                 <TableHead style={{ textAlign: 'center' }}>Amallar</TableHead>
-=======
-                <TableCell colSpan={7} style={{ textAlign: 'center', padding: '24px' }}>
-                  Tasdiqlash uchun xarajatlar yo'q
-                </TableCell>
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -434,6 +354,13 @@ export const ApprovalsPage = () => {
                   style={{ cursor: 'pointer' }}
                   onClick={() => setSelectedExpense(item)}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedIds.includes(item.id)}
+                      onChange={() => toggleSelect(item.id)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'rgb(var(--primary))' }}>
                       {item.globalNumber}

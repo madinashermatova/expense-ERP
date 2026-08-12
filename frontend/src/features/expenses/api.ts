@@ -33,13 +33,8 @@ export const useBranches = (status: string = 'active') => {
   return useQuery({
     queryKey: ['branches', status],
     queryFn: async () => {
-<<<<<<< HEAD
-      const response = await apiClient.get('/branches', { params: { status } });
+      const response = await apiClient.get<Paginated<BranchView>>(ENDPOINTS.BRANCHES, { params: { status } });
       return response.data.items || response.data;
-=======
-      const response = await apiClient.get<Paginated<BranchView>>(ENDPOINTS.BRANCHES);
-      return response.data.items;
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
     }
   });
 };
@@ -48,11 +43,7 @@ export const useCategories = () => {
   return useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-<<<<<<< HEAD
-      const response = await apiClient.get('/categories');
-=======
       const response = await apiClient.get<CategoryView[]>(ENDPOINTS.CATEGORIES);
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
       return response.data;
     }
   });
@@ -69,18 +60,6 @@ export const useEmployees = (branchId?: string) => {
   });
 };
 
-<<<<<<< HEAD
-export const useApproveExpense = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiClient.post(`/expenses/${id}/approve`);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['reports'] });
-=======
 export const useCreateExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -104,12 +83,26 @@ export const useCreateExpense = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
     }
   });
 };
 
-<<<<<<< HEAD
+export const useApproveExpense = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.post(`/expenses/${id}/approve`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    }
+  });
+};
+
 export const useRejectExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -119,6 +112,7 @@ export const useRejectExpense = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     }
   });
 };
@@ -132,6 +126,7 @@ export const useRequestFixExpense = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     }
   });
 };
@@ -145,6 +140,7 @@ export const useBulkApproveExpenses = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     }
   });
 };
@@ -158,7 +154,10 @@ export const useCreateExport = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exports'] });
-=======
+    }
+  });
+};
+
 export const useExpenseAction = (id: string) => {
   const queryClient = useQueryClient();
   
@@ -171,7 +170,6 @@ export const useExpenseAction = (id: string) => {
       queryClient.invalidateQueries({ queryKey: ['expense', id] });
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
     }
   });
 };

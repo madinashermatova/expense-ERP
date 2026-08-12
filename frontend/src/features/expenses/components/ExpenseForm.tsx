@@ -1,30 +1,18 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-=======
-import { useState, useEffect } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dropzone } from '@/components/ui/Dropzone';
-<<<<<<< HEAD
 import { Dialog } from '@/components/ui/Dialog';
-import { useBranches, useCategories, useEmployees } from '../api';
-import { expenseSchema, ExpenseFormData } from '../schema';
-import { useAuthStore } from '@/features/auth/store';
-import { MockService } from '@/mocks/mockService';
-import { AlertCircle, AlertTriangle, Check, CheckCircle2, Split, Users } from 'lucide-react';
-=======
 import { useBranches, useCategories, useEmployees, useCreateExpense } from '../api';
 import { expenseSchema, ExpenseFormData } from '../schema';
 import { useAuthStore } from '@/features/auth/store';
+import { AlertTriangle, Check, CheckCircle2, Split, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { handleFormErrors } from '@/lib/api/formErrors';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import styles from './ExpenseForm.module.css';
 
 interface ExpenseFormProps {
@@ -35,7 +23,6 @@ interface ExpenseFormProps {
 export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER';
-<<<<<<< HEAD
 
   const [attachments, setAttachments] = useState<File[]>([]);
   const [splitMode, setSplitMode] = useState<'EQUAL' | 'MANUAL'>('EQUAL');
@@ -45,74 +32,33 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ExpenseFormData>({
-=======
-  const [attachments, setAttachments] = useState<File[]>([]);
   const createMutation = useCreateExpense();
 
-  const { register, handleSubmit, watch, setValue, control, setError, formState: { errors } } = useForm<ExpenseFormData>({
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
+  const { register, handleSubmit, watch, setValue, setError, formState: { errors } } = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       branchId: isAdmin ? '' : user?.branchId || 'b1',
       employeeIds: [],
       shares: [],
       paymentMethod: 'CARD',
-<<<<<<< HEAD
+      currency: 'UZS',
       date: new Date().toISOString().split('T')[0],
-      amount: ''
+      amount: '',
+      comment: ''
     }
   });
 
   const watchBranchId = watch('branchId') || (isAdmin ? '' : user?.branchId || 'b1');
   const watchCategoryId = watch('categoryId');
   const watchAmount = watch('amount');
-=======
-      currency: 'UZS',
-      date: new Date().toISOString().split('T')[0]
-    }
-  });
-
-  const { fields: shareFields, replace } = useFieldArray({
-    control,
-    name: "shares"
-  });
-
-  const watchBranchId = watch('branchId');
-  const watchAmount = watch('amount');
-  const watchEmployeeIds = watch('employeeIds');
-  const watchCategoryId = watch('categoryId');
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 
   const { data: branches } = useBranches();
   const { data: categories } = useCategories();
   const { data: employees } = useEmployees(watchBranchId);
 
-<<<<<<< HEAD
   // Selected category rules
   const selectedCat = categories?.find((c: any) => c.id === watchCategoryId) ||
     categories?.flatMap((c: any) => c.children || []).find((c: any) => c.id === watchCategoryId);
-=======
-  const selectedCategory = categories?.find((c: any) => c.id === watchCategoryId);
-
-  useEffect(() => {
-    const currentEmpIds = watchEmployeeIds || [];
-    if (currentEmpIds.length > 1 && watchAmount) {
-      const amountNum = parseFloat(watchAmount);
-      if (!isNaN(amountNum)) {
-        const share = Math.floor((amountNum / currentEmpIds.length) * 100) / 100;
-        const remainder = Math.round((amountNum - (share * currentEmpIds.length)) * 100) / 100;
-        
-        replace(currentEmpIds.map((empId, index) => ({
-          employeeId: empId,
-          amount: index === 0 ? (share + remainder).toFixed(2) : share.toFixed(2)
-        })));
-      }
-    } else {
-      replace([]); // Clear shares if 1 or 0 employees
-    }
-  }, [watchEmployeeIds, watchAmount, replace]);
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 
   const isReceiptMandatory = selectedCat?.receiptRequired;
   const isCommentMandatory = selectedCat?.commentRequired;
@@ -148,6 +94,19 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
     }
   }, [splitMode, selectedEmployees, totalAmount]);
 
+  // Sync formatted shares to react-hook-form
+  useEffect(() => {
+    if (selectedEmployees.length > 1) {
+      const formattedShares = selectedEmployees.map(id => ({
+        employeeId: id,
+        amount: manualShares[id] || '0'
+      }));
+      setValue('shares', formattedShares, { shouldValidate: true });
+    } else {
+      setValue('shares', [], { shouldValidate: true });
+    }
+  }, [selectedEmployees, manualShares, setValue]);
+
   // Manual sum checking
   const manualSum = Object.values(manualShares).reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
   const isSharesBalanced = selectedEmployees.length <= 1 || Math.abs(manualSum - totalAmount) < 0.01;
@@ -160,53 +119,47 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
     }));
   };
 
-  const handleFinalSubmit = (data: any) => {
-    // Format shares
-    const finalShares = selectedEmployees.length > 0
-      ? selectedEmployees.map(empId => {
-          const emp = employees?.find((e: any) => e.id === empId);
-          return {
-            employeeId: empId,
-            employeeName: emp?.fullName || empId,
-            amount: manualShares[empId] || (totalAmount / selectedEmployees.length).toFixed(2)
-          };
-        })
-      : [];
-
-    MockService.createExpense({
-      ...data,
-      shares: finalShares,
-      files: attachments.map(f => ({
-        id: 'file-' + Date.now(),
-        name: f.name,
-        url: 'https://images.unsplash.com/photo-1554415707-9e49017a1430?w=600&auto=format&fit=crop&q=80',
-        size: f.size,
-        type: f.type
-      })),
-      currentUserId: user?.id,
-      currentUserName: user?.fullName
-    });
-
-    if (totalAmount > 10000000) {
-      setBudgetToast(true);
-      setTimeout(() => {
-        setBudgetToast(false);
-        if (onSuccess) onSuccess();
-      }, 2500);
-    } else {
-      if (onSuccess) onSuccess();
-    }
+  const handleFinalSubmit = (formData: ExpenseFormData) => {
+    createMutation.mutate(
+      { data: formData, files: attachments },
+      {
+        onSuccess: () => {
+          toast.success("Xarajat muvaffaqiyatli qo'shildi");
+          if (totalAmount > 10000000) {
+            setBudgetToast(true);
+            setTimeout(() => {
+              setBudgetToast(false);
+              if (onSuccess) onSuccess();
+            }, 2000);
+          } else {
+            if (onSuccess) onSuccess();
+          }
+        },
+        onError: (error) => {
+          handleFormErrors(error, setError);
+        }
+      }
+    );
   };
 
   const onSubmit = (data: ExpenseFormData) => {
-<<<<<<< HEAD
     if (!isSharesBalanced) {
-      alert("Taqsimlangan summalar yig'indisi jami summaga teng bo'lishi shart!");
+      toast.error("Taqsimlangan summalar yig'indisi jami summaga teng bo'lishi shart!");
       return;
     }
 
     if (isReceiptMandatory && attachments.length === 0) {
-      alert("Ushbu kategoriya uchun kamida 1 ta chek yoki isbot fayli yuklash majburiy!");
+      toast.error("Ushbu kategoriya uchun kamida 1 ta chek yoki isbot fayli yuklash majburiy!");
+      return;
+    }
+
+    if (isCommentMandatory && !data.comment) {
+      toast.error("Ushbu kategoriya uchun izoh kiritish majburiy!");
+      return;
+    }
+
+    if (maxLimit && totalAmount > Number(maxLimit)) {
+      toast.error(`Kategoriya bo'yicha maksimal 1 martalik limit: ${new Intl.NumberFormat('uz-UZ').format(Number(maxLimit))} UZS`);
       return;
     }
 
@@ -218,33 +171,6 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
     }
 
     handleFinalSubmit(data);
-=======
-    if (selectedCategory?.receiptRequired && attachments.length === 0) {
-      toast.error('Bu kategoriya uchun chek/isbot kiritish majburiy');
-      return;
-    }
-    if (selectedCategory?.commentRequired && !data.comment) {
-      toast.error('Bu kategoriya uchun izoh kiritish majburiy');
-      return;
-    }
-    if (selectedCategory?.maxAmountPerEntry && Number(data.amount) > Number(selectedCategory.maxAmountPerEntry)) {
-      toast.error(`Kategoriya bo'yicha maksimal summa: ${selectedCategory.maxAmountPerEntry}`);
-      return;
-    }
-
-    createMutation.mutate(
-      { data, files: attachments },
-      {
-        onSuccess: () => {
-          toast.success("Xarajat muvaffaqiyatli qo'shildi");
-          if (onSuccess) onSuccess();
-        },
-        onError: (error) => {
-          handleFormErrors(error, setError);
-        }
-      }
-    );
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
   };
 
   return (
@@ -303,7 +229,6 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
           ))}
         </Select>
 
-<<<<<<< HEAD
         {/* Category Badge Hints */}
         {selectedCat && (
           <div className={styles.fullWidth} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '-8px' }}>
@@ -325,44 +250,20 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
           </div>
         )}
 
-        {/* Amount */}
-        <Input
-          label="Summa (UZS)"
-          required
-          type="number"
-          step="0.01"
-          placeholder="0.00"
-          error={errors.amount?.message}
-          {...register('amount')}
-        />
-=======
-        <div className={styles.fullWidth}>
-          <Select
-            label="Kim uchun (Ctrl/Cmd bilan bir nechta tanlash mumkin)"
-            required
-            multiple
-            size={4}
-            error={errors.employeeIds?.message}
-            onChange={handleEmployeeChange}
-            value={watchEmployeeIds || []}
-          >
-            {employees?.map((e: any) => (
-              <option key={e.id} value={e.id}>{e.fullName}</option>
-            ))}
-          </Select>
-        </div>
-
+        {/* Amount & Currency */}
         <div style={{ display: 'flex', gap: '8px' }}>
           <div style={{ flex: 1 }}>
             <Input
               label="Summa"
               required
+              type="number"
+              step="0.01"
               placeholder="0.00"
               error={errors.amount?.message}
               {...register('amount')}
             />
           </div>
-          <div style={{ width: '100px' }}>
+          <div style={{ width: '110px' }}>
             <Select
               label="Valyuta"
               required
@@ -374,7 +275,6 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
             </Select>
           </div>
         </div>
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 
         {/* Date */}
         <Input
@@ -432,6 +332,11 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
               );
             })}
           </div>
+          {errors.employeeIds && (
+            <span style={{ fontSize: '12px', color: 'rgb(var(--destructive))', marginTop: '4px', display: 'block' }}>
+              {errors.employeeIds.message}
+            </span>
+          )}
         </div>
 
         {/* Multi-share calculator if > 1 employee */}
@@ -530,30 +435,18 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
         {/* Reason / Description */}
         <div className={styles.fullWidth}>
           <Textarea
-<<<<<<< HEAD
-            label={`Izoh va maqsadi ${isCommentMandatory ? '(Majburiy)' : ''}`}
+            label={isCommentMandatory ? "Izoh (Majburiy)" : "Izoh va maqsadi"}
             placeholder="Xarajat qanday maqsadda va nimalar xarid qilinganligi haqida batafsil ma'lumot..."
             required={isCommentMandatory}
-            error={errors.reason?.message}
-            {...register('reason')}
-=======
-            label={selectedCategory?.commentRequired ? "Izoh (Majburiy)" : "Izoh"}
-            required={selectedCategory?.commentRequired}
-            placeholder="Xarajat haqida ma'lumot..."
             error={errors.comment?.message}
             {...register('comment')}
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
           />
         </div>
 
         {/* Dropzone */}
         <div className={styles.fullWidth}>
           <Dropzone
-<<<<<<< HEAD
-            label={`Chek / Isbot fayllari ${isReceiptMandatory ? '(Majburiy)' : ''}`}
-=======
-            label={selectedCategory?.receiptRequired ? "Chek / Isbot fayllar (Majburiy)" : "Chek / Isbot fayllar"}
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
+            label={isReceiptMandatory ? "Chek / Isbot fayllari (Majburiy)" : "Chek / Isbot fayllari"}
             files={attachments}
             onChange={setAttachments}
           />
@@ -562,17 +455,11 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
 
       {/* Form Actions */}
       <div className={styles.actions}>
-<<<<<<< HEAD
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={createMutation.isPending}>
           Bekor qilish
         </Button>
-        <Button type="submit" disabled={!isSharesBalanced}>
-          Arizani yuborish
-=======
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={createMutation.isPending}>Bekor qilish</Button>
-        <Button type="submit" disabled={createMutation.isPending}>
-          {createMutation.isPending ? 'Saqlanmoqda...' : 'Saqlash'}
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
+        <Button type="submit" disabled={!isSharesBalanced || createMutation.isPending}>
+          {createMutation.isPending ? 'Saqlanmoqda...' : 'Arizani yuborish'}
         </Button>
       </div>
 

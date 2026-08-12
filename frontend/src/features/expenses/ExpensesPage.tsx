@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import React, { useState, useMemo } from 'react';
-=======
-import { useState } from 'react';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import { useNavigate } from 'react-router-dom';
 import {
   createColumnHelper,
@@ -23,9 +19,7 @@ import {
 import { useAuthStore } from '@/features/auth/store';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-<<<<<<< HEAD
 import { ExpenseDetailModal } from '@/components/shared/ExpenseDetailModal';
 import { Dialog } from '@/components/ui/Dialog';
 import {
@@ -33,7 +27,6 @@ import {
   FileSpreadsheet,
   FileText,
   AlertTriangle,
-  SlidersHorizontal,
   CheckCheck,
   Search,
   RotateCcw,
@@ -41,70 +34,10 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-=======
-import { FileText, Plus, Eye } from 'lucide-react';
-import { Link } from 'react-router-dom';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import styles from './ExpensesPage.module.css';
 
 const columnHelper = createColumnHelper<any>();
 
-<<<<<<< HEAD
-=======
-const columns = [
-  columnHelper.accessor('globalNumber', {
-    header: 'Raqam',
-    cell: info => (
-      <div style={{ fontFamily: 'monospace' }}>
-        <Link to={`/expenses/${info.row.original.id}`} style={{ color: 'rgb(var(--primary))', textDecoration: 'underline' }}>
-          {info.getValue()}
-        </Link>
-        <br/>
-        <span style={{ fontSize: '12px', color: 'rgb(var(--muted-foreground))' }}>{info.row.original.branchNumber}</span>
-      </div>
-    ),
-  }),
-  columnHelper.accessor('date', {
-    header: 'Sana',
-    cell: info => info.getValue(),
-  }),
-  columnHelper.accessor('branch.name', {
-    header: 'Filial',
-    cell: info => info.getValue(),
-  }),
-  columnHelper.accessor('category.name', {
-    header: 'Kategoriya',
-    cell: info => info.getValue(),
-  }),
-  columnHelper.accessor('amount', {
-    header: () => <div style={{ textAlign: 'right' }}>Summa</div>,
-    cell: info => {
-      const amount = new Intl.NumberFormat('uz-UZ').format(Number(info.getValue()));
-      return <div className={styles.amount}>{amount} {info.row.original.currency}</div>;
-    },
-  }),
-  columnHelper.accessor('status', {
-    header: 'Holat',
-    cell: info => <StatusBadge status={info.getValue()} />,
-  }),
-  columnHelper.accessor('hasReceipt', {
-    header: 'Chek',
-    cell: info => info.getValue() ? <FileText size={16} color="rgb(var(--primary))" /> : <span style={{ color: 'rgb(var(--muted-foreground))' }}>Yo'q</span>,
-  }),
-  columnHelper.display({
-    id: 'actions',
-    cell: info => (
-      <Link to={`/expenses/${info.row.original.id}`}>
-        <Button variant="ghost" size="sm" style={{ padding: '4px' }}>
-          <Eye size={16} />
-        </Button>
-      </Link>
-    )
-  })
-];
-
-
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 export const ExpensesPage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -119,7 +52,6 @@ export const ExpensesPage = () => {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
 
   // Selection & Modals
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<'xlsx' | 'pdf'>('xlsx');
@@ -265,9 +197,6 @@ export const ExpensesPage = () => {
     columns,
     getCoreRowModel: getCoreRowModel(),
     enableRowSelection: true,
-    onRowSelectionChange: (updaterOrValue) => {
-      // Row selection callback
-    }
   });
 
   const selectedRows = table.getSelectedRowModel().rows;

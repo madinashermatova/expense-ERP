@@ -3,30 +3,20 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Dialog } from '@/components/ui/Dialog';
-<<<<<<< HEAD
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { Plus, Undo2, CheckCircle2, XCircle, Eye, FileText, ArrowRight } from 'lucide-react';
-import { useRefunds, useApproveRefund, useRejectRefund } from './api';
+import { Plus, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { useRefunds } from './api';
 import { RefundForm } from './components/RefundForm';
 import { MockService } from '@/mocks/mockService';
-=======
-import { Plus } from 'lucide-react';
-import { useRefunds, useApproveRefund, useRejectRefund } from './api';
-import { RefundForm } from './components/RefundForm';
-import { Check, X } from 'lucide-react';
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
 import styles from './RefundsPage.module.css';
 
 export const RefundsPage = () => {
   const { t } = useTranslation(['refunds', 'common']);
   const [activeTab, setActiveTab] = useState('ALL');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-<<<<<<< HEAD
   const [selectedRefund, setSelectedRefund] = useState<any | null>(null);
 
-  const { data, isLoading, refetch } = useRefunds(activeTab);
-  const approveMutation = useApproveRefund();
-  const rejectMutation = useRejectRefund();
+  const { refetch } = useRefunds(activeTab);
 
   const refundsList = MockService.getRefunds();
   const filteredList = activeTab === 'ALL' ? refundsList : refundsList.filter(r => r.status === activeTab);
@@ -43,21 +33,6 @@ export const RefundsPage = () => {
       MockService.rejectRefund(id, reason);
       setSelectedRefund(null);
       refetch();
-=======
-  
-  const { data, isLoading } = useRefunds(activeTab);
-  const approveMutation = useApproveRefund();
-  const rejectMutation = useRejectRefund();
-
-  const handleApprove = (id: string) => {
-    approveMutation.mutate(id);
-  };
-
-  const handleReject = (id: string) => {
-    const reason = window.prompt("Rad etish sababini kiriting (kamida 10 belgi):");
-    if (reason && reason.length >= 10) {
-      rejectMutation.mutate({ id, reason });
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
     }
   };
 
@@ -125,7 +100,6 @@ export const RefundsPage = () => {
                     {item.expenseGlobalNumber}
                   </span>
                 </TableCell>
-<<<<<<< HEAD
                 <TableCell>
                   <div style={{ fontWeight: 600 }}>{item.employeeName}</div>
                   <div style={{ fontSize: '11px', color: 'rgb(var(--muted-foreground))' }}>{item.branchName}</div>
@@ -177,33 +151,6 @@ export const RefundsPage = () => {
                       </>
                     )}
                   </div>
-=======
-                <TableCell>{item.reason}</TableCell>
-                <TableCell>{item.status}</TableCell>
-                <TableCell style={{ textAlign: 'right' }}>
-                  {item.status === 'PENDING' && (
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleApprove(item.id)}
-                        disabled={approveMutation.isPending || rejectMutation.isPending}
-                        style={{ color: 'rgb(var(--success))' }}
-                      >
-                        <Check size={18} />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleReject(item.id)}
-                        disabled={approveMutation.isPending || rejectMutation.isPending}
-                        style={{ color: 'rgb(var(--destructive))' }}
-                      >
-                        <X size={18} />
-                      </Button>
-                    </div>
-                  )}
->>>>>>> 09480eebc3624593477022b1f8609048dbaad256
                 </TableCell>
               </TableRow>
             ))}
