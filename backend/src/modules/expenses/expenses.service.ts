@@ -29,6 +29,8 @@ import {
 import { BudgetsService, BudgetWarning } from '../budgets/budgets.service';
 import { CurrencyService } from '../currency/currency.service';
 import { FilesService, FileView } from '../files/files.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification-types';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateExpenseDto, ExpenseShareDto } from './dto/create-expense.dto';
 import {
   EXPENSE_SORT_FIELDS,
@@ -127,6 +129,7 @@ export class ExpensesService {
     private readonly audit: AuditService,
     private readonly branchScope: BranchScopeService,
     private readonly budgets: BudgetsService,
+    private readonly notifications: NotificationsService,
     private readonly settings: SettingsService,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -296,6 +299,8 @@ export class ExpensesService {
         globalNumber: duplicate.globalNumber,
       };
     }
+
+    await this.notifyApprovers(created);
 
     /*
      * Yangi yozuv hali `APPROVED` emas, ya'ni sarfda hisoblanmaydi. Shunga qaramay
@@ -713,6 +718,55 @@ export class ExpensesService {
   // ───────────────────────────────────────────────────────────────────────────
   // Ichki yordamchilar
   // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Yangi xarajat haqida navbatdagi tasdiqlovchiga xabar (TZ 3.11).
+   *
+   * `DRAFT` da xabar yuborilmaydi — yozuv hali tugallanmagan va `submit` dan keyin
+   * tasdiqlash oqimiga tushadi, o'sha yerda xabar ketadi.
+   */
+  private async notifyApprovers(expense: ExpenseRow): Promise<void> {
+    if (expense.status === ExpenseStatus.DRAFT) return;
+
+    const payload = {
+      expenseId: expense.id,
+      globalNumber: expense.globalNumber,
+      amount: Money.toString(expense.amount),
+    };
+
+    // Direktor kiritgan ariza darhol 2-bosqichda bo'ladi (TZ 3.7)
+    if (expense.status === ExpenseStatus.ADMIN_PENDING) {
+      await this.notifications.notifyAdmins(
+        NOTIFICATION_TYPES.expenseCreated,
+        payload,
+      );
+      return;
+    }
+
+    const directors = await this.prisma.db.user.findMany({
+      where: {
+        role: Role.DIRECTOR,
+        isActive: true,
+        employee: { branchId: expense.branchId },
+      },
+      select: { id: true },
+    });
+
+    if (directors.length === 0) {
+      // Filialda direktor yo'q — ariza baribir ko'rilishi kerak
+      await this.notifications.notifyAdmins(
+        NOTIFICATION_TYPES.expenseCreated,
+        payload,
+      );
+      return;
+    }
+
+    await this.notifications.notifyUsers(
+      directors.map((d) => d.id),
+      NOTIFICATION_TYPES.expenseCreated,
+      payload,
+    );
+  }
 
   /**
    * Yangi yozuv qaysi statusda tug'iladi.

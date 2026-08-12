@@ -22,10 +22,8 @@ import {
   ExpenseStatus,
   Role,
 } from '../../generated/prisma/enums';
-import {
-  NOTIFICATION_TYPES,
-  NotificationsService,
-} from '../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification-types';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
 import {
   BudgetUsageDto,

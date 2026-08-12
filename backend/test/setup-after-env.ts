@@ -12,5 +12,12 @@ process.env.NODE_ENV = 'test';
 // boshqa test faylining ma'lumotiga tegib ketmasligi kerak (`cron.guard.ts`)
 process.env.DISABLE_CRON = 'true';
 
+// BullMQ worker ham o'chiriladi: u Redis ga blokli ulanish ochadi va Jest jarayondan
+// chiqa olmay qoladi. Job qo'shish ishlaydi, processor esa aniq chaqirib sinaladi.
+process.env.DISABLE_QUEUE_WORKER = 'true';
+
+// Har test fayli o'z Redis DB sini ishlatadi — navbatlar bir-biriga tegmasligi uchun
+process.env.REDIS_DB = process.env.REDIS_TEST_DB ?? '1';
+
 // Integratsion testlar alohida bucket ishlatadi — dev fayllari bilan aralashmasligi uchun
 process.env.S3_BUCKET = 'erp-files-test';

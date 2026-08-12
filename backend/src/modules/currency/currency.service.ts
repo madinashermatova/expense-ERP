@@ -6,10 +6,8 @@ import { Money } from '../../common/money/money';
 import { Currency, Prisma, RateSource } from '../../generated/prisma/client';
 import { SettingsService } from '../settings/settings.service';
 import { CbuClient } from './cbu.client';
-import {
-  NotificationsService,
-  NOTIFICATION_TYPES,
-} from '../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification-types';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface ResolvedRate {
   rate: Prisma.Decimal;

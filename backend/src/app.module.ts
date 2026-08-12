@@ -4,6 +4,7 @@ import {
   NestModule,
   RequestMethod,
 } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -58,6 +59,23 @@ import { PlansModule } from './modules/plans/plans.module';
         // Throttler ning o'zi `throttle.int-spec.ts` da alohida sinaladi.
         skipIf: () => process.env.DISABLE_THROTTLE === 'true',
       }),
+    }),
+    /*
+     * BullMQ — bildirishnoma navbati (TZ 3.11). Job lar Redis da saqlanadi, shuning
+     * uchun ilova qayta ishga tushsa ham yuborilmagan xabar yo'qolmaydi.
+     */
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<EnvironmentVariables, true>) => {
+        const host: string = config.get('REDIS_HOST', { infer: true });
+        const port: number = config.get('REDIS_PORT', { infer: true });
+        const password: string | undefined = config.get('REDIS_PASSWORD', {
+          infer: true,
+        });
+        const db: number = config.get('REDIS_DB', { infer: true });
+
+        return { connection: { host, port, password, db } };
+      },
     }),
     ScheduleModule.forRoot(),
     TenancyModule,

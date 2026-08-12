@@ -17,10 +17,8 @@ import { tenantData } from '../../common/tenancy/tenant-data';
 import { Prisma } from '../../generated/prisma/client';
 import { EditRequestStatus, Role } from '../../generated/prisma/enums';
 import { ExpensesService } from '../expenses/expenses.service';
-import {
-  NOTIFICATION_TYPES,
-  NotificationsService,
-} from '../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification-types';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateEditRequestDto,
   ListEditRequestsDto,

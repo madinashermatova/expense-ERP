@@ -24,10 +24,8 @@ import {
   Role,
 } from '../../generated/prisma/enums';
 import { FilesService, UploadedFileInput } from '../files/files.service';
-import {
-  NOTIFICATION_TYPES,
-  NotificationsService,
-} from '../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification-types';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRefundDto, ListRefundsDto } from './dto/refund.dto';
 
 export interface RefundView {

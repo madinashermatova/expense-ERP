@@ -400,11 +400,36 @@ o'tishi, effektiv summa hisobi.
 
 ---
 
-## S11 — Bildirishnomalar ⬜ (TZ 3.11)
+## S11 — Bildirishnomalar ✅ (TZ 3.11)
 
-**Nima:** BullMQ navbatlari + processorlar, 3 marta retry (eksponensial backoff),
+**Nima:** BullMQ navbati + processor, 3 marta retry (eksponensial backoff),
 `Notification` yozuvi + Web badge, Telegram yuborish adapteri, bloklangan bot bilan
 xatosiz ishlash (`botBlocked` belgisi), job payload da `companyId` majburiy.
+
+**Natija:** `test:int` — 231/231 yashil (yangi: bildirishnomalar 15), `test:unit` — 39/39.
+
+**S11 da qabul qilingan qarorlar:**
+- **Web yozuvi navbatdan tashqarida.** `Notification` qatori darhol bazaga tushadi,
+  navbatga faqat **Telegram yuborish** qo'yiladi. Shu sababli Redis ishlamasa ham
+  foydalanuvchi xabarni badge da ko'radi — navbat yagona yetkazish yo'li emas.
+- **Job qo'shish asosiy amalni yiqitmaydi:** `queue.addBulk` xatosi loglanadi va oqim
+  davom etadi. Aks holda Redis uzilishi xarajat yaratishni ham to'xtatib qo'yardi.
+- **Xabar matni serverda tayyorlanadi** (`notification-messages.ts`), foydalanuvchining
+  `language` iga qarab uz/ru. Bir xil matn Web badge ida ham, Telegram xabarida ham
+  ishlatiladi — ikki mijozda takrorlash shart emas. To'liq `nestjs-i18n` S17 da keladi
+  va shu jadval o'sha yerga ko'chadi.
+- **`NOTIFICATION_TYPES` alohida faylga chiqarildi** (`notification-types.ts`): matn
+  shabloni va processor ham shu ro'yxatga tayanadi, servisda qolsa aylanma import chiqardi.
+- **Telegraf ning yengil `Telegram` mijozi** ishlatiladi, to'liq `Bot` obyekti emas:
+  bu yerda faqat chiqish kanali kerak, polling yoki webhook ko'tarilmaydi (ular S16 da).
+- **403 ni "bloklangan" deb hisoblash keng:** `blocked`, `deactivated`, `chat not found`
+  va bo'sh tavsif ham shu toifada — bularning barchasida qayta urinish befoyda va
+  job ni `failed` ga tushirish faqat navbatni chiqindi bilan to'ldirardi.
+- **Worker testlarda ro'yxatga olinmaydi** (`DISABLE_QUEUE_WORKER`): BullMQ worker Redis ga
+  blokli ulanish ochadi va uni har test faylida ko'tarish Jest ni jarayondan chiqmay
+  qoldirdi (to'liq qator 10 daqiqadan oshib ketdi). Job qo'shish baribir ishlaydi, ya'ni
+  "job soni +1" mezoni tekshiriladi; processor mantig'i esa `process()` ni aniq chaqirib
+  sinaladi — cron bilan bir xil yondashuv. Testlar alohida Redis DB (`1`) ishlatadi.
 
 **Commit:** `feat(notifications): BullMQ navbatlari, web + telegram kanallari`
 

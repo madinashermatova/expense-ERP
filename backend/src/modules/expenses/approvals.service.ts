@@ -12,10 +12,8 @@ import { BranchScopeService } from '../../common/scope/branch-scope.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import { Prisma } from '../../generated/prisma/client';
 import { ExpenseStatus, Role } from '../../generated/prisma/enums';
-import {
-  NOTIFICATION_TYPES,
-  NotificationsService,
-} from '../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification-types';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ExpenseAction, findTransition, Transition } from './expense-status';
 import { ExpensesService, ExpenseView } from './expenses.service';
 

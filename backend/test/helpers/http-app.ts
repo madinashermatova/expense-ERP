@@ -26,6 +26,7 @@ export async function createHttpApp(
   // Cron soat boshida o'z-o'zidan ishga tushib boshqa test faylining ma'lumotiga
   // tegib ketmasligi uchun o'chiriladi; cron mantig'i `run()` ni chaqirib sinaladi.
   process.env.DISABLE_CRON = 'true';
+  process.env.DISABLE_QUEUE_WORKER = 'true';
 
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],

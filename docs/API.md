@@ -6,8 +6,8 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S10 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
-tasdiqlash, tahrirlash, qaytarish, byudjet
+Holat: **S1–S11 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
+tasdiqlash, tahrirlash, qaytarish, byudjet, bildirishnomalar
 
 ---
 
@@ -872,6 +872,73 @@ filial direktorlariga. Bir davrda bir chegara — bir marta.
 
 ---
 
+## Bildirishnomalar
+
+Yozish **ikki qatlamli**: `Notification` yozuvi darhol bazaga tushadi (Web badge i uchun),
+Telegram yuborish esa BullMQ navbatiga qo'yiladi. Navbat yiqilsa ham foydalanuvchi
+xabarni Web da ko'radi — navbat yagona yetkazish yo'li emas. Email kanali doiraga kirmaydi.
+
+| Hodisa | `type` | Kimga |
+|---|---|---|
+| Yangi xarajat kiritildi | `EXPENSE_CREATED` | filial direktori (yo'q bo'lsa adminlar) |
+| Direktor tasdiqladi | `EXPENSE_DIRECTOR_APPROVED` | bosh adminlar |
+| Yakuniy tasdiqlandi | `EXPENSE_FINALIZED` | kiritgan shaxs |
+| Rad etildi | `EXPENSE_REJECTED` | kiritgan shaxs |
+| Tuzatish so'raldi | `FIX_REQUESTED` | kiritgan shaxs |
+| Tahrirlash murojaati | `EDIT_REQUEST_SUBMITTED` | filial direktorlari |
+| Qaytarish so'rovi | `REFUND_SUBMITTED` | direktorlar → adminlar |
+| Qaytarish hal qilindi | `REFUND_RESOLVED` | so'rovchi |
+| Limit 80% / 100% | `BUDGET_THRESHOLD` | adminlar + filial direktori |
+| Javobsiz ariza | `APPROVAL_REMINDER` | tasdiqlovchi |
+| Kurs olinmadi | `CURRENCY_RATE_FAILED` | adminlar |
+
+### Navbat
+
+- Job payload: `{ companyId, notificationId, userId, type, payload }` — `companyId`
+  **majburiy**, processor tenant kontekstini shundan tiklaydi.
+- **3 urinish**, eksponensial backoff (`delay: 2000`). Uchinchisidan keyin job `failed`
+  holatida qoladi va log yoziladi.
+- Foydalanuvchi botni bloklagan bo'lsa (`403`) job **muvaffaqiyatli** yakunlanadi,
+  qayta urinilmaydi, xodim kartochkasida `botBlocked = true` bo'ladi.
+- Telegram yuborilgach `Notification.sentAt` to'ldiriladi.
+
+### `GET /notifications`
+
+Faqat **o'z** bildirishnomalari ko'rinadi.
+
+| Query | Qiymat |
+|---|---|
+| `isRead` | `false` — o'qilmaganlar (badge ro'yxati) · `true` |
+| `type` | yuqoridagi turlardan biri |
+
+```jsonc
+// items[] elementi
+{
+  "id": "uuid",
+  "type": "EXPENSE_CREATED",
+  "title": "Yangi xarajat: EXP-000123 — 150000.00",
+  "payload": { "expenseId": "uuid", "globalNumber": "EXP-000123", "amount": "150000.00" },
+  "channel": "WEB",
+  "isRead": false,
+  "readAt": null,
+  "sentAt": "2026-08-12T09:00:01.000Z",   // Telegram ga yuborilgan vaqt
+  "createdAt": "..."
+}
+```
+
+`title` **serverda** tayyorlanadi va foydalanuvchining `language` iga (uz/ru) qarab
+beriladi — Web badge i va Telegram xabari bir manbadan, mijozda takrorlanmaydi.
+
+### `GET /notifications/unread-count` → `{ "count": 3 }`
+
+### `POST /notifications/:id/read` → `204`
+
+Boshqa foydalanuvchining yozuvi → `404`.
+
+### `POST /notifications/mark-all-read` → `{ "updated": 3 }`
+
+---
+
 ## Valyuta
 
 Qo'llab-quvvatlanadigan valyutalar: **UZS** va **USD**. Hisobot valyutasi — UZS.
@@ -938,7 +1005,6 @@ oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
 
 | Endpoint | Bosqich |
 |---|---|
-| `GET /notifications` | S11 |
 | `GET /reports/*` | S12 |
 | `POST/GET /exports` | S13 |
 | `GET /audit` | S14 |
