@@ -511,20 +511,52 @@ har eksport → `audit_log` (`action: "EXPORT"`).
 
 ---
 
-## S14 — Audit jurnali ⬜ (TZ 3.14)
+## S14 — Audit jurnali ✅ (TZ 3.14)
 
-**Nima:** `AuditInterceptor` / `AuditService` — `old→new` diff, IP, kanal;
-`GET /audit` (faqat ADMIN); E9 eksporti `changes` ni qatorlarga yoyadi.
-DB trigger allaqachon append-only ni majburlaydi.
+**Nima:** `@Audit()` dekoratori + `AuditInterceptor` — `old→new` diff, IP, kanal;
+`GET /audit` va `GET /audit/facets` (faqat ADMIN); login, filial, kategoriya, xodim va
+kurs amallari jurnalga ulandi; E9 eksporti `changes` ni qatorlarga yoyadi va `GET /audit`
+bilan aynan bir xil filtrni ishlatadi. DB trigger append-only ni majburlaydi.
+
+**Natija:** `test:int` — 282/282 yashil (yangi: audit 11, sozlamalar 9), `test:unit` — 47/47.
+
+**S14 da qabul qilingan qarorlar:**
+- **Interceptor `model` ni bilsa, `old → new` haqiqiy bo'ladi.** `@Audit({ model: 'branch' })`
+  berilganda interceptor yozuvni amaldan **oldin** ham, keyin ham o'qib solishtiradi —
+  so'rov tanasidan diff qurish "eski qiymat" ni umuman ko'rsata olmasdi.
+- **Ikki mexanizm ataylab yonma-yon.** Murakkab oqimlar (xarajat, tasdiqlash, qaytarish,
+  byudjet, eksport) `AuditService` ni o'zi chaqiradi — u yerda yoziladigan ma'lumot
+  so'rov tanasidan kengroq; dekorator esa oddiy CRUD uchun, shunda yangi endpointda
+  auditni unutish qiyinlashadi. Bir endpointga ikkalasi qo'yilmaydi.
+- **Login `runAsync` ichida yoziladi.** So'rov `@Public`, ya'ni guard kontekstni
+  to'ldirmagan va `companyId` aynan login paytida ma'lum bo'ladi.
+- **Maxfiy maydonlar ro'yxati interceptorda** (`password`, `passwordHash`, `token`, …) —
+  jurnalga ham, diff ga ham tushmaydi (TZ 4.2).
+- **`GET /audit` `q` bilan bir qatorda `search` ni ham qabul qiladi** — frontend jadvali
+  shu nom bilan yuboradi, `forbidNonWhitelisted` esa noma'lum parametrni rad etardi.
+- **Filtr mantig'i bitta funksiyada** (`buildWhere`) — `GET /audit` va E9 eksporti aynan
+  bir xil natija berishi shart.
 
 **Commit:** `feat(audit): append-only jurnal va E9 eksporti`
 
 ---
 
-## S15 — Sozlamalar ⬜ (TZ 3.15)
+## S15 — Sozlamalar ✅ (TZ 3.15)
 
-**Nima:** `GET/PATCH /settings` (ADMIN), kesh invalidatsiya, har o'zgarish audit ga;
-sozlanadigan: valyuta bazasi, davr boshlanish kuni, til, eslatma vaqti, tahrirlash oynasi.
+**Nima:** `GET/PATCH /settings` (faqat ADMIN), kesh invalidatsiya, har o'zgarish auditga;
+sozlanadigan: valyuta bazasi, hisobot davri boshlanish kuni, standart til, ish kunlari,
+bildirishnomalar yoqilishi, eslatma vaqti, tahrirlash oynasi.
+
+**S15 da qabul qilingan qarorlar:**
+- **API tekis shaklda** (`{"reportPeriodStartDay": 25}`), xom `{key, value}` emas:
+  aks holda mijoz kalit nomlarini ham, har birining ichki JSON tuzilishini ham bilishi
+  kerak bo'lardi, validatsiya esa serverda qolishi shart.
+- **Faqat haqiqatan o'zgargan kalit yoziladi** — forma barcha maydonlarni yuboradi,
+  ya'ni har saqlashda 7 ta soxta audit yozuvi paydo bo'lishi mumkin edi.
+- **`notifications.enabled` haqiqiy ta'sir qiladi** — `NotificationsService.notifyUsers`
+  sozlamani tekshiradi, ya'ni sozlama "o'lik konfiguratsiya" bo'lib qolmaydi.
+- **`company.defaultLanguage` ikki joyda saqlanmaydi**: sozlama yangilanganda
+  `companies.defaultLanguage` ustuni ham yangilanadi (u sxemada allaqachon bor).
 
 **Commit:** `feat(settings): kompaniya sozlamalari va kesh invalidatsiya`
 

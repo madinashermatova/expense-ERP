@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { AuditService } from '../../common/audit/audit.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PasswordService } from '../../common/crypto/password.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
@@ -45,6 +46,7 @@ export class AuthService {
     private readonly password: PasswordService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<EnvironmentVariables, true>,
+    private readonly audit: AuditService,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -137,6 +139,30 @@ export class AuthService {
       { id: user.id, companyId: user.companyId, role: user.role, branchId },
       meta,
     );
+
+    /*
+     * TZ 3.14 — login audit jurnaliga tushadi. Kontekst shu yerda qo'lda beriladi:
+     * so'rov `@Public` bo'lgani uchun guard uni to'ldirmagan, `companyId` esa aynan
+     * hozir ma'lum bo'ldi. Platforma egasida `companyId` yo'q — u yozilmaydi.
+     */
+    if (user.companyId) {
+      await this.tenantContext.runAsync(
+        {
+          companyId: user.companyId,
+          userId: user.id,
+          role: user.role,
+          branchId,
+          channel: meta.channel,
+          ip: meta.ip ?? null,
+        },
+        () =>
+          this.audit.log({
+            action: 'auth.login',
+            entityType: 'User',
+            entityId: user.id,
+          }),
+      );
+    }
 
     return {
       ...tokens,

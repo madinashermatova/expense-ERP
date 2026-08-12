@@ -12,6 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  Channel,
   Currency,
   ExpenseStatus,
   ExportFormat,
@@ -83,6 +84,23 @@ export class ExportFiltersDto {
   @IsOptional()
   @IsString()
   q?: string;
+
+  /** E9 (audit) filtrlari — `GET /audit` dagi bilan bir xil */
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+
+  @IsOptional()
+  @IsString()
+  action?: string;
+
+  @IsOptional()
+  @IsString()
+  entityType?: string;
+
+  @IsOptional()
+  @IsEnum(Channel)
+  channel?: Channel;
 
   /** TOP-N kesimlar uchun (E4 — sukut bo'yicha 10) */
   @IsOptional()

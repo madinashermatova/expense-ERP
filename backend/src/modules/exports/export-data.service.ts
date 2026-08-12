@@ -12,6 +12,7 @@ import {
   ReportFilterDto,
 } from '../reports/dto/report-filter.dto';
 import { ReportsService } from '../reports/reports.service';
+import { buildWhere as buildAuditWhere } from '../audit/audit-log.service';
 import { ExportFiltersDto } from './dto/create-export.dto';
 import { MAX_EXPORT_ROWS } from './export-catalog';
 import { ExportColumn, ExportDataset, ExportRow } from './export-dataset';
@@ -805,7 +806,9 @@ export class ExportDataService {
     const rows = await this.prisma.db.auditLog.findMany({
       where: this.auditWhere(filters),
       include: {
-        user: { select: { employee: { select: { fullName: true } } } },
+        user: {
+          select: { role: true, employee: { select: { fullName: true } } },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: MAX_EXPORT_ROWS,
@@ -821,6 +824,7 @@ export class ExportDataService {
       const base = {
         createdAt: row.createdAt,
         userName: row.user?.employee?.fullName ?? null,
+        userRole: row.user?.role ?? null,
         action: row.action,
         entityType: row.entityType,
         entityId: row.entityId,
@@ -858,6 +862,13 @@ export class ExportDataService {
           headerRu: 'Пользователь',
           type: 'text',
           width: 24,
+        },
+        {
+          key: 'userRole',
+          headerUz: 'Rol',
+          headerRu: 'Роль',
+          type: 'text',
+          width: 12,
         },
         {
           key: 'action',
@@ -1095,9 +1106,9 @@ export class ExportDataService {
     };
   }
 
+  /** `GET /audit` bilan aynan bir xil filtr — eksport ekrandagi natijani takrorlaydi */
   private auditWhere(filters: ExportFiltersDto): Prisma.AuditLogWhereInput {
-    const createdAt = this.dateRange(filters);
-    return { ...(createdAt ? { createdAt } : {}) };
+    return buildAuditWhere(filters);
   }
 
   private historyWhere(

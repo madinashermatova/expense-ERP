@@ -6,10 +6,11 @@ import {
 } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { CommonModule } from './common/common.module';
+import { AuditInterceptor } from './common/audit/audit.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -18,6 +19,7 @@ import { TenancyModule } from './common/tenancy/tenancy.module';
 import { TenantContextMiddleware } from './common/tenancy/tenant-context.middleware';
 import { EnvironmentVariables, validateEnv } from './config/env.validation';
 import { HealthController } from './health/health.controller';
+import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
@@ -98,6 +100,7 @@ import { PlansModule } from './modules/plans/plans.module';
     BudgetsModule,
     ReportsModule,
     ExportsModule,
+    AuditModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -105,6 +108,8 @@ import { PlansModule } from './modules/plans/plans.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Faqat `@Audit()` bilan belgilangan endpointlarda ishlaydi (TZ 3.14)
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
   ],
 })
 export class AppModule implements NestModule {

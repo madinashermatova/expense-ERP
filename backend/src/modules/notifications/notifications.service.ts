@@ -7,6 +7,7 @@ import {
   toSkipTake,
 } from '../../common/dto/pagination.dto';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import { tenantData } from '../../common/tenancy/tenant-data';
 import {
@@ -50,6 +51,7 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(NOTIFICATION_QUEUE) private readonly queue: Queue,
+    private readonly settings: SettingsService,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -60,6 +62,9 @@ export class NotificationsService {
     channel: NotificationChannel = NotificationChannel.WEB,
   ): Promise<void> {
     if (userIds.length === 0) return;
+
+    // TZ 3.15 — bildirishnomalar butun kompaniya bo'yicha o'chirilgan bo'lishi mumkin
+    if (!(await this.settings.notificationsEnabled())) return;
 
     const companyId = this.tenantContext.requireCompanyId(
       'Notification',

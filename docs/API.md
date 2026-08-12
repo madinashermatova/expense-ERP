@@ -6,8 +6,9 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S13 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
-tasdiqlash, tahrirlash, qaytarish, byudjet, bildirishnomalar, hisobotlar, eksport
+Holat: **S1–S15 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
+tasdiqlash, tahrirlash, qaytarish, byudjet, bildirishnomalar, hisobotlar, eksport,
+audit jurnali, sozlamalar
 
 ---
 
@@ -1192,12 +1193,103 @@ avtofiltr yoqilgan. Har bir eksport `audit_log` ga `action: "EXPORT"` bilan yozi
 
 ---
 
+## Audit jurnali
+
+Jurnal **append-only**: yozuvni o'zgartirish yoki o'chirish uchun endpoint umuman yo'q
+(DB trigger ham buni majburlaydi). Faqat bosh admin ko'radi — direktor uchun `403`.
+
+Yoziladigan amallar: `auth.login`, `expense.create` / `.update` / `.delete` /
+`.submit` / `.approve` / `.reject` / `.request-fix` / `.cancel` / `.refunded`,
+`expense.files.attach` / `.remove`, `refund.create` / `.approve` / `.reject`,
+`editRequest.create` / `.applied` / `.rejected`, `budget.create` / `.update` / `.delete`,
+`branch.*`, `category.*`, `employee.*`, `currency.rate.create`, `currency.base.update`,
+`settings.update`, `EXPORT`.
+
+### `GET /audit` — `ADMIN`
+
+Query: `page`, `limit`, `dateFrom`, `dateTo`, `userId`, `entityType`, `action`,
+`channel` (`WEB`/`TELEGRAM`/`SYSTEM`), `q` (yoki `search` — amal, obyekt turi va
+obyekt id si bo'yicha).
+
+```jsonc
+{
+  "items": [
+    {
+      "id": "uuid",
+      "createdAt": "2026-08-12T10:00:00.000Z",
+      "userId": "uuid", "userName": "Admin Bir", "userRole": "ADMIN",
+      "action": "expense.update",
+      "entityType": "Expense", "entityId": "uuid",
+      "changes": [{ "field": "amount", "old": "150000.00", "new": "175000.00" }],
+      "ip": "10.0.0.5", "channel": "WEB"
+    }
+  ],
+  "total": 128, "page": 1, "limit": 25, "totalPages": 6
+}
+```
+
+`changes` — `null` bo'lishi mumkin (masalan login). Parol va token maydonlari hech
+qachon yozilmaydi.
+
+### `GET /audit/facets` — `ADMIN`
+
+```jsonc
+{ "actions": ["auth.login", "expense.update"], "entityTypes": ["Expense", "User"] }
+```
+
+Filtr ro'yxatlarini to'ldirish uchun — jurnalda haqiqatan uchragan qiymatlar.
+
+### Excelga eksport
+
+Audit jurnali E9 eksporti orqali yuklab olinadi (`POST /exports`,
+`type: "E9"`) — filtrlari `GET /audit` bilan bir xil (`dateFrom`, `dateTo`, `userId`,
+`action`, `entityType`, `channel`). `changes` faylda maydon-boyicha alohida qatorlarga
+yoyiladi. Eksportning o'zi ham jurnalga `EXPORT` bo'lib tushadi.
+
+---
+
+## Sozlamalar
+
+Faqat bosh admin ko'radi va o'zgartiradi (direktor → `403`). O'zgarish **darhol** kuchga
+kiradi va audit jurnaliga `settings.update` bo'lib tushadi.
+
+### `GET /settings` — `ADMIN`
+
+```jsonc
+{
+  "currencyBase": "AUTO",            // AUTO (CBU) | MANUAL
+  "reportPeriodStartDay": 1,         // 1–28
+  "approvalReminderHours": 24,       // 1–168
+  "expenseEditWindowHours": 24,      // 1–168
+  "defaultLanguage": "UZ",           // UZ | RU
+  "workDays": [1, 2, 3, 4, 5, 6],    // 1 — dushanba … 7 — yakshanba
+  "notificationsEnabled": true
+}
+```
+
+### `PATCH /settings` — `ADMIN`
+
+Faqat o'zgartirilayotgan maydonlarni yuboring; javob — to'liq yangi holat (yuqoridagi
+shakl). Noto'g'ri qiymat → `422 VALIDATION_FAILED`.
+
+Ta'siri:
+
+| Sozlama | Nimaga ta'sir qiladi |
+|---|---|
+| `currencyBase` | Kurs manbai — CBU dan avtomatik yoki qo'lda kiritilgan (TZ 3.5) |
+| `reportPeriodStartDay` | «Joriy davr» chegarasi — dashboard, hisobotlar, byudjet |
+| `approvalReminderHours` | Javobsiz ariza bo'yicha eslatma cron i |
+| `expenseEditWindowHours` | Tasdiqlangandan keyin tahrirlash oynasi |
+| `defaultLanguage` | Kompaniya standart tili (`companies.defaultLanguage` ham yangilanadi) |
+| `notificationsEnabled` | `false` bo'lsa yangi bildirishnoma umuman yaratilmaydi |
+
+---
+
 ## ⏳ Rejada (keyingi bosqichlar)
 
 | Endpoint | Bosqich |
 |---|---|
-| `GET /audit` | S14 |
-| `GET/PATCH /settings` | S15 |
+| Telegram bot webhook va sahnalari | S16 |
 
 ---
 

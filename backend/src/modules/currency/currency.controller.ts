@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Audit } from '../../common/audit/audit.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Currency, RateSource, Role } from '../../generated/prisma/enums';
 import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
@@ -39,6 +40,11 @@ export class CurrencyController {
   }
 
   @Roles(Role.ADMIN)
+  @Audit({
+    action: 'currency.rate.create',
+    entityType: 'CurrencyRate',
+    idFrom: 'response',
+  })
   @Post('rates')
   create(@Body() dto: CreateRateDto): Promise<RateView> {
     return this.currency.setManualRate(dto);
@@ -51,6 +57,7 @@ export class CurrencyController {
   }
 
   @Roles(Role.ADMIN)
+  @Audit({ action: 'currency.base.update', entityType: 'Setting' })
   @Post('base')
   async setBase(
     @Body() dto: SetCurrencyBaseDto,
