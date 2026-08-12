@@ -51,7 +51,7 @@ seed qilinganda A ning admini B ning yozuvini `findUnique` bilan ololmaydi.
 
 ---
 
-## S2 — Auth + RBAC + seed ⬜ (TZ 3.1, 3.16.3)
+## S2 — Auth + RBAC + seed ✅ (TZ 3.1, 3.16.3)
 
 **Nima quriladi:**
 - `argon2id` hash servisi, parol generatori
@@ -67,6 +67,20 @@ seed qilinganda A ning admini B ning yozuvini `findUnique` bilan ololmaydi.
 
 **Qabul mezoni:** WORKER `/api/expenses` → 403; 6-urinish → 429 + `Retry-After`;
 `password_hash` `$argon2id$` bilan boshlanadi; A filial direktori B filialni so'rasa 404.
+
+**Natija:** `test:int` — 36/36 yashil (tenancy 17 + auth 18 + throttle 1).
+
+**S2 da qabul qilingan qarorlar:**
+- **`MULTIPLE_COMPANIES` (409)** — bir xil login bir nechta kompaniyada topilsa, frontend
+  kompaniya tanlab `companySlug` bilan qayta yuboradi. TZ bu holatni web login uchun
+  aniqlamagan edi (`UNIQUE(companyId, email)` — email global unikal emas).
+- **Refresh reuse detection** — bekor qilingan refresh token qayta ishlatilsa,
+  foydalanuvchining **barcha** sessiyalari yopiladi (token o'g'irlanishiga qarshi).
+- Refresh token bazada **SHA-256 hash** ko'rinishida, ochiq matnda emas.
+- `JwtStrategy` har so'rovda foydalanuvchi holatini tekshiradi — bloklangan xodim yoki
+  to'xtatilgan kompaniya amaldagi token bilan ham kira olmaydi.
+- Testlarda rate limiting `ThrottlerModule.skipIf` orqali o'chiriladi
+  (`@Throttle` dekoratori guard override ga bo'ysunmaydi); throttler alohida faylda sinaladi.
 
 **Commit:** `feat(auth): JWT + argon2 + RBAC guardlar, seed skripti`
 

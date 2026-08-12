@@ -10,6 +10,8 @@ generator client {
   output       = "../src/generated/prisma"
   moduleFormat = "cjs"
   runtime      = "nodejs"
+  // CommonJS (NestJS, ts-node, jest) uchun kengaytmasiz importlar
+  importFileExtension = ""
 }
 
 datasource db {
