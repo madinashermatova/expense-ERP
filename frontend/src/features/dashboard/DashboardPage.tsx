@@ -3,24 +3,32 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/features/auth/store';
 import { DynamicsChart, CategoryPieChart } from './components/Charts';
+import { useDashboardStats, useDashboardCharts } from './api';
 import styles from './DashboardPage.module.css';
 
 export const DashboardPage = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER';
+  const [period, setPeriod] = React.useState('this_month');
+
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(period);
+  const { data: charts, isLoading: chartsLoading } = useDashboardCharts(period);
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
         <div style={{ display: 'flex', gap: '8px' }}>
-          {/* Davr tanlagich mock */}
-          <select style={{ padding: '8px', borderRadius: '8px', border: '1px solid rgb(var(--border))' }}>
-            <option>Shu oy</option>
-            <option>O'tgan oy</option>
-            <option>Yil</option>
+          {/* Davr tanlagich */}
+          <select 
+            value={period}
+            onChange={e => setPeriod(e.target.value)}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid rgb(var(--border))' }}
+          >
+            <option value="this_month">Shu oy</option>
+            <option value="last_month">O'tgan oy</option>
+            <option value="year">Yil</option>
           </select>
-          <Button variant="secondary">Filtr</Button>
         </div>
       </div>
 
@@ -29,27 +37,35 @@ export const DashboardPage = () => {
         <Card>
           <CardContent style={{ paddingTop: '24px' }}>
             <div className={styles.kpiLabel}>Jami sarf (davr)</div>
-            <div className={styles.kpiValue}>14 500 000 so'm</div>
+            <div className={styles.kpiValue}>
+              {statsLoading ? '...' : `${new Intl.NumberFormat('uz-UZ').format(stats?.totalExpense || 0)} so'm`}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent style={{ paddingTop: '24px' }}>
             <div className={styles.kpiLabel}>Tasdiq kutayotgan (1-bosqich)</div>
-            <div className={styles.kpiValue} style={{ color: 'rgb(var(--warning))' }}>12 ta</div>
+            <div className={styles.kpiValue} style={{ color: 'rgb(var(--warning))' }}>
+              {statsLoading ? '...' : `${stats?.pending1 || 0} ta`}
+            </div>
           </CardContent>
         </Card>
         {isAdmin && (
           <Card>
             <CardContent style={{ paddingTop: '24px' }}>
               <div className={styles.kpiLabel}>Yakuniy tasdiqda (2-bosqich)</div>
-              <div className={styles.kpiValue} style={{ color: 'rgb(var(--info))' }}>5 ta</div>
+              <div className={styles.kpiValue} style={{ color: 'rgb(var(--info))' }}>
+                {statsLoading ? '...' : `${stats?.pending2 || 0} ta`}
+              </div>
             </CardContent>
           </Card>
         )}
         <Card>
           <CardContent style={{ paddingTop: '24px' }}>
             <div className={styles.kpiLabel}>Byudjet bajarilishi</div>
-            <div className={styles.kpiValue} style={{ color: 'rgb(var(--success))' }}>78%</div>
+            <div className={styles.kpiValue} style={{ color: 'rgb(var(--success))' }}>
+              {statsLoading ? '...' : `${stats?.budgetPercent || 0}%`}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -62,7 +78,7 @@ export const DashboardPage = () => {
           </CardHeader>
           <CardContent>
             <div className={styles.chartContainer}>
-              <DynamicsChart />
+              {chartsLoading ? <div>Yuklanmoqda...</div> : <DynamicsChart data={charts?.dynamics || []} />}
             </div>
           </CardContent>
         </Card>
@@ -72,7 +88,7 @@ export const DashboardPage = () => {
           </CardHeader>
           <CardContent>
             <div className={styles.chartContainer}>
-              <CategoryPieChart />
+              {chartsLoading ? <div>Yuklanmoqda...</div> : <CategoryPieChart data={charts?.categories || []} />}
             </div>
           </CardContent>
         </Card>

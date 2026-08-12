@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
 import { Dropzone } from '@/components/ui/Dropzone';
-import { useCreateRefund } from '../api';
+import { Select } from '@/components/ui/Select';
+import { useCreateRefund, useEmployeesForRefund, useApprovedExpensesForEmployee } from '../api';
 import styles from './RefundForm.module.css';
 
 const refundSchema = z.object({
+  employeeId: z.string().min(1, 'Xodim majburiy'),
   expenseId: z.string().min(1, 'Xarajat majburiy'),
   amount: z.string().min(1, 'Summa majburiy').refine(val => Number(val) > 0, 'Musbat bo\'lishi kerak'),
   reason: z.string().min(10, 'Kamida 10 belgi'),
@@ -29,9 +31,14 @@ export const RefundForm = ({ onSuccess, onCancel }: RefundFormProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<RefundFormData>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<RefundFormData>({
     resolver: zodResolver(refundSchema)
   });
+
+  const watchEmployeeId = watch('employeeId');
+
+  const { data: employees } = useEmployeesForRefund();
+  const { data: approvedExpenses, isLoading: expensesLoading } = useApprovedExpensesForEmployee(watchEmployeeId);
 
   const onSubmit = (data: RefundFormData) => {
     if (files.length === 0) {
@@ -55,12 +62,30 @@ export const RefundForm = ({ onSuccess, onCancel }: RefundFormProps) => {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
-      <Input 
-        label={t('form.expenseSearch')}
-        placeholder="EXP-12345"
+      <Select
+        label="Xodimni tanlang"
+        error={errors.employeeId?.message}
+        {...register('employeeId')}
+      >
+        <option value="">Tanlang...</option>
+        {employees?.items?.map((emp: any) => (
+          <option key={emp.id} value={emp.id}>{emp.fullName}</option>
+        ))}
+      </Select>
+
+      <Select
+        label="Xarajatni tanlang (faqat tasdiqlanganlar)"
         error={errors.expenseId?.message}
+        disabled={!watchEmployeeId || expensesLoading}
         {...register('expenseId')}
-      />
+      >
+        <option value="">Tanlang...</option>
+        {approvedExpenses?.items?.map((exp: any) => (
+          <option key={exp.id} value={exp.id}>
+            {exp.globalNumber} - {new Intl.NumberFormat('uz-UZ').format(Number(exp.amount))} {exp.currency}
+          </option>
+        ))}
+      </Select>
       <Input 
         label={t('form.amount')}
         type="number"

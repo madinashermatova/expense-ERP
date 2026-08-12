@@ -26,6 +26,19 @@ export const useApproveExpense = () => {
   });
 };
 
+export const useBulkApproveExpenses = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response = await apiClient.post('/expenses/bulk-approve', { ids });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    }
+  });
+};
+
 export const useRejectExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({

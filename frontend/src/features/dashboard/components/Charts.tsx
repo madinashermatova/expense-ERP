@@ -18,9 +18,9 @@ const categoryData = [
 ];
 const COLORS = ['#2B55B4', '#218757', '#D68B07', '#CA2B2B'];
 
-export const DynamicsChart = () => (
+export const DynamicsChart = ({ data }: { data: any[] }) => (
   <ResponsiveContainer width="100%" height="100%">
-    <LineChart data={dynamicsData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+    <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgb(var(--border))" />
       <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgb(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
       <YAxis tick={{ fontSize: 12, fill: 'rgb(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -32,17 +32,17 @@ export const DynamicsChart = () => (
   </ResponsiveContainer>
 );
 
-export const CategoryPieChart = () => (
+export const CategoryPieChart = ({ data }: { data: any[] }) => (
   <ResponsiveContainer width="100%" height="100%">
     <PieChart>
       <Pie
-        data={categoryData}
+        data={data}
         innerRadius={60}
         outerRadius={80}
         paddingAngle={5}
         dataKey="value"
       >
-        {categoryData.map((entry, index) => (
+        {data.map((entry, index) => (
           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
         ))}
       </Pie>

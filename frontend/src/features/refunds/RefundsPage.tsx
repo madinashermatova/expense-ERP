@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/Button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Dialog } from '@/components/ui/Dialog';
 import { Plus } from 'lucide-react';
-import { useRefunds } from './api';
+import { useRefunds, useApproveRefund, useRejectRefund } from './api';
 import { RefundForm } from './components/RefundForm';
+import { Check, X } from 'lucide-react';
 import styles from './RefundsPage.module.css';
 
 export const RefundsPage = () => {
@@ -14,6 +15,19 @@ export const RefundsPage = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   
   const { data, isLoading } = useRefunds(activeTab);
+  const approveMutation = useApproveRefund();
+  const rejectMutation = useRejectRefund();
+
+  const handleApprove = (id: string) => {
+    approveMutation.mutate(id);
+  };
+
+  const handleReject = (id: string) => {
+    const reason = window.prompt("Rad etish sababini kiriting (kamida 10 belgi):");
+    if (reason && reason.length >= 10) {
+      rejectMutation.mutate({ id, reason });
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -66,7 +80,28 @@ export const RefundsPage = () => {
                 <TableCell>{item.reason}</TableCell>
                 <TableCell>{item.status}</TableCell>
                 <TableCell style={{ textAlign: 'right' }}>
-                  <Button variant="ghost" size="sm">{t('common:actions.approve')}</Button>
+                  {item.status === 'PENDING' && (
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleApprove(item.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        style={{ color: 'rgb(var(--success))' }}
+                      >
+                        <Check size={18} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleReject(item.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        style={{ color: 'rgb(var(--destructive))' }}
+                      >
+                        <X size={18} />
+                      </Button>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))
