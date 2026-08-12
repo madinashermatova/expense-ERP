@@ -51,13 +51,13 @@ export const AppLayout = () => {
   return (
     <div className={styles.layout}>
       <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
-        <div style={{ padding: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgb(var(--border))', height: '56px' }}>
+        <div style={{ padding: collapsed ? '16px 0' : '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: '1px solid rgb(var(--border))', height: '56px' }}>
           {!collapsed && <span>Web ERP</span>}
-          <button onClick={() => setCollapsed(!collapsed)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--foreground))' }}>
+          <button onClick={() => setCollapsed(!collapsed)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--foreground))', display: 'flex' }}>
             <Menu size={20} />
           </button>
         </div>
-        <nav style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <nav style={{ padding: collapsed ? '16px 8px' : '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {menuItems.map(item => (
             <NavLink
               key={item.to}
@@ -65,8 +65,9 @@ export const AppLayout = () => {
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'flex-start',
                 gap: '12px',
-                padding: '10px 12px',
+                padding: collapsed ? '10px 0' : '10px 12px',
                 borderRadius: '8px',
                 textDecoration: 'none',
                 color: isActive ? 'rgb(var(--primary))' : 'rgb(var(--foreground))',
@@ -74,7 +75,9 @@ export const AppLayout = () => {
                 fontWeight: isActive ? 600 : 400
               })}
             >
-              {item.icon}
+              <div style={{ display: 'flex', flexShrink: 0 }}>
+                {item.icon}
+              </div>
               {!collapsed && <span>{item.label}</span>}
             </NavLink>
           ))}
