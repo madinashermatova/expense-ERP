@@ -1,0 +1,10 @@
+{
+  "title": "Tahrirlash murojaatlari",
+  "columns": {
+    "expenseId": "Xarajat ID",
+    "requestedBy": "Kim tomonidan",
+    "reason": "Sabab",
+    "status": "Holat",
+    "actions": "Amallar"
+  }
+}

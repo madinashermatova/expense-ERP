@@ -1,0 +1,19 @@
+{
+  "title": "Запросы на возврат",
+  "newRefund": "Создать возврат",
+  "columns": {
+    "expenseId": "ID расхода",
+    "amount": "Сумма возврата",
+    "reason": "Причина",
+    "status": "Статус",
+    "actions": "Действия"
+  },
+  "form": {
+    "expenseSearch": "Поиск расхода...",
+    "amount": "Сумма",
+    "reason": "Причина",
+    "files": "Файлы-доказательства",
+    "amountHint": "Максимум: {{max}}",
+    "filesRequired": "Файл обязателен"
+  }
+}

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Navigate, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store';
 import { useLogout } from '@/features/auth/api';
-import { LayoutDashboard, Receipt, CheckCircle, Menu, LogOut, Settings } from 'lucide-react';
+import { LayoutDashboard, Receipt, CheckCircle, Menu, LogOut, Settings, Undo2, PencilLine } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import styles from './AppLayout.module.css';
 
@@ -36,6 +36,8 @@ export const AppLayout = () => {
     { to: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
     { to: '/expenses', icon: <Receipt size={20} />, label: 'Xarajatlar' },
     { to: '/approvals', icon: <CheckCircle size={20} />, label: 'Tasdiqlash' },
+    { to: '/refunds', icon: <Undo2 size={20} />, label: "Qaytarishlar" },
+    { to: '/edit-requests', icon: <PencilLine size={20} />, label: "Tahrirlash" },
   ];
 
   if (user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER') {

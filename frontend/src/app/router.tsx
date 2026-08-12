@@ -8,6 +8,8 @@ import { ExpensesPage } from '@/features/expenses/ExpensesPage';
 import { ExpenseCreatePage } from '@/features/expenses/ExpenseCreatePage';
 import { ApprovalsPage } from '@/features/approvals/ApprovalsPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
+import { RefundsPage } from '@/features/refunds/RefundsPage';
+import { EditRequestsPage } from '@/features/edit-requests/EditRequestsPage';
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +31,14 @@ export const router = createBrowserRouter([
       {
         path: 'approvals',
         element: <ApprovalsPage />,
+      },
+      {
+        path: 'refunds',
+        element: <RefundsPage />,
+      },
+      {
+        path: 'edit-requests',
+        element: <EditRequestsPage />,
       },
       {
         path: 'settings',

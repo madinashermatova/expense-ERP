@@ -1,0 +1,19 @@
+{
+  "title": "Qaytarish so'rovlari",
+  "newRefund": "Yangi qaytarish yaratish",
+  "columns": {
+    "expenseId": "Xarajat ID",
+    "amount": "Qaytarish summasi",
+    "reason": "Sabab",
+    "status": "Holat",
+    "actions": "Amallar"
+  },
+  "form": {
+    "expenseSearch": "Xarajatni izlash...",
+    "amount": "Summa",
+    "reason": "Sabab",
+    "files": "Isbot fayllar",
+    "amountHint": "Maksimal: {{max}}",
+    "filesRequired": "Fayl majburiy"
+  }
+}

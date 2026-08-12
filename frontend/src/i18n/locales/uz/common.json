@@ -1,0 +1,19 @@
+{
+  "actions": {
+    "save": "Saqlash",
+    "cancel": "Bekor qilish",
+    "approve": "Tasdiqlash",
+    "reject": "Rad etish",
+    "edit": "Tahrirlash",
+    "delete": "O'chirish",
+    "create": "Qo'shish",
+    "apply": "Qo'llash",
+    "back": "Orqaga",
+    "close": "Yopish"
+  },
+  "status": {
+    "loading": "Yuklanmoqda...",
+    "empty": "Ma'lumot topilmadi",
+    "error": "Ma'lumotni yuklab bo'lmadi"
+  }
+}
