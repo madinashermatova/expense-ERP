@@ -26,6 +26,7 @@ import {
   RateSource,
   Role,
 } from '../../generated/prisma/enums';
+import { BudgetsService, BudgetWarning } from '../budgets/budgets.service';
 import { CurrencyService } from '../currency/currency.service';
 import { FilesService, FileView } from '../files/files.service';
 import { CreateExpenseDto, ExpenseShareDto } from './dto/create-expense.dto';
@@ -81,6 +82,8 @@ export interface ExpenseView {
 export interface CreateExpenseResult extends ExpenseView {
   /** Yaqin 10 daqiqada shunga o'xshash yozuv bo'lsa to'ldiriladi (bloklamaydi) */
   duplicateWarning?: { expenseId: string; globalNumber: string };
+  /** Limit yumshoq: oshib ketsa ham yozuv yaratiladi, faqat ogohlantiriladi (TZ 3.10) */
+  budgetWarning?: BudgetWarning[];
 }
 
 type ExpenseRow = Prisma.ExpenseGetPayload<{
@@ -123,6 +126,7 @@ export class ExpensesService {
     private readonly files: FilesService,
     private readonly audit: AuditService,
     private readonly branchScope: BranchScopeService,
+    private readonly budgets: BudgetsService,
     private readonly settings: SettingsService,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -292,6 +296,22 @@ export class ExpensesService {
         globalNumber: duplicate.globalNumber,
       };
     }
+
+    /*
+     * Yangi yozuv hali `APPROVED` emas, ya'ni sarfda hisoblanmaydi. Shunga qaramay
+     * foydalanuvchiga "bu xarajat limitdan oshiradi" deb aytish kerak (TZ 3.10), shuning
+     * uchun summasi `extraUzs` sifatida qo'shib baholanadi. Bildirishnoma bu yerda
+     * yuborilmaydi — u sarf haqiqatan o'zgarganda, ya'ni yakuniy tasdiqda ketadi.
+     */
+    const warnings = await this.budgets.evaluate({
+      branchId: branch.id,
+      categoryId: category.id,
+      employeeIds: dto.employeeIds,
+      date,
+      extraUzs: conversion.amountUzs,
+    });
+    if (warnings.length > 0) view.budgetWarning = warnings;
+
     return view;
   }
 

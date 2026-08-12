@@ -6,7 +6,8 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S9 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar, tasdiqlash, tahrirlash, qaytarish)
+Holat: **S1–S10 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
+tasdiqlash, tahrirlash, qaytarish, byudjet
 
 ---
 
@@ -756,6 +757,121 @@ Rad etilgan so'rov xarajatga **ta'sir qilmaydi** va qolgan summani band qilmaydi
 
 ---
 
+## Byudjet va limitlar
+
+Limit **yumshoq (soft)**: limitdan oshgan xarajat **bloklanmaydi**, faqat ogohlantiriladi.
+
+- Turlari: `BRANCH` (filial oylik), `CATEGORY` (kategoriya oylik), `EMPLOYEE` (xodim boshiga).
+- Belgilash huquqi — **faqat bosh admin**; ko'rish — admin va direktor.
+- Davr sozlamadagi `report.periodStartDay` ga bog'lanadi (sukut `1` — kalendar oy).
+- Sarf hisobida faqat ikki bosqichdan o'tgan xarajatlarning **effektiv summasi**
+  (`amount − refundedAmount`) ishtirok etadi.
+- Chegaralar **80%** va **100%** — har biri bir davrda **bir marta** xabar qiladi.
+
+### `GET /budgets`
+
+| Query | Qiymat |
+|---|---|
+| `scope` | `BRANCH` · `CATEGORY` · `EMPLOYEE` |
+| `scopeId` | uuid |
+| `on` | `YYYY-MM-DD` — shu sanaga amalda bo'lgan limitlar |
+
+```jsonc
+// items[] elementi
+{
+  "id": "uuid",
+  "scope": "BRANCH",
+  "scopeId": "uuid",
+  "scopeName": "Chilonzor",
+  "amount": "10000000.00",
+  "currency": "UZS",
+  "effectiveFrom": "2026-08-01",
+  "effectiveTo": null,          // null — cheksiz
+  "createdAt": "..."
+}
+```
+
+### `GET /budgets/usage` → `BudgetUsageView[]`
+
+Joriy (yoki `on` sanasidagi) davrdagi sarf — ro'yxatlardagi ⚠️ belgilari uchun.
+
+| Query | Qiymat |
+|---|---|
+| `scope` | ixtiyoriy filtr |
+| `on` | `YYYY-MM-DD` — sukut: bugun |
+
+```jsonc
+{
+  "id": "uuid", "scope": "BRANCH", "scopeId": "uuid", "scopeName": "Chilonzor",
+  "amount": "10000000.00", "currency": "UZS",
+  "effectiveFrom": "2026-08-01", "effectiveTo": null, "createdAt": "...",
+  "periodKey": "2026-08",
+  "periodStart": "2026-08-01",
+  "periodEnd": "2026-08-31",
+  "spent": "8500000.00",
+  "remaining": "1500000.00",
+  "usedPercent": 85
+}
+```
+
+### `GET /budgets/:id` → `BudgetView`
+
+### `POST /budgets` → `201` — `ADMIN`
+
+```jsonc
+{
+  "scope": "BRANCH",
+  "scopeId": "uuid",
+  "amount": "10000000.00",
+  "currency": "UZS",            // ixtiyoriy, default UZS
+  "effectiveFrom": "2026-08-01",
+  "effectiveTo": null           // ixtiyoriy
+}
+```
+
+| Kod | Status | Sabab |
+|---|---|---|
+| `SCOPE_NOT_FOUND` | 422 | filial / kategoriya / xodim topilmadi |
+| `INVALID_DATE_RANGE` | 422 | tugash sanasi boshlanishdan oldin |
+| `AMOUNT_NOT_POSITIVE` | 422 | limit ≤ 0 |
+| `BUDGET_OVERLAP` | 409 | shu doiraga shu muddatda limit allaqachon bor |
+
+### `PATCH /budgets/:id` — `ADMIN`
+
+`amount`, `effectiveFrom`, `effectiveTo`. `effectiveTo: ""` — muddatni cheksizga o'zgartiradi.
+
+### `DELETE /budgets/:id` → `204` — `ADMIN`
+
+### Ogohlantirish: `budgetWarning`
+
+`POST /expenses` javobiga qo'shiladi (yozuv baribir `201` bilan yaratiladi):
+
+```jsonc
+{
+  "id": "…", "globalNumber": "EXP-000123", /* … ExpenseView … */
+  "budgetWarning": [
+    {
+      "budgetId": "uuid",
+      "scope": "BRANCH", "scopeId": "uuid", "scopeName": "Chilonzor",
+      "limit": "10000000.00",
+      "spent": "8000000.00",      // tasdiqlangan sarf
+      "projected": "8500000.00",  // shu xarajat qo'shilgandan keyin
+      "usedPercent": 85,
+      "threshold": 80             // kesib o'tilgan chegara: 80 yoki 100
+    }
+  ]
+}
+```
+
+Yangi yozuv hali `APPROVED` emas, ya'ni sarfda hisoblanmaydi — shuning uchun
+`projected` da uning summasi qo'shib ko'rsatiladi.
+
+**Bildirishnoma** (`BUDGET_THRESHOLD`) esa sarf haqiqatan o'zgarganda, ya'ni
+**yakuniy tasdiqda** yuboriladi: bosh adminlarga va (filial/xodim limiti bo'lsa) o'sha
+filial direktorlariga. Bir davrda bir chegara — bir marta.
+
+---
+
 ## Valyuta
 
 Qo'llab-quvvatlanadigan valyutalar: **UZS** va **USD**. Hisobot valyutasi — UZS.
@@ -822,7 +938,6 @@ oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
 
 | Endpoint | Bosqich |
 |---|---|
-| `GET/POST/PATCH /budgets` | S10 |
 | `GET /notifications` | S11 |
 | `GET /reports/*` | S12 |
 | `POST/GET /exports` | S13 |

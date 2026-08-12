@@ -19,6 +19,7 @@ import { EnvironmentVariables, validateEnv } from './config/env.validation';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { BranchesModule } from './modules/branches/branches.module';
+import { BudgetsModule } from './modules/budgets/budgets.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { EditRequestsModule } from './modules/edit-requests/edit-requests.module';
@@ -74,6 +75,7 @@ import { PlansModule } from './modules/plans/plans.module';
     ExpensesModule,
     EditRequestsModule,
     RefundsModule,
+    BudgetsModule,
   ],
   controllers: [HealthController],
   providers: [

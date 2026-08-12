@@ -359,10 +359,42 @@ o'tishi, effektiv summa hisobi.
 
 ---
 
-## S10 — Byudjet va limitlar ⬜ (TZ 3.10)
+## S10 — Byudjet va limitlar ✅ (TZ 3.10)
 
 **Nima:** `budgets` CRUD (faqat ADMIN), sarf hisobi (`APPROVED` + effektiv summa),
-80% / 100% chegaralari, `BudgetAlert` bilan takrorlanmaslik, javobda `budgetWarning`.
+80% / 100% chegaralari, `BudgetAlert` bilan takrorlanmaslik, javobda `budgetWarning`,
+`GET /budgets/usage`.
+
+**Natija:** `test:int` — 216/216 yashil (yangi: byudjet 18), `test:unit` — 39/39
+(yangi: hisobot davri 8).
+
+**S10 da qabul qilingan qarorlar:**
+- **Hisobot davri alohida modulda** (`budgets/period.ts`) va unit testlar bilan qoplangan:
+  `startDay = 25` bo'lganda davr 25.07–24.08 bo'ladi va **boshlangan oy** bilan nomlanadi
+  (`2026-07`). Sukut holatda (`startDay = 1`) kalit kalendar oyga aynan mos tushadi, ya'ni
+  hech qanday siljish yo'q. Kalit faqat ogohlantirish takrorlanmasligi uchun; API har doim
+  `periodStart` / `periodEnd` sanalarini ham qaytaradi, shuning uchun UI da noaniqlik yo'q.
+- **Yaratishda `budgetWarning`, tasdiqda bildirishnoma.** Yangi yozuv `DIRECTOR_PENDING`
+  bo'ladi va sarfda hisoblanmaydi, lekin foydalanuvchiga darhol aytish kerak — shuning
+  uchun uning summasi `projected` ga qo'shiladi. Bildirishnoma esa sarf **haqiqatan**
+  o'zgarganda, ya'ni yakuniy tasdiqda ketadi: aks holda hech qachon tasdiqlanmagan
+  arizalar ham adminlarni bezovta qilardi.
+- **Chegara takrorlanmasligi `BudgetAlert` ning `UNIQUE(budgetId, period, threshold)` i
+  bilan**, xotiradagi hisoblagich bilan emas: parallel ikki tasdiqlashdan faqat bittasi
+  yozadi, ikkinchisi `P2002` oladi va jim o'tib ketadi.
+- **Sarf raw so'rov bilan hisoblanadi** — `(amount − refundedAmount) × rateUsed` ustunlar
+  ustidagi ifoda, Prisma `aggregate` da bunday ifoda yo'q. Xodim limitida esa ulush
+  qaytarish nisbatiga proporsional kamaytiriladi (`share.amountUzs × (1 − refunded/amount)`),
+  S9 da kelishilgandek.
+- **Ustma-ust tushadigan limitlar taqiqlangan** (409 `BUDGET_OVERLAP`) — aks holda bir
+  doiraga ikki limit amalda bo'lib, qaysi biri ishlashi noaniq bo'lardi. TZ bu holatni
+  aytmagan.
+- **Qaytarishda sarf qayta hisoblanmaydi** — sarf har doim so'rov vaqtida hisoblanadi,
+  ya'ni qaytarish tasdiqlangach o'z-o'zidan kamayadi. Ogohlantirish faqat chegara
+  **yuqoriga** kesib o'tilganda yuboriladi, shuning uchun kamayishda hech narsa qilinmaydi.
+- **Ro'yxatdagi ⚠️ belgisi uchun `GET /budgets/usage`** qo'shildi: har bir qator uchun
+  alohida so'rov qilish (N+1) o'rniga UI joriy davr sarfini bir marta olib, belgilarni
+  o'zi hisoblaydi. Tasdiqlash ekranidagi aniq ogohlantirish esa `budgetWarning` orqali.
 
 **Commit:** `feat(budgets): yumshoq limitlar va 80/100% ogohlantirishlari`
 

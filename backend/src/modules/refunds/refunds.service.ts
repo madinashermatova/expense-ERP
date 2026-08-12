@@ -72,6 +72,14 @@ const INCLUDE = {
   files: { select: { id: true, originalName: true, mimeType: true } },
 } satisfies Prisma.RefundInclude;
 
+/*
+ * Byudjet sarfi bu yerda qayta hisoblanmaydi: sarf har doim so'rov vaqtida
+ * `APPROVED` yozuvlarning effektiv summasidan hisoblanadi, ya'ni qaytarish
+ * tasdiqlangach sarf o'z-o'zidan kamayadi. Ogohlantirish esa faqat chegara
+ * **yuqoriga** kesib o'tilganda yuboriladi (TZ 3.10), shuning uchun kamayishda
+ * hech narsa qilinmaydi.
+ */
+
 /** Qaytarish faqat shu statuslardagi xarajatga yaratiladi (TZ 3.9) */
 const REFUNDABLE: ExpenseStatus[] = [
   ExpenseStatus.APPROVED,

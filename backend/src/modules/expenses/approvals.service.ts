@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AuditService } from '../../common/audit/audit.service';
+import { BudgetsService } from '../budgets/budgets.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { BranchScopeService } from '../../common/scope/branch-scope.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
@@ -35,6 +36,7 @@ export class ApprovalsService {
     private readonly prisma: PrismaService,
     private readonly expenses: ExpensesService,
     private readonly notifications: NotificationsService,
+    private readonly budgets: BudgetsService,
     private readonly audit: AuditService,
     private readonly branchScope: BranchScopeService,
     private readonly tenantContext: TenantContextService,
@@ -186,6 +188,11 @@ export class ApprovalsService {
     });
 
     await this.notifyDecision(transition, expense, reason);
+
+    // Yakuniy tasdiq sarfni o'zgartiradi — chegara kesib o'tilgan bo'lsa xabar ketadi (TZ 3.10)
+    if (transition.to === ExpenseStatus.APPROVED) {
+      await this.budgets.reevaluateForExpense(id);
+    }
 
     return updated;
   }
