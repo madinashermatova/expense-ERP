@@ -40,6 +40,18 @@ Refresh token **httpOnly cookie** da (`erp_rt`) — JS uni ko'rmaydi. Barcha so'
 `details` bo'lsa — forma maydonlariga tarqating (kalit = maydon nomi, ichma-ich
 maydonlar `shares.0.amount` shaklida). Bo'lmasa — toast.
 
+### Interaktiv hujjat (Swagger)
+
+`GET /api/docs` — Swagger UI, `GET /api/docs-json` — OpenAPI 3 sxemasi.
+So'rov tanalari va query parametrlari **avtomatik** chiqariladi (`@nestjs/swagger`
+CLI plugini DTO klasslarini o'qiydi), «Authorize» tugmasiga `accessToken` qo'yiladi.
+
+Prodda yopiladi: `SWAGGER_ENABLED=false` yoki `NODE_ENV=production`.
+
+Javob shakllari hozircha faqat shu faylda: servislar interfeys qaytaradi va
+interfeys runtime da mavjud emas, shuning uchun Swagger javob sxemalarini
+ko'rsatmaydi (S18 da `*View` lar klassga o'tkaziladi).
+
 ### Til (i18n)
 
 `message` va `details` ichidagi matnlar **serverda tarjima qilinadi** (uz/ru). Til shu
