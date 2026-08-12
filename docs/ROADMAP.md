@@ -184,18 +184,46 @@ UZS ekvivalenti o'zgarmaydi.
 
 ---
 
-## S6 — Xarajatlar yadrosi ⬜ (TZ 3.6)
+## S6 — Xarajatlar yadrosi ✅ (TZ 3.6)
 
 **Nima quriladi:**
-- `NumberingService` — `NumberSequence` ustida `SELECT … FOR UPDATE`, `EXP-000123` va `CHL-2026-0045`
+- `NumberingService` — `NumberSequence` ustida atomik ketma-ketlik, `EXP-000123` va `CHL-2026-0045`
 - `POST /expenses` — validatsiya (musbat summa, kelajak sanasi yo'q, kategoriya qoidalari),
   kurs snapshot, taqsimlash (teng / qo'lda), tiyin qoldig'i birinchi xodimga
 - `GET /expenses` — filtr, qidiruv (ikkala raqam), saralash, pagination
 - `GET /expenses/:id`, `DELETE /expenses/:id` (soft delete + audit)
+- `POST /expenses/:id/files`, `DELETE /expenses/:id/files/:fileId`, `POST /expenses/:id/submit`
 - Dublikat ogohlantirish (10 daq oynasi, bloklamaydi)
+- `AuditService` — append-only jurnalga yozish qismi (o'qish va interceptor S14 da)
 
 **Qabul mezoni:** 100 ta parallel yaratishda raqam dublikat yo'q; `100000/3` →
 `33333.34 + 33333.33 + 33333.33`; 10 000 yozuvda ro'yxat ≤ 2 s.
+
+**Natija:** `test:int` — 145/145 yashil (yangi: xarajatlar 24), `test:unit` — 24/24.
+100 ta parallel yaratish ~1.7 s, 10 000 yozuvli ro'yxat sahifasi < 2 s.
+
+**S6 da qabul qilingan qarorlar:**
+- **Advisory lock, `SELECT … FOR UPDATE` emas.** TZ ikkinchisini taklif qilgan, lekin
+  ketma-ketlik qatori **hali mavjud bo'lmagan** paytdagi poyga (filialning birinchi
+  xarajati) qator qulfi bilan yopilmaydi. `pg_advisory_xact_lock(hashtext(kalit))`
+  kalitning o'zini qulflaydi, tranzaksiya tugaganda avtomatik bo'shaydi va rollback da
+  osilib qolmaydi. Qulflar har doim bir tartibda olinadi (global → filial) — deadlock yo'q.
+  Dublikatga qarshi oxirgi mudofaa baribir DB da: `@@unique([companyId, globalNumber])`
+  va `@@unique([companyId, branchId, branchSeqYear, branchSeq])`.
+- **`receiptRequired` kategoriyada yozuv `DRAFT` da tug'iladi.** Fayl JSON tanasi bilan
+  birga kela olmaydi, shuning uchun chek yuklangandan keyin `POST /expenses/:id/submit`
+  uni `DIRECTOR_PENDING` ga o'tkazadi. Raqamlar baribir yaratilishda beriladi — TZ ularni
+  "yaratilganda" talab qiladi. `DRAFT` status enum da allaqachon bor edi.
+- **Xodim tanlangan filialga tegishli bo'lishi shart** (422 `EMPLOYEE_WRONG_BRANCH`) —
+  aks holda ulush boshqa filial hisobotiga oqib ketardi. TZ buni aniq aytmagan.
+- **Ulush UZS ekvivalenti ham snapshot kursida** hisoblanadi — xarajat va uning ulushlari
+  bir xil kursga tayanadi, aks holda `SUM(shares.amountUzs) ≠ expense.amountUzs` bo'lardi.
+- **Ro'yxatda ulushlar xodim ismi bo'yicha tartiblangan** — Postgres aks holda ixtiyoriy
+  tartib qaytaradi va javob bir xil so'rovda ham har xil bo'lardi.
+- **Tasdiqlangan xarajat o'chirilmaydi** (409 `EXPENSE_NOT_DELETABLE`) — u moliyaviy
+  tarixning bir qismi; buning o'rniga bekor qilish (S7) yoki qaytarish (S9).
+- **Saralash faqat allow-list ustunlari bo'yicha** — `sort` foydalanuvchi matni, ixtiyoriy
+  qiymat Prisma `orderBy` ga tushmasligi kerak.
 
 **Commit:** `feat(expenses): yadro CRUD, ikki xil raqamlash, taqsimlash mantiqi`
 

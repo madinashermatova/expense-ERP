@@ -6,7 +6,7 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S5 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta)
+Holat: **S1–S6 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar yadrosi)
 
 ---
 
@@ -324,6 +324,139 @@ Boshqa kompaniya fayliga so'rov `404` qaytaradi (mavjudligi oshkor qilinmaydi).
 
 ---
 
+## Xarajatlar
+
+Har bir xarajat **ikkita raqamga** ega: `globalNumber` (`EXP-000123`, kompaniya bo'ylab
+uzluksiz) va `branchNumber` (`CHL-2026-0045`, filial kodi + yil + filial ichidagi
+ketma-ketlik, har yil 1 dan qayta boshlanadi). Ikkalasi ham yaratilganda beriladi va
+**hech qachon o'zgarmaydi** — tahrirlash, qaytarish, statusni o'zgartirish ularga tegmaydi.
+
+### `GET /expenses`
+
+| Query | Qiymat |
+|---|---|
+| `branchId` | filial (direktor uchun avtomatik o'z filiali) |
+| `categoryId` · `employeeId` · `createdByUserId` | uuid |
+| `status` | `DRAFT,DIRECTOR_PENDING,…` — vergul bilan bir nechta |
+| `paymentMethod` | `CASH` · `CARD` · `TRANSFER` |
+| `currency` | `UZS` · `USD` |
+| `dateFrom` · `dateTo` | `YYYY-MM-DD` |
+| `amountFrom` · `amountTo` | UZS ekvivalenti bo'yicha |
+| `q` | `globalNumber`, `branchNumber` yoki izoh bo'yicha qidiruv |
+| `includeDeleted` | `true` — o'chirilganlarni ham ko'rsatadi |
+| `sort` | `date` (default) · `amount` · `amountUzs` · `createdAt` · `globalNumber` · `status` |
+
+`employeeId` — o'sha xodimning **ulushi** bor xarajatlar (kiritgan shaxs emas).
+Sukut bo'yicha o'chirilgan yozuvlar ko'rinmaydi.
+
+```jsonc
+// items[] elementi
+{
+  "id": "uuid",
+  "globalNumber": "EXP-000123",
+  "branchNumber": "CHL-2026-0045",
+  "branchId": "uuid", "branchName": "Chilonzor",
+  "categoryId": "uuid", "categoryName": "Tushlik",
+  "amount": "150000.00",
+  "currency": "UZS",
+  "rateUsed": "1.000000",          // yaratilishdagi kurs snapshot i
+  "rateSource": "MANUAL",
+  "amountUzs": "150000.00",
+  "refundedAmount": "0.00",
+  "effectiveAmount": "150000.00",  // amount − refundedAmount
+  "date": "2026-08-12",
+  "comment": null,
+  "paymentMethod": "CASH",
+  "status": "DIRECTOR_PENDING",
+  "createdByUserId": "uuid", "createdByName": "Admin Bir",
+  "channel": "WEB",
+  "version": 0,                    // optimistik blokirovka uchun (S7)
+  "deletedAt": null,
+  "createdAt": "...",
+  "shares": [
+    { "employeeId": "uuid", "employeeName": "Ali Valiyev",
+      "amount": "75000.00", "amountUzs": "75000.00" }
+  ]
+}
+```
+
+### `GET /expenses/:id` → `ExpenseView` + `files[]`
+
+Kartochkada qo'shimcha `files: [{ id, originalName, mimeType, sizeBytes, createdAt }]`.
+Faylning o'zi `GET /files/:id/url` orqali signed URL bilan olinadi.
+
+### `POST /expenses` → `201`
+
+```jsonc
+{
+  "branchId": "uuid",
+  "categoryId": "uuid",
+  "employeeIds": ["uuid", "uuid"],   // kim uchun (1–50)
+  "amount": "100000.00",
+  "currency": "UZS",
+  "date": "2026-08-12",
+  "comment": "Jamoa tushligi",       // kategoriya talab qilsa majburiy
+  "paymentMethod": "CASH",
+  "shares": [                        // ixtiyoriy — berilmasa teng bo'linadi
+    { "employeeId": "uuid", "amount": "60000.00" },
+    { "employeeId": "uuid", "amount": "40000.00" }
+  ]
+}
+```
+
+**Taqsimlash.** `shares` berilmasa summa xodimlar o'rtasida teng bo'linadi va qoldiq
+tiyinlar **ro'yxatdagi birinchi xodimga** qo'shiladi (`100000/3` → `33333.34 + 33333.33 +
+33333.33`). Berilsa — ulushlar yig'indisi umumiy summaga **aniq teng** bo'lishi shart.
+
+**Status.** Kategoriya chek talab qilmasa yozuv to'g'ridan-to'g'ri `DIRECTOR_PENDING` da
+tug'iladi. `receiptRequired` bo'lsa — `DRAFT` da: chek yuklab, so'ng
+`POST /expenses/:id/submit` chaqiriladi. Raqamlar baribir yaratilishda beriladi.
+
+**Dublikat.** Bir xil xodim + kategoriya + summa + sana 10 daqiqa ichida takrorlansa,
+javobga `duplicateWarning: { expenseId, globalNumber }` qo'shiladi — **bloklamaydi**.
+
+Xatolar:
+
+| Kod | Status | Sabab |
+|---|---|---|
+| `AMOUNT_NOT_POSITIVE` | 422 | summa ≤ 0 |
+| `DATE_IN_FUTURE` | 422 | kelajakdagi sana |
+| `COMMENT_REQUIRED` | 422 | kategoriya izoh talab qiladi |
+| `CATEGORY_LIMIT_EXCEEDED` | 422 | `maxAmountPerEntry` dan oshdi |
+| `CATEGORY_ARCHIVED` · `BRANCH_ARCHIVED` | 422 | arxivlangan yozuv |
+| `EMPLOYEE_WRONG_BRANCH` | 422 | xodim boshqa filialda |
+| `EMPLOYEE_INACTIVE` · `EMPLOYEE_NOT_FOUND` | 422 | xodim yaroqsiz |
+| `SHARES_SUM_MISMATCH` | 422 | ulushlar yig'indisi mos emas |
+| `SHARES_MISMATCH` | 422 | ulushlar ro'yxati xodimlarga mos emas |
+| `SHARE_NOT_POSITIVE` | 422 | ulush ≤ 0 |
+| `CURRENCY_RATE_MISSING` | 422 | o'sha sanaga kurs yo'q (TZ 3.5) |
+
+### `POST /expenses/:id/files` → `201` — `multipart/form-data`
+
+Maydon nomi `files`, 1–5 ta fayl. Tur mazmun (magic-byte) bo'yicha aniqlanadi:
+jpg / png / webp / pdf, har biri ≤ 10 MB. Javob — `FileView[]`.
+
+| Kod | Status |
+|---|---|
+| `FILE_TOO_LARGE` | 413 |
+| `TOO_MANY_FILES` · `FILE_TYPE_NOT_ALLOWED` · `FILE_CONTENT_MISMATCH` | 422 |
+| `EXPENSE_LOCKED` | 409 — yakunlangan xarajat (`APPROVED`, `REFUNDED`, …) |
+
+### `DELETE /expenses/:id/files/:fileId` → `204`
+
+### `POST /expenses/:id/submit` → `201`
+
+`DRAFT` → `DIRECTOR_PENDING`. Kategoriya chek talab qilsa va fayl bo'lmasa —
+`422 RECEIPT_REQUIRED`. Boshqa statusda — `422 INVALID_STATUS_TRANSITION`.
+
+### `DELETE /expenses/:id` → `204`
+
+**Soft delete**: yozuv bazadan o'chirilmaydi, `deletedAt` to'ldiriladi va audit
+jurnaliga `expense.delete` yoziladi. Tasdiqlangan yoki qaytarilgan xarajat uchun —
+`409 EXPENSE_NOT_DELETABLE` (buning o'rniga bekor qilish yoki qaytarish ishlatiladi).
+
+---
+
 ## Valyuta
 
 Qo'llab-quvvatlanadigan valyutalar: **UZS** va **USD**. Hisobot valyutasi — UZS.
@@ -390,7 +523,7 @@ oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
 
 | Endpoint | Bosqich |
 |---|---|
-| `GET/POST/PATCH/DELETE /expenses`, `/expenses/:id/files` | S6 |
+| `PATCH /expenses/:id` (24 soatlik tahrirlash oynasi) | S8 |
 | `POST /expenses/:id/approve` · `/reject` · `/request-fix` · `/bulk-approve` | S7 |
 | `GET/POST /edit-requests` | S8 |
 | `GET/POST /refunds` | S9 |
