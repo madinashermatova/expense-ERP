@@ -6,7 +6,7 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S6 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar yadrosi)
+Holat: **S1–S7 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar, tasdiqlash oqimi)
 
 ---
 
@@ -457,6 +457,98 @@ jurnaliga `expense.delete` yoziladi. Tasdiqlangan yoki qaytarilgan xarajat uchun
 
 ---
 
+## Tasdiqlash oqimi
+
+Har bir xarajat, summasidan qat'i nazar, **ikki bosqichdan** o'tadi:
+
+```
+DRAFT ──submit──> DIRECTOR_PENDING ──approve──> ADMIN_PENDING ──approve──> APPROVED
+                         │                            │
+                         ├──reject──────> REJECTED <───┤
+                         ├──request-fix─> NEEDS_FIX <──┤
+                         └──cancel──────> CANCELLED    │
+                                  NEEDS_FIX ──submit──>┘  (oqim 1-bosqichdan)
+```
+
+| Bosqich | Kim hal qiladi |
+|---|---|
+| `DIRECTOR_PENDING` | filial direktori **yoki** bosh admin |
+| `ADMIN_PENDING` | faqat bosh admin (direktor → `403 STAGE_FORBIDDEN`) |
+
+- **Direktor o'zi kiritgan** xarajat 1-bosqichni o'tkazib yuboradi va darhol
+  `ADMIN_PENDING` bo'ladi — yaratishda ham, `NEEDS_FIX` dan qaytganda ham.
+- **Four-eyes:** bosh admin o'zi kiritgan xarajatni tasdiqlay olmaydi
+  (`403 SELF_APPROVAL_FORBIDDEN`). Tizimda boshqa faol bosh admin qolmagan bo'lsa
+  amal o'tadi, lekin yozuvda `selfApproved: true` qoladi va audit shuni ko'rsatadi.
+- Har bir o'tish `expense_status_history` ga yoziladi (kim, qachon, sabab, kanal).
+- Faqat `APPROVED` xarajatlar hisobot va byudjet sarfida hisobga olinadi.
+
+### Optimistik blokirovka
+
+Barcha qaror endpointlari ixtiyoriy `version` qabul qiladi — kartochka ochilgandagi
+qiymat. Berilmasa server o'qigan qiymat ishlatiladi. Ikkala holatda ham ikkinchi
+tasdiqlovchi `409 ALREADY_PROCESSED` oladi.
+
+### `POST /expenses/:id/submit` → `201`
+
+`DRAFT` yoki `NEEDS_FIX` → 1-bosqich. Chek majburiy kategoriyada fayl bo'lmasa —
+`422 RECEIPT_REQUIRED`. Qayta yuborilganda oldingi bosqich qarorlari tozalanadi
+(`directorApprovedByUserId`, `adminApprovedByUserId`, `approvedAt` → `null`); tarix qoladi.
+
+### `POST /expenses/:id/approve` → `201` → `ExpenseView`
+
+```jsonc
+{ "version": 3 }   // ixtiyoriy
+```
+
+| Kod | Status | Sabab |
+|---|---|---|
+| `STAGE_FORBIDDEN` | 403 | rol bu bosqichni hal qila olmaydi |
+| `SELF_APPROVAL_FORBIDDEN` | 403 | four-eyes qoidasi |
+| `ALREADY_PROCESSED` | 409 | boshqa tasdiqlovchi ulgurdi |
+| `INVALID_STATUS_TRANSITION` | 422 | yakunlangan yoki mos kelmaydigan status |
+
+### `POST /expenses/:id/reject` · `POST /expenses/:id/request-fix` → `201`
+
+```jsonc
+{ "reason": "Chek nusxasi o'qilmayapti", "version": 3 }
+```
+
+`reason` **majburiy, ≥ 10 belgi** — qisqasi `422`. `request-fix` yozuvni `NEEDS_FIX` ga
+qaytaradi va oldingi bosqich qarorlarini tozalaydi.
+
+### `POST /expenses/:id/cancel` → `201`
+
+Faqat **kiritgan shaxs**, faqat `DRAFT` / `DIRECTOR_PENDING` / `NEEDS_FIX` da.
+Boshqa foydalanuvchi → `403 NOT_EXPENSE_OWNER`.
+
+### `POST /expenses/bulk-approve` → `201`
+
+```jsonc
+{ "ids": ["uuid", "uuid"] }        // 1–20 ta
+```
+
+```jsonc
+{
+  "approved": ["uuid"],
+  "failed": [
+    { "id": "uuid", "code": "INVALID_STATUS_TRANSITION", "message": "…" }
+  ]
+}
+```
+
+Har bir ariza **o'z tranzaksiyasida** qayta ishlanadi: bittasi yiqilsa qolganlari o'tadi.
+20 tadan ortiq id → `422`.
+
+### Eslatma
+
+Soatlik cron `approval.reminderHours` (sukut 24) dan uzoq navbatda turgan arizalar
+bo'yicha tasdiqlovchiga `APPROVAL_REMINDER` bildirishnomasi yuboradi:
+`DIRECTOR_PENDING` → filial direktorlari, `ADMIN_PENDING` → bosh adminlar.
+Bitta ariza bo'yicha eslatma **bir marta** yuboriladi.
+
+---
+
 ## Valyuta
 
 Qo'llab-quvvatlanadigan valyutalar: **UZS** va **USD**. Hisobot valyutasi — UZS.
@@ -524,7 +616,6 @@ oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
 | Endpoint | Bosqich |
 |---|---|
 | `PATCH /expenses/:id` (24 soatlik tahrirlash oynasi) | S8 |
-| `POST /expenses/:id/approve` · `/reject` · `/request-fix` · `/bulk-approve` | S7 |
 | `GET/POST /edit-requests` | S8 |
 | `GET/POST /refunds` | S9 |
 | `GET/POST/PATCH /budgets` | S10 |

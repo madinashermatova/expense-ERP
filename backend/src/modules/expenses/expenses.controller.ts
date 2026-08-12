@@ -71,12 +71,6 @@ export class ExpensesController {
     return this.expenses.removeFile(id, fileId);
   }
 
-  /** Qoralamani (isbot majburiy bo'lgan kategoriya) tasdiqlash oqimiga uzatadi */
-  @Post(':id/submit')
-  submit(@Param('id', ParseUUIDPipe) id: string): Promise<ExpenseView> {
-    return this.expenses.submit(id);
-  }
-
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {

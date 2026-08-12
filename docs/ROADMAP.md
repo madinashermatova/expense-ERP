@@ -229,19 +229,48 @@ UZS ekvivalenti o'zgarmaydi.
 
 ---
 
-## S7 — Tasdiqlash oqimi ⬜ (TZ 3.7)
+## S7 — Tasdiqlash oqimi ✅ (TZ 3.7)
 
 **Nima quriladi:**
-- Status mashinasi (o'tишлар jadvali, noto'g'ri o'tish → 422)
-- `approve` / `reject` / `request-fix` + `ExpenseStatusHistory`
+- Status mashinasi (`expense-status.ts` — o'tishlar jadvali, noto'g'ri o'tish → 422)
+- `approve` / `reject` / `request-fix` / `cancel` / `submit` + `ExpenseStatusHistory`
 - Direktor o'zinikini tasdiqlay olmaydi → to'g'ridan-to'g'ri `ADMIN_PENDING`
 - **Four-eyes:** admin o'zinikini tasdiqlay olmaydi; yagona faol admin bo'lsa `selfApproved=true`
 - Optimistik blokirovka (`version`) → ikkinchi admin ga 409
 - `POST /expenses/bulk-approve` — 20 tagacha, qisman muvaffaqiyat hisoboti
-- 24 soat javobsiz ariza eslatmasi (cron + BullMQ)
+- Javobsiz ariza eslatmasi (soatlik cron; BullMQ transporti S11 da)
 
 **Qabul mezoni:** direktor tasdiqlagach `ADMIN_PENDING`; 5 belgili sabab → 422;
 ikki admin bir vaqtda → biri 409.
+
+**Natija:** `test:int` — 164/164 yashil (yangi: tasdiqlash 19), `test:unit` — 31/31
+(yangi: status mashinasi 7).
+
+**S7 da qabul qilingan qarorlar:**
+- **O'tishlar bitta jadvalda** (`TRANSITIONS`): har bir o'tish uchun manba status, amal,
+  natija, ruxsat etilgan rollar, sabab majburiyligi va "faqat kiritgan shaxs" bayrog'i.
+  Yangi status qo'shilganda o'zgartiriladigan joy bitta va uni unit test qamrab oladi
+  (yakuniy statuslardan o'tish yo'qligi, 2-bosqich faqat adminda, va h.k.).
+- **Bulk har bir arizani o'z tranzaksiyasida** qayta ishlaydi. TZ "bitta tranzaksiyada"
+  deydi, lekin ayni paytda "bittasi xato bersa boshqalari o'tadi" ni ham talab qiladi —
+  bu ikkisi bir vaqtda bo'lolmaydi. Qisman muvaffaqiyat tanlandi, chunki qabul mezoni
+  aynan hisobotni talab qiladi.
+- **Optimistik blokirovka `WHERE version = ? AND status = ?`** bilan `updateMany` orqali:
+  `version` ni mijoz yubormasa ham server o'qigan qiymat ishlatiladi, ya'ni ikkinchi
+  tasdiqlovchi baribir 409 oladi. Faqat `version` ga tayanish mijozga bog'liq bo'lardi.
+- **`NEEDS_FIX` dan qaytgan direktor arizasi ham `ADMIN_PENDING` ga tushadi** — aks holda
+  tuzatish so'rovi orqali direktor o'z arizasini o'z navbatiga qaytarib olardi.
+- **`submit` va `request-fix` oldingi bosqich qarorlarini tozalaydi**
+  (`directorApprovedByUserId`, `adminApprovedByUserId`, `approvedAt` → `null`) — oqim
+  1-bosqichdan boshlanadi, eski "kim tasdiqlagan" yozuvi chalg'itmasligi kerak.
+  To'liq tarix `expense_status_history` da qoladi.
+- **`cancel` TZ da faqat ishchi uchun aytilgan**, lekin Web da ham kiritgan shaxs o'z
+  arizasini bekor qila olishi kerak — shuning uchun qoida "kiritgan shaxs" ga bog'landi,
+  rolga emas.
+- **Eslatma takrorlanmasligi mavjud `APPROVAL_REMINDER` bildirishnomalari bo'yicha**
+  tekshiriladi — sxemaga faqat shu funksiya uchun `reminderSentAt` maydoni qo'shilmadi.
+  Tekshiruv raw so'rov bilan (`payload->>'expenseId' = ANY(...)`), chunki Prisma ning
+  JSON filtri `path` bo'yicha `in` ni qo'llab-quvvatlamaydi.
 
 **Commit:** `feat(approvals): ikki bosqichli tasdiqlash, four-eyes, optimistik lock`
 

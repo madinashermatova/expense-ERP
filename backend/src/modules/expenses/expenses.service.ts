@@ -24,6 +24,7 @@ import {
   ExpenseStatus,
   PaymentMethod,
   RateSource,
+  Role,
 } from '../../generated/prisma/enums';
 import { CurrencyService } from '../currency/currency.service';
 import { FilesService, FileView } from '../files/files.service';
@@ -204,15 +205,7 @@ export class ExpensesService {
     await this.loadEmployees(dto.employeeIds, dto.branchId);
     const shares = this.resolveShares(amount, dto.employeeIds, dto.shares);
 
-    /*
-     * Isbot majburiy bo'lgan kategoriya (TZ 3.6): fayl JSON tanasi bilan birga kela
-     * olmaydi, shuning uchun yozuv `DRAFT` da tug'iladi va `POST /expenses/:id/submit`
-     * chekni tekshirib tasdiqlash oqimiga uzatadi. Raqamlar baribir shu yerda beriladi —
-     * TZ ularni "yaratilganda" talab qiladi va keyin hech qachon o'zgarmaydi.
-     */
-    const status = category.receiptRequired
-      ? ExpenseStatus.DRAFT
-      : ExpenseStatus.DIRECTOR_PENDING;
+    const status = this.initialStatus(category.receiptRequired);
 
     // Kurs snapshot i — keyin kurs o'zgarsa ham bu xarajat o'zgarmaydi (TZ 3.5)
     const conversion = await this.currency.convertToUzs(
@@ -397,74 +390,6 @@ export class ExpensesService {
     });
   }
 
-  /**
-   * `DRAFT` dan tasdiqlash oqimiga uzatadi. Isbot majburiy bo'lgan kategoriyada
-   * kamida bitta fayl bo'lishi shart (TZ 3.6).
-   */
-  async submit(id: string): Promise<ExpenseView> {
-    const userId = this.tenantContext.userId;
-    const expense = await this.prisma.db.expense.findUnique({
-      where: { id },
-      include: { category: true },
-    });
-    if (!expense || expense.deletedAt) throw this.notFound();
-
-    this.branchScope.assertCanWrite(expense.branchId);
-
-    if (expense.status !== ExpenseStatus.DRAFT) {
-      throw this.unprocessable(
-        'INVALID_STATUS_TRANSITION',
-        'Faqat qoralama holatidagi xarajatni yuborish mumkin',
-        { status: [expense.status] },
-      );
-    }
-
-    if (expense.category.receiptRequired) {
-      const fileCount = await this.prisma.db.expenseFile.count({
-        where: { expenseId: expense.id },
-      });
-      if (fileCount === 0) {
-        throw this.unprocessable(
-          'RECEIPT_REQUIRED',
-          'Bu kategoriya uchun chek yoki kvitansiya majburiy',
-          { files: [expense.category.nameUz] },
-        );
-      }
-    }
-
-    const updated = await this.prisma.db.expense.update({
-      where: { id },
-      data: {
-        status: ExpenseStatus.DIRECTOR_PENDING,
-        statusHistory: {
-          create: {
-            companyId: expense.companyId,
-            fromStatus: ExpenseStatus.DRAFT,
-            toStatus: ExpenseStatus.DIRECTOR_PENDING,
-            byUserId: userId!,
-            channel: this.tenantContext.channel,
-          },
-        },
-      },
-      include: EXPENSE_INCLUDE,
-    });
-
-    await this.audit.log({
-      action: 'expense.submit',
-      entityType: 'Expense',
-      entityId: id,
-      changes: [
-        {
-          field: 'status',
-          old: ExpenseStatus.DRAFT,
-          new: ExpenseStatus.DIRECTOR_PENDING,
-        },
-      ],
-    });
-
-    return this.toView(updated);
-  }
-
   // ───────────────────────────────────────────────────────────────────────────
   // O'chirish (soft delete)
   // ───────────────────────────────────────────────────────────────────────────
@@ -515,6 +440,23 @@ export class ExpensesService {
   // ───────────────────────────────────────────────────────────────────────────
   // Ichki yordamchilar
   // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Yangi yozuv qaysi statusda tug'iladi.
+   *
+   * - Isbot majburiy bo'lgan kategoriya (TZ 3.6): fayl JSON tanasi bilan birga kela
+   *   olmaydi, shuning uchun yozuv `DRAFT` da qoladi va chek yuklangach
+   *   `POST /expenses/:id/submit` uni oqimga uzatadi. Raqamlar baribir yaratilishda
+   *   beriladi — TZ ularni "yaratilganda" talab qiladi.
+   * - Direktor o'zi kiritgan xarajatni o'zi tasdiqlay olmaydi (TZ 3.7), shuning uchun
+   *   1-bosqich o'tkazib yuboriladi va yozuv to'g'ridan-to'g'ri `ADMIN_PENDING` bo'ladi.
+   */
+  private initialStatus(receiptRequired: boolean): ExpenseStatus {
+    if (receiptRequired) return ExpenseStatus.DRAFT;
+    return this.tenantContext.role === Role.DIRECTOR
+      ? ExpenseStatus.ADMIN_PENDING
+      : ExpenseStatus.DIRECTOR_PENDING;
+  }
 
   /** Fayl qo'shish/olib tashlash faqat yozuv hali yakunlanmagan bo'lsa mumkin */
   private async requireEditable(id: string) {
