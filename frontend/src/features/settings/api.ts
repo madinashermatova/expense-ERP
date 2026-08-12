@@ -1,77 +1,35 @@
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 
-export const useCreateBranch = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiClient.post('/branches', data);
-      return response.data;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['branches'] })
-  });
-};
+export interface SettingsView {
+  currencyBase: 'CBU' | 'MANUAL';
+  reportPeriodStartDay: number;
+  approvalReminderHours: number;
+  expenseEditWindowHours: number;
+  defaultLanguage: 'uz' | 'ru';
+  workDays: number[];
+  notificationsEnabled: boolean;
+}
 
-export const useCreateCategory = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiClient.post('/categories', data);
-      return response.data;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] })
-  });
-};
-
-export const useCreateEmployee = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiClient.post('/employees', data);
-      return response.data;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employees'] })
-  });
-};
-
-export const useBudgets = () => {
+export const useSettings = () => {
   return useQuery({
-    queryKey: ['budgets'],
+    queryKey: ['settings'],
     queryFn: async () => {
-      const response = await apiClient.get('/budgets');
-      return response.data;
+      const { data } = await apiClient.get<SettingsView>('/settings');
+      return data;
     }
   });
 };
 
-export const useCreateBudget = () => {
+export const useUpdateSettings = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiClient.post('/budgets', data);
-      return response.data;
+    mutationFn: async (data: Partial<SettingsView>) => {
+      const res = await apiClient.patch('/settings', data);
+      return res.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['budgets'] })
-  });
-};
-
-export const useCurrencies = () => {
-  return useQuery({
-    queryKey: ['currencies'],
-    queryFn: async () => {
-      const response = await apiClient.get('/currencies');
-      return response.data;
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
     }
-  });
-};
-
-export const useCreateCurrency = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiClient.post('/currencies', data);
-      return response.data;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['currencies'] })
   });
 };

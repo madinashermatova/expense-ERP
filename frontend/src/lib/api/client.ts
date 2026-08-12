@@ -100,12 +100,21 @@ apiClient.interceptors.response.use(
         'ACCOUNT_INACTIVE',
         'COMPANY_SUSPENDED',
         'MULTIPLE_COMPANIES',
+        'PLAN_LIMIT_EXCEEDED',
+        'EDIT_WINDOW_CLOSED',
+        'ALREADY_PROCESSED'
       ];
 
       if (status >= 500) {
         toast.error(errData.message || fallback('server'));
       } else if (status === 429) {
         if (!isLogin) toast.error(errData.message || fallback('tooManyRequests'));
+      } else if (errData.code === 'ALREADY_PROCESSED') {
+        toast.error(errData.message || fallback('generic'));
+        // Componentlar o'zlari invalidateQueries qiladi yoki biz bu yerda global event tashlashimiz mumkin
+      } else if (errData.code === 'PLAN_LIMIT_EXCEEDED') {
+        // Todo: oyna ochish kerak
+        toast.error(errData.message || fallback('generic'));
       } else if (!silentCodes.includes(errData.code) && !isLogin) {
         toast.error(errData.message || fallback('generic'));
       }

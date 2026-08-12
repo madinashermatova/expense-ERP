@@ -1,17 +1,16 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
-import toast from 'react-hot-toast';
+import { useExpenseAction } from './api';
 import styles from './ExpensesPage.module.css';
 
 export const ExpenseDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data: expense, isLoading, isError } = useQuery({
     queryKey: ['expense', id],
@@ -21,16 +20,7 @@ export const ExpenseDetailsPage = () => {
     }
   });
 
-  const statusMutation = useMutation({
-    mutationFn: async ({ status, comment }: { status: string, comment?: string }) => {
-      await apiClient.patch(`/expenses/${id}/status`, { status, comment });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expense', id] });
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      toast.success("Status o'zgartirildi");
-    }
-  });
+  const actionMutation = useExpenseAction(id!);
 
   if (isLoading) return <div className={styles.container}>Yuklanmoqda...</div>;
   if (isError || !expense) return <div className={styles.container}>Xatolik yuz berdi yoki topilmadi.</div>;
@@ -49,13 +39,29 @@ export const ExpenseDetailsPage = () => {
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <Button variant="ghost" onClick={() => navigate('/expenses')}>Orqaga</Button>
-          {expense.status === 'PENDING' && (
+          {(expense.status === 'DIRECTOR_PENDING' || expense.status === 'ADMIN_PENDING') && (
             <>
-              <Button onClick={() => statusMutation.mutate({ status: 'APPROVED' })}>Tasdiqlash</Button>
+              <Button onClick={() => actionMutation.mutate({ action: 'approve' })}>Tasdiqlash</Button>
               <Button variant="destructive" onClick={() => {
-                const comment = prompt("Rad etish sababi:");
-                if (comment) statusMutation.mutate({ status: 'REJECTED', comment });
+                const reason = prompt("Rad etish sababi:");
+                if (reason) actionMutation.mutate({ action: 'reject', reason });
               }}>Rad etish</Button>
+              <Button variant="secondary" onClick={() => {
+                const reason = prompt("Tuzatish so'rash sababi:");
+                if (reason) actionMutation.mutate({ action: 'request-fix', reason });
+              }}>Tuzatish so'rash</Button>
+            </>
+          )}
+          {expense.status === 'DRAFT' && (
+            <>
+              <Button onClick={() => actionMutation.mutate({ action: 'submit' })}>Yuborish</Button>
+              <Button variant="destructive" onClick={() => actionMutation.mutate({ action: 'cancel' })}>Bekor qilish</Button>
+            </>
+          )}
+          {expense.status === 'NEEDS_FIX' && (
+            <>
+              <Button onClick={() => navigate(`/expenses/${id}/edit`)}>Tahrirlash</Button>
+              <Button variant="destructive" onClick={() => actionMutation.mutate({ action: 'cancel' })}>Bekor qilish</Button>
             </>
           )}
         </div>
@@ -72,7 +78,7 @@ export const ExpenseDetailsPage = () => {
               <div><strong>Kategoriya:</strong> {expense.category?.name}</div>
               <div><strong>Sana:</strong> {expense.date}</div>
               <div><strong>To'lov usuli:</strong> {expense.paymentMethod}</div>
-              <div style={{ gridColumn: '1 / -1' }}><strong>Izoh:</strong> {expense.reason || '-'}</div>
+              <div style={{ gridColumn: '1 / -1' }}><strong>Izoh:</strong> {expense.comment || '-'}</div>
             </div>
           </CardContent>
         </Card>

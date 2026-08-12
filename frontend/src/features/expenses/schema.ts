@@ -6,8 +6,9 @@ export const expenseSchema = z.object({
   employeeIds: z.array(z.string()).min(1, "Kamida bitta xodim tanlanishi kerak"),
   amount: z.string().min(1, "Summani kiriting").regex(/^\d+(\.\d{1,2})?$/, "Noto'g'ri summa formati"),
   date: z.string().min(1, "Sanani kiriting"),
+  currency: z.enum(['UZS', 'USD'], { required_error: "Valyutani tanlang" }),
   paymentMethod: z.enum(['CASH', 'CARD', 'TRANSFER'], { required_error: "To'lov usulini tanlang" }),
-  reason: z.string().optional(),
+  comment: z.string().optional(),
   shares: z.array(
     z.object({
       employeeId: z.string(),

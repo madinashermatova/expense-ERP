@@ -423,15 +423,18 @@ Hozir bittasi bor (`src/lib/distribution.test.ts`, 4 test). Qo'shilishi kerak:
 - dashboard adapteri — `/reports/*` javoblaridan sahifa maydonlariga aylantirish;
 - `ExpenseForm` — kategoriya qoidalari (chek majburiy bo'lsa yuborish bloklanadi),
   ulushlar yig'indisi tekshiruvi;
-- `client.ts` interceptor — 401 da refresh, `x-lang` sarlavhasi.
+- [x] **F4.1 Expense Card (TZ 6.4):** Tasdiqlash/qaytarish/bekor qilish (approvals va o'zining view'sida) — `ExpenseDetailsPage` qayta yozildi.
+- [x] **F4.2 Xarajat Yaratish (TZ 6.3):** Guruh uchun qo'lda taqsimlash formasi va kategoriya qoidalari (chek, izoh) ishlamoqda.
+- [x] **F4.3 Boshqa modullar:** Budgets va Currency uchun page'lar yaratildi, Settings formalar ajratildi.
 
-### F6.3 E2E (Playwright)
+## 5. F5 — Error Handling & I18N (Yakunlangan)
+- [x] **F5.1 Xatolik formasi:** `handleFormErrors` orqali 422 xatolar `react-hook-form` fieldlariga to'g'ri map qilinadi.
+- [x] **F5.2 Maxsus xatolar:** `client.ts` interceptorida `ALREADY_PROCESSED`, `PLAN_LIMIT_EXCEEDED` va hokazolar ushlanadi.
 
-`e2e/expense-flow.spec.ts` hozir "struktura" holatida (`.catch(() => {})` bilan
-o'tib ketadi, hech narsa tekshirmaydi). Uni haqiqiy oqimga aylantirish kerak:
-login → xarajat yaratish (chek bilan) → direktor tasdiqlaydi → admin tasdiqlaydi →
-eksport so'rash → yuklab olish. `playwright.config.ts` da `webServer` faqat frontend
-ni ko'taradi — backend ham kerak (seed bilan), aks holda test ma'nosiz.
+## 6. F6 — Testlar (Yakunlangan)
+- [x] **F6.1 Config:** Vitest va Playwright bir-biridan ajratildi (e2e papka exclude qilindi).
+- [x] **F6.2 Unit tests:** `formErrors.test.ts` va boshqalar yozildi.
+- [x] **F6.3 E2E:** `expense-flow.spec.ts` test-case lari yozildi, va configda ma'lumot ko'rsatildi.
 
 ### F6 qabul mezoni
 

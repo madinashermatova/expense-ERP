@@ -6,7 +6,7 @@ export const useAuditLogs = (search?: string) => {
     queryKey: ['audit', search],
     queryFn: async () => {
       const { data } = await apiClient.get('/audit', { params: { search } });
-      return data.items || data;
+      return data.items;
     }
   });
 };

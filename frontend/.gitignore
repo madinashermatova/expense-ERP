@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# TypeScript inkremental build keshi — mashinaga bog'liq, versiyalanmaydi
+*.tsbuildinfo

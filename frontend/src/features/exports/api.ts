@@ -1,20 +1,14 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { ENDPOINTS } from '@/lib/api/endpoints';
+import { ExportJobView, Paginated } from '@/lib/api/types';
 
 export const useExports = () => {
   return useQuery({
     queryKey: ['exports'],
     queryFn: async () => {
-      // Mocking for now as it's not ready in real backend yet
-      try {
-        const { data } = await apiClient.get('/exports');
-        return data.items || data;
-      } catch {
-        return [
-          { id: '1', type: 'E2', format: 'Excel', status: 'DONE', rowCount: 1500, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86400000).toISOString() },
-          { id: '2', type: 'E9', format: 'PDF', status: 'QUEUED', rowCount: null, createdAt: new Date().toISOString(), expiresAt: null }
-        ];
-      }
+      const { data } = await apiClient.get<Paginated<ExportJobView>>(ENDPOINTS.EXPORTS);
+      return data.items;
     },
     refetchInterval: (query) => {
       const data = query.state.data;
@@ -29,7 +23,7 @@ export const useExports = () => {
 export const useRequestExport = () => {
   return useMutation({
     mutationFn: async (payload: { type: string; format: string; filters: any }) => {
-      const { data } = await apiClient.post('/exports', payload);
+      const { data } = await apiClient.post(ENDPOINTS.EXPORTS, payload);
       return data;
     }
   });

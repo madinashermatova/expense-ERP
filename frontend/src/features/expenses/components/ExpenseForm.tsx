@@ -10,6 +10,7 @@ import { useBranches, useCategories, useEmployees, useCreateExpense } from '../a
 import { expenseSchema, ExpenseFormData } from '../schema';
 import { useAuthStore } from '@/features/auth/store';
 import toast from 'react-hot-toast';
+import { handleFormErrors } from '@/lib/api/formErrors';
 import styles from './ExpenseForm.module.css';
 
 interface ExpenseFormProps {
@@ -23,13 +24,14 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
   const [attachments, setAttachments] = useState<File[]>([]);
   const createMutation = useCreateExpense();
 
-  const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<ExpenseFormData>({
+  const { register, handleSubmit, watch, setValue, control, setError, formState: { errors } } = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       branchId: isAdmin ? '' : user?.branchId || '',
       employeeIds: [],
       shares: [],
       paymentMethod: 'CARD',
+      currency: 'UZS',
       date: new Date().toISOString().split('T')[0]
     }
   });
@@ -80,7 +82,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
       toast.error('Bu kategoriya uchun chek/isbot kiritish majburiy');
       return;
     }
-    if (selectedCategory?.commentRequired && !data.reason) {
+    if (selectedCategory?.commentRequired && !data.comment) {
       toast.error('Bu kategoriya uchun izoh kiritish majburiy');
       return;
     }
@@ -95,6 +97,9 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
         onSuccess: () => {
           toast.success("Xarajat muvaffaqiyatli qo'shildi");
           if (onSuccess) onSuccess();
+        },
+        onError: (error) => {
+          handleFormErrors(error, setError);
         }
       }
     );
@@ -145,13 +150,28 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
           </Select>
         </div>
 
-        <Input
-          label="Summa"
-          required
-          placeholder="0.00"
-          error={errors.amount?.message}
-          {...register('amount')}
-        />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ flex: 1 }}>
+            <Input
+              label="Summa"
+              required
+              placeholder="0.00"
+              error={errors.amount?.message}
+              {...register('amount')}
+            />
+          </div>
+          <div style={{ width: '100px' }}>
+            <Select
+              label="Valyuta"
+              required
+              error={errors.currency?.message}
+              {...register('currency')}
+            >
+              <option value="UZS">UZS</option>
+              <option value="USD">USD</option>
+            </Select>
+          </div>
+        </div>
 
         <Input
           label="Sana"
@@ -177,8 +197,8 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
             label={selectedCategory?.commentRequired ? "Izoh (Majburiy)" : "Izoh"}
             required={selectedCategory?.commentRequired}
             placeholder="Xarajat haqida ma'lumot..."
-            error={errors.reason?.message}
-            {...register('reason')}
+            error={errors.comment?.message}
+            {...register('comment')}
           />
         </div>
 

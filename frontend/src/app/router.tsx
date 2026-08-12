@@ -17,6 +17,8 @@ import { ProfilePage } from '@/features/profile/ProfilePage';
 import { BranchesPage } from '@/features/branches/BranchesPage';
 import { EmployeesPage } from '@/features/employees/EmployeesPage';
 import { CategoriesPage } from '@/features/categories/CategoriesPage';
+import { BudgetsPage } from '@/features/budgets/BudgetsPage';
+import { CurrencyPage } from '@/features/currency/CurrencyPage';
 import { RequireAuth } from '@/components/shared/RequireAuth';
 import { RequireRole } from '@/components/shared/RequireRole';
 
@@ -106,6 +108,22 @@ export const router = createBrowserRouter([
         element: (
           <RequireRole roles={['ADMIN', 'DIRECTOR']}>
             <EmployeesPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'budgets',
+        element: (
+          <RequireRole roles={['ADMIN']}>
+            <BudgetsPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'currency',
+        element: (
+          <RequireRole roles={['ADMIN']}>
+            <CurrencyPage />
           </RequireRole>
         ),
       }
