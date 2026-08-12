@@ -1,0 +1,15 @@
+{
+  "title": "Отчеты",
+  "types": {
+    "byBranch": "По филиалам",
+    "byCategory": "По категориям",
+    "byEmployee": "По сотрудникам",
+    "budgetVsActual": "Бюджет против Факта (BvA)"
+  },
+  "columns": {
+    "group": "Группа",
+    "totalAmount": "Общая сумма",
+    "count": "Количество"
+  },
+  "export": "Экспорт (Excel)"
+}

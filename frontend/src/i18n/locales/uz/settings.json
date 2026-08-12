@@ -22,5 +22,20 @@
     "limit": "Limit",
     "receiptRequired": "Chek talabi",
     "newCategory": "Yangi kategoriya"
+  },
+  "budgets": {
+    "scope": "Kapsam (Scope)",
+    "period": "Davr",
+    "limit": "Limit",
+    "actual": "Fakt",
+    "progress": "Bajarilish %",
+    "newBudget": "Yangi byudjet"
+  },
+  "currencies": {
+    "date": "Sana",
+    "currency": "Valyuta",
+    "rate": "Kurs",
+    "source": "Manba",
+    "newCurrency": "Yangi kurs"
   }
 }

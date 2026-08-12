@@ -1,0 +1,15 @@
+{
+  "title": "Hisobotlar",
+  "types": {
+    "byBranch": "Filiallar kesimida",
+    "byCategory": "Kategoriyalar kesimida",
+    "byEmployee": "Xodimlar kesimida",
+    "budgetVsActual": "Byudjet va Fakt (BvA)"
+  },
+  "columns": {
+    "group": "Guruh",
+    "totalAmount": "Umumiy summa",
+    "count": "Soni"
+  },
+  "export": "Eksport (Excel)"
+}

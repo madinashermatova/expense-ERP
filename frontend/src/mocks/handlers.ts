@@ -111,6 +111,30 @@ export const handlers = [
     return HttpResponse.json({ success: true, tempPassword: 'generated-pass-42' }, { status: 201 });
   }),
 
+  http.get('*/api/budgets', async () => {
+    await delay(300);
+    return HttpResponse.json([
+      { id: 'bd1', scopeType: 'CATEGORY', scopeId: 'c1', period: '2026-08', amountLimit: 5000000, actualAmount: 4800000 },
+      { id: 'bd2', scopeType: 'BRANCH', scopeId: 'b1', period: '2026-08', amountLimit: 20000000, actualAmount: 5000000 }
+    ]);
+  }),
+  http.post('*/api/budgets', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true }, { status: 201 });
+  }),
+
+  http.get('*/api/currencies', async () => {
+    await delay(300);
+    return HttpResponse.json([
+      { id: 'cr1', date: '2026-08-12', currency: 'USD', rate: 12600.00 },
+      { id: 'cr2', date: '2026-08-11', currency: 'USD', rate: 12590.50 }
+    ]);
+  }),
+  http.post('*/api/currencies', async () => {
+    await delay(500);
+    return HttpResponse.json({ success: true }, { status: 201 });
+  }),
+
   http.post('*/api/expenses/:id/approve', async () => {
     await delay(300);
     return HttpResponse.json({ success: true });
@@ -188,5 +212,17 @@ export const handlers = [
   http.post('*/api/edit-requests/:id/reject', async () => {
     await delay(500);
     return HttpResponse.json({ success: true });
+  }),
+
+  // Reports
+  http.get('*/api/reports', async ({ request }) => {
+    await delay(600);
+    const url = new URL(request.url);
+    const type = url.searchParams.get('type');
+    
+    return HttpResponse.json([
+      { group: 'Toshkent bosh ofis', totalAmount: 45000000, count: 12 },
+      { group: 'Samarqand filiali', totalAmount: 12000000, count: 5 }
+    ]);
   }),
 ];

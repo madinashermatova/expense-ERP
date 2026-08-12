@@ -22,5 +22,20 @@
     "limit": "Лимит",
     "receiptRequired": "Нужен чек",
     "newCategory": "Новая категория"
+  },
+  "budgets": {
+    "scope": "Область (Scope)",
+    "period": "Период",
+    "limit": "Лимит",
+    "actual": "Факт",
+    "progress": "Выполнение %",
+    "newBudget": "Новый бюджет"
+  },
+  "currencies": {
+    "date": "Дата",
+    "currency": "Валюта",
+    "rate": "Курс",
+    "source": "Источник",
+    "newCurrency": "Новый курс"
   }
 }
