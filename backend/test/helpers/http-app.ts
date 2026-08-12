@@ -23,6 +23,9 @@ export async function createHttpApp(
   // `@Throttle` dekoratori endpointda qattiq limit belgilagani uchun guard ni
   // override qilish yetarli emas — ThrottlerModule ning `skipIf` i ishlatiladi.
   process.env.DISABLE_THROTTLE = options.throttling ? 'false' : 'true';
+  // Cron soat boshida o'z-o'zidan ishga tushib boshqa test faylining ma'lumotiga
+  // tegib ketmasligi uchun o'chiriladi; cron mantig'i `run()` ni chaqirib sinaladi.
+  process.env.DISABLE_CRON = 'true';
 
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],

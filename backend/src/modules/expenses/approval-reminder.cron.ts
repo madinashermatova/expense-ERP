@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { cronDisabled } from '../../common/cron/cron.guard';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import {
@@ -39,6 +40,7 @@ export class ApprovalReminderCron {
 
   @Cron(CronExpression.EVERY_HOUR, { name: 'approval-reminder' })
   async runHourly(): Promise<void> {
+    if (cronDisabled()) return;
     await this.run(new Date());
   }
 

@@ -6,7 +6,7 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S8 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar, tasdiqlash, tahrirlash)
+Holat: **S1–S9 tayyor** (tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar, tasdiqlash, tahrirlash, qaytarish)
 
 ---
 
@@ -657,6 +657,105 @@ Ko'rib chiqilgan murojaatni qayta hal qilishga urinish — `409 ALREADY_PROCESSE
 
 ---
 
+## Qaytarish (Refund)
+
+Asl xarajat yozuvi **o'zgarmaydi**: qaytarish alohida bog'langan yozuv, xarajatda esa
+faqat `refundedAmount` va status yangilanadi.
+**Effektiv summa = `amount − refundedAmount`** — hisobot va byudjet sarfida shu ishlatiladi.
+
+```
+POST /refunds (isbot fayli majburiy) → DIRECTOR_PENDING
+      ↓ direktor
+   ADMIN_PENDING
+      ↓ bosh admin
+   APPROVED → xarajat PARTIALLY_REFUNDED yoki REFUNDED
+```
+
+- Qaytarish faqat `APPROVED` yoki `PARTIALLY_REFUNDED` xarajatga yaratiladi
+  (ikkinchisi — bitta xarajatga bir nechta qisman qaytarish uchun).
+- Qaytarish summasi **qolgan summadan** oshmaydi. Qolgan summa hisobida hali ko'rilmagan
+  so'rovlar ham chegiriladi.
+- Kurs asl xarajatdan **meros olinadi** (`rateUsed`) — hisobot tarixi o'zgarmasligi uchun.
+- Qaytarishlar yig'indisi to'liq summaga yetganda xarajat avtomatik `REFUNDED` bo'ladi.
+
+### `GET /refunds`
+
+| Query | Qiymat |
+|---|---|
+| `status` | `DIRECTOR_PENDING` · `ADMIN_PENDING` · `APPROVED` · `REJECTED` · `PENDING` (= ikkala navbat) |
+| `expenseId` · `branchId` | uuid |
+
+Direktor uchun natija avtomatik o'z filiali bilan cheklanadi.
+
+```jsonc
+// items[] elementi
+{
+  "id": "uuid",
+  "expenseId": "uuid",
+  "expenseGlobalNumber": "EXP-000123",
+  "expenseBranchNumber": "CHL-2026-0045",
+  "branchId": "uuid",
+  "amount": "200000.00",
+  "currency": "UZS",
+  "rateUsed": "1.000000",
+  "amountUzs": "200000.00",
+  "reason": "Kompyuter qaytarildi, do'kon pulni qaytardi",
+  "status": "DIRECTOR_PENDING",
+  "requestedByUserId": "uuid",
+  "directorApprovedByUserId": null,
+  "adminApprovedByUserId": null,
+  "approvedAt": null,
+  "rejectReason": null,
+  "version": 0,
+  "createdAt": "...",
+  "files": [{ "id": "uuid", "originalName": "kvitansiya.png", "mimeType": "image/png" }]
+}
+```
+
+### `GET /refunds/:id` → `RefundView`
+
+### `POST /refunds` → `201` — `multipart/form-data`
+
+| Maydon | Izoh |
+|---|---|
+| `expenseId` | uuid |
+| `amount` | `"200000.00"` |
+| `reason` | ≥ 10 belgi |
+| `files` | **majburiy**, 1–5 ta (jpg/png/webp/pdf, ≤ 10 MB) |
+
+Isbot fayli istisnosiz majburiy — shuning uchun so'rov va fayl bitta chaqiruvda yuboriladi.
+Faylning o'zi keyin `GET /files/:id/url` orqali signed URL bilan olinadi.
+
+| Kod | Status | Sabab |
+|---|---|---|
+| `REFUND_PROOF_REQUIRED` | 422 | «Qaytarish uchun isbot majburiy» |
+| `EXPENSE_NOT_REFUNDABLE` | 422 | xarajat tasdiqlanmagan |
+| `REFUND_EXCEEDS_REMAINING` | 422 | qolgan summadan oshdi |
+| `AMOUNT_NOT_POSITIVE` | 422 | summa ≤ 0 |
+
+### `POST /refunds/:id/approve` → `201` — `ADMIN`, `DIRECTOR`
+
+```jsonc
+{ "version": 1 }   // ixtiyoriy, optimistik blokirovka
+```
+
+`DIRECTOR_PENDING` → `ADMIN_PENDING` → `APPROVED`. Ikkinchi bosqichni faqat bosh admin
+hal qiladi (direktor → `403 STAGE_FORBIDDEN`); ikkinchi tasdiqlovchi
+`409 ALREADY_PROCESSED` oladi.
+
+Yakuniy tasdiqda xarajatning `refundedAmount` i oshadi va statusi
+`PARTIALLY_REFUNDED` / `REFUNDED` bo'ladi; `audit_log` ga `expense.refunded` yoziladi.
+
+### `POST /refunds/:id/reject` → `201` — `ADMIN`, `DIRECTOR`
+
+```jsonc
+{ "reason": "…", "version": 1 }   // reason ≥ 10 belgi
+```
+
+Rad etilgan so'rov xarajatga **ta'sir qilmaydi** va qolgan summani band qilmaydi.
+
+---
+
 ## Valyuta
 
 Qo'llab-quvvatlanadigan valyutalar: **UZS** va **USD**. Hisobot valyutasi — UZS.
@@ -723,7 +822,6 @@ oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
 
 | Endpoint | Bosqich |
 |---|---|
-| `GET/POST /refunds` | S9 |
 | `GET/POST/PATCH /budgets` | S10 |
 | `GET /notifications` | S11 |
 | `GET /reports/*` | S12 |

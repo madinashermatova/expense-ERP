@@ -317,11 +317,43 @@ ikki admin bir vaqtda → biri 409.
 
 ---
 
-## S9 — Qaytarish (Refund) ⬜ (TZ 3.9)
+## S9 — Qaytarish (Refund) ✅ (TZ 3.9)
 
 **Nima:** `POST /refunds` (isbot fayli majburiy), ikki bosqichli tasdiqlash,
 to'liq/qisman, `refundedAmount` yangilanishi, `PARTIALLY_REFUNDED` → `REFUNDED` avtomatik
-o'tishi, effektiv summa hisobi, share larga proporsional taqsimlash.
+o'tishi, effektiv summa hisobi.
+
+**Natija:** `test:int` — 198/198 yashil (yangi: qaytarish 18), `test:unit` — 31/31.
+
+**S9 da qabul qilingan qarorlar:**
+- **`POST /refunds` — `multipart/form-data`.** Isbot fayli istisnosiz majburiy, shuning
+  uchun so'rov va fayl bitta chaqiruvda keladi: yozuv hech qachon isbotsiz holatda
+  mavjud bo'lmaydi. (Xarajat yaratishda buni qilib bo'lmagan edi — u yerda `employeeIds`
+  va `shares` kabi ichma-ich massivlar bor, shuning uchun `DRAFT` + `submit` yo'li tanlangan.)
+- **Qaytarish `PARTIALLY_REFUNDED` xarajatga ham yaratiladi.** TZ «faqat `APPROVED`» deydi,
+  lekin ayni paytda «bitta xarajatga bir nechta qisman qaytarish» ni talab qiladi — ikkinchi
+  qaytarish paytida xarajat allaqachon `PARTIALLY_REFUNDED` bo'ladi.
+- **Qolgan summa hisobida navbatdagi so'rovlar ham chegiriladi.** Aks holda 500 000 lik
+  xarajatga 400 000 va 200 000 lik ikki so'rov alohida-alohida o'rinli bo'lib, ikkalasi
+  tasdiqlanganda umumiy summadan oshib ketardi.
+- **Yig'indi chegarasi bitta shartli `UPDATE` ichida** tekshiriladi
+  (`refundedAmount + ? <= amount`) — ikkita qaytarish bir vaqtda tasdiqlansa ikkinchisi
+  shu yerda to'xtaydi. Prisma ustunni ustun bilan solishtira olmaydi, shuning uchun raw
+  `UPDATE`; DB da bu invariant check constraint bilan ham qo'riqlanadi.
+- **Kurs asl xarajatdan meros olinadi**, qaytarish sanasidagi kurs olinmaydi — aks holda
+  100 USD xarajat va uni to'liq qaytarish UZS da har xil chiqib, hisobotda qoldiq paydo
+  bo'lardi.
+- **Ulushlar (`ExpenseShare`) o'zgartirilmaydi.** Asl xarajat immutable (TZ 3.9), shuning
+  uchun xodim bo'yicha effektiv summa hisobot vaqtida proporsional hisoblanadi
+  (`ulush × (1 − refundedAmount / amount)`) — S12 da.
+- **Storno alohida qurilmadi (S8 dagi savolning javobi).** TZ storno ni 24 soatdan keyingi
+  yagona yo'l deb ataydi, lekin uning ma'nosi — isbot bilan tasdiqlangan, ikki bosqichdan
+  o'tgan, xarajatni nolga tushiruvchi yozuv — aynan **to'liq qaytarish**. Ikkinchi mexanizm
+  qurish bir xil holatni ikki xil yo'l bilan ifodalash bo'lardi.
+- **Cron testlarda o'chirildi** (`common/cron/cron.guard.ts`): `@Cron(EVERY_HOUR)` soat
+  boshida testlar orasida ishga tushib boshqa test faylining ma'lumotiga bildirishnoma
+  yozib, ikki testni tasodifiy yiqitgan edi. Cron mantig'i `run()` ni aniq chaqirib
+  sinaladi, ya'ni qamrov kamaymadi.
 
 **Commit:** `feat(refunds): to'liq va qisman qaytarish oqimi`
 
