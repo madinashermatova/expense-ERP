@@ -16,12 +16,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { TenantContextService } from '../../common/tenancy/tenant-context.service';
 import { tenantData } from '../../common/tenancy/tenant-data';
 import { Prisma } from '../../generated/prisma/client';
-import {
-  BudgetScope,
-  Currency,
-  ExpenseStatus,
-  Role,
-} from '../../generated/prisma/enums';
+import { BudgetScope, Currency, Role } from '../../generated/prisma/enums';
 import { NOTIFICATION_TYPES } from '../notifications/notification-types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
@@ -31,21 +26,11 @@ import {
   ListBudgetsDto,
   UpdateBudgetDto,
 } from './dto/budget.dto';
+import { SPEND_COUNTED_STATUSES } from '../expenses/expense-status';
 import { Period, resolvePeriod } from './period';
 
 /** Ogohlantirish chegaralari (TZ 3.10) — yuqoridan pastga tekshiriladi */
 export const BUDGET_THRESHOLDS = [100, 80] as const;
-
-/**
- * Sarf hisobiga kiradigan statuslar: ikki bosqichdan o'tgan xarajatlar.
- * Qisman yoki to'liq qaytarilgan yozuv ham shu ro'yxatda — uning **effektiv**
- * summasi hisoblanadi (qaytarilgani chegirilgan), TZ 3.10.
- */
-const COUNTED_STATUSES: ExpenseStatus[] = [
-  ExpenseStatus.APPROVED,
-  ExpenseStatus.PARTIALLY_REFUNDED,
-  ExpenseStatus.REFUNDED,
-];
 
 export interface BudgetView {
   id: string;
@@ -451,7 +436,7 @@ export class BudgetsService {
     period: Period,
   ): Promise<Prisma.Decimal> {
     const companyId = this.tenantContext.requireCompanyId('Expense', 'read');
-    const statuses = COUNTED_STATUSES;
+    const statuses = [...SPEND_COUNTED_STATUSES];
 
     if (budget.scope === BudgetScope.EMPLOYEE) {
       const rows = await this.prisma.db.$queryRaw<{ spent: string | null }[]>`

@@ -6,8 +6,8 @@ Base URL: `http://localhost:3000/api` · Barcha javoblar JSON · Vaqt UTC (ISO 8
 > Rejalashtirilgan, lekin hali yozilmagan endpointlar «⏳ rejada» belgisi bilan.
 > Rejaning o'zi: [`ROADMAP.md`](ROADMAP.md) · Frontend uchun ko'rsatmalar: [`FRONTEND-TZ.md`](FRONTEND-TZ.md)
 
-Holat: **S1–S11 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
-tasdiqlash, tahrirlash, qaytarish, byudjet, bildirishnomalar
+Holat: **S1–S12 tayyor** — tenancy, auth, tashkilot, fayllar, valyuta, xarajatlar,
+tasdiqlash, tahrirlash, qaytarish, byudjet, bildirishnomalar, hisobotlar
 
 ---
 
@@ -939,6 +939,104 @@ Boshqa foydalanuvchining yozuvi → `404`.
 
 ---
 
+## Hisobotlar
+
+Barcha summalar **effektiv**: `(amount − refundedAmount) × rateUsed` — faqat ikki
+bosqichdan o'tgan xarajatlar (`APPROVED`, `PARTIALLY_REFUNDED`, `REFUNDED`) va
+qaytarilgani chegirilgan holda. Aralash valyuta UZS ga **snapshot kursida** keltiriladi,
+ya'ni hisobot tarixi keyin o'zgarmaydi.
+
+Natijalar Redis da **5 daqiqa** keshlanadi; kalit har doim `companyId` bilan prefikslanadi.
+Redis mavjud bo'lmasa hisobot keshsiz ishlaydi.
+
+### Umumiy filtrlar
+
+| Query | Qiymat |
+|---|---|
+| `period` | `current` (default) · `previous` — sozlamadagi hisobot davri |
+| `dateFrom` · `dateTo` | `YYYY-MM-DD` — **berilsa `period` dan ustun turadi** |
+| `branchId` | direktor uchun avtomatik o'z filiali; boshqasini so'rasa `403 BRANCH_FORBIDDEN` |
+| `categoryId` · `employeeId` | uuid |
+| `paymentMethod` · `currency` | `CASH`/`CARD`/`TRANSFER` · `UZS`/`USD` |
+| `amountFrom` · `amountTo` | UZS ekvivalenti bo'yicha |
+
+`status` filtri ataylab yo'q — hisobotlarda faqat tasdiqlanganlar hisoblanadi.
+
+### `GET /reports/summary`
+
+```jsonc
+{
+  "period": { "from": "2026-08-01", "to": "2026-08-31", "key": "2026-08" },
+  "totalUzs": "14500000.00",
+  "expenseCount": 42,
+  "refundedUzs": "500000.00",
+  "employeeCount": 9,
+  "avgPerEmployeeUzs": "1611111.11",
+  "pendingDirectorCount": 12,      // 1-bosqich navbati
+  "pendingAdminCount": 3,          // 2-bosqich navbati
+  "byCurrency": [
+    { "currency": "UZS", "amount": "13250000.00", "amountUzs": "13250000.00" },
+    { "currency": "USD", "amount": "100.00", "amountUzs": "1250000.00" }
+  ]
+}
+```
+
+Navbat ko'rsatkichlari sana filtriga bog'lanmaydi — navbat har doim joriy holat.
+`period.key` sozlamadagi davr kaliti; aniq sana oralig'i berilganda `null`.
+
+### `GET /reports/by-branch`
+
+```jsonc
+[
+  {
+    "group": "Chilonzor", "groupId": "uuid",
+    "count": 24, "totalAmount": "7500000.00", "share": 75,
+    "employeeCount": 5, "avgPerEmployee": "1500000.00"
+  }
+]
+```
+
+### `GET /reports/by-category`
+
+```jsonc
+[{ "group": "Tushlik", "groupId": "uuid", "count": 12, "totalAmount": "4000000.00", "share": 40 }]
+```
+
+### `GET /reports/by-employee` — TOP-N
+
+`limit` — sukut bo'yicha **10** (TZ 3.13 TOP-10). Summa `expense_shares` bo'yicha
+hisoblanadi va qaytarish nisbatiga proporsional kamaytiriladi (asl xarajat immutable).
+
+```jsonc
+[{ "group": "Ali Valiyev", "groupId": "uuid", "branchName": "Chilonzor",
+   "count": 8, "totalAmount": "1200000.00", "share": 12 }]
+```
+
+### `GET /reports/dynamics`
+
+`granularity` — `day` · `week` · `month` (default).
+
+```jsonc
+[{ "bucket": "2026-07-01", "count": 30, "totalAmount": "9000000.00" }]
+```
+
+### `GET /reports/budget-vs-actual`
+
+```jsonc
+[
+  {
+    "budgetId": "uuid", "scope": "BRANCH", "scopeId": "uuid", "scopeName": "Chilonzor",
+    "limit": "10000000.00", "actual": "7500000.00",
+    "variance": "2500000.00", "usedPercent": 75
+  }
+]
+```
+
+Direktor uchun faqat o'z filialiga tegishli limitlar qaytadi (filial va o'sha filial
+xodimlari limitlari).
+
+---
+
 ## Valyuta
 
 Qo'llab-quvvatlanadigan valyutalar: **UZS** va **USD**. Hisobot valyutasi — UZS.
@@ -1005,7 +1103,6 @@ oxirgi ma'lum kurs kuchda qoladi, cron yiqilmaydi, bosh adminlarga
 
 | Endpoint | Bosqich |
 |---|---|
-| `GET /reports/*` | S12 |
 | `POST/GET /exports` | S13 |
 | `GET /audit` | S14 |
 | `GET/PATCH /settings` | S15 |

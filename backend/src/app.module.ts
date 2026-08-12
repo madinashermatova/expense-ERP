@@ -29,6 +29,7 @@ import { CurrencyModule } from './modules/currency/currency.module';
 import { FilesModule } from './modules/files/files.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { PlansModule } from './modules/plans/plans.module';
 
@@ -94,6 +95,7 @@ import { PlansModule } from './modules/plans/plans.module';
     EditRequestsModule,
     RefundsModule,
     BudgetsModule,
+    ReportsModule,
   ],
   controllers: [HealthController],
   providers: [

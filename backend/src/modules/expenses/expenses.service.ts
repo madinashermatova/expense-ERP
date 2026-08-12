@@ -38,15 +38,9 @@ import {
   ListExpensesDto,
 } from './dto/list-expenses.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { SPEND_COUNTED_STATUSES } from './expense-status';
 import { NumberingService } from './numbering.service';
 import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
-
-/** Byudjet sarfiga kiradigan statuslar (TZ 3.10) — `BudgetsService` bilan bir xil ro'yxat */
-const COUNTED_IN_SPEND: ExpenseStatus[] = [
-  ExpenseStatus.APPROVED,
-  ExpenseStatus.PARTIALLY_REFUNDED,
-  ExpenseStatus.REFUNDED,
-];
 
 /** Dublikat ogohlantirish oynasi (TZ 3.6) — bloklamaydi, faqat ogohlantiradi */
 const DUPLICATE_WINDOW_MINUTES = 10;
@@ -615,7 +609,7 @@ export class ExpensesService {
      * ketishi kerak. Faqat sarfga kiradigan statuslar uchun — hali tasdiqlanmagan yozuv
      * sarfga ta'sir qilmaydi.
      */
-    if (COUNTED_IN_SPEND.includes(expense.status)) {
+    if (SPEND_COUNTED_STATUSES.includes(expense.status)) {
       await this.budgets.reevaluateForExpense(id);
     }
 

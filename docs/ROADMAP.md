@@ -435,11 +435,39 @@ xatosiz ishlash (`botBlocked` belgisi), job payload da `companyId` majburiy.
 
 ---
 
-## S12 — Hisobotlar va dashboard ⬜ (TZ 3.13)
+## S12 — Hisobotlar va dashboard ✅ (TZ 3.13)
 
-**Nima:** `/reports/summary`, `by-branch`, `by-category`, `by-employee`,
+**Nima:** `/reports/summary`, `by-branch`, `by-category`, `by-employee`, `dynamics`,
 `budget-vs-actual`; hisobot davri (kalendar oy yoki 25–25); Redis kesh TTL 5 daq
 (kalit `companyId` bilan prefikslangan); aralash valyuta → UZS.
+
+**Natija:** `test:int` — 250/250 yashil (yangi: hisobotlar 18), `test:unit` — 39/39.
+
+**S12 da qabul qilingan qarorlar:**
+- **Agregatlar raw SQL da.** `(amount − refundedAmount) × rateUsed` ustunlar ustidagi
+  ifoda va `GROUP BY` ni Prisma `aggregate` bilan ifodalab bo'lmaydi; o'n minglab qatorni
+  xotiraga tortish esa 2 soniyalik javob mezoniga sig'masdi.
+- **`SPEND_COUNTED_STATUSES` bitta joyga yig'ildi** (`expenses/expense-status.ts`).
+  S10 va S8 da bir xil ro'yxat ikki faylda takrorlangan edi — endi byudjet, tahrirlash
+  va hisobotlar aynan shu konstantaga tayanadi.
+- **`dynamics` endpointi qo'shildi** — roadmap da yo'q edi, lekin TZ 3.13 dashboard
+  ro'yxatida "Dinamika grafigi (oylar kesimida trend)" bor va `date_trunc` bilan bu
+  arzon.
+- **Kesh kaliti `reports:{companyId}:{hisobot}:{filtrlar hash}`.** Kesh tenant
+  izolyatsiyasining eng oson buziladigan joyi: so'rov umuman bazaga bormaydi, ya'ni
+  Prisma extension himoya qila olmaydi. Shuning uchun `companyId` kalitning **prefiksi**
+  va bu alohida test bilan qoplangan.
+- **Redis yo'q bo'lsa hisobot keshsiz ishlaydi** (`enableOfflineQueue: false` + xatoni
+  yutish) — kesh tezlik uchun, mavjudlik uchun emas.
+- **Navbat ko'rsatkichlari (`pendingDirectorCount` / `pendingAdminCount`) sana filtriga
+  bog'lanmaydi** — navbat "hozir nima kutib turgani", tarixiy kesim emas.
+- **Xodim kesimi `expense_shares` bo'yicha** va qaytarish nisbatiga proporsional
+  kamaytiriladi — S9 da kelishilganidek, asl xarajat immutable bo'lgani uchun ulushlar
+  qaytarishda o'zgartirilmaydi.
+- **Filial kesimida xodim soni alohida so'rov bilan olinadi.** Birinchi variantda
+  `employees` `expenses` ga `LEFT JOIN` qilingan edi va `SUM` xodimlar soniga ko'payib
+  ketdi (750 000 → 3 000 000). Test shuni ushladi; `COUNT(DISTINCT)` to'g'ri bo'lgani
+  uchun xato faqat summada ko'rinardi.
 
 **Commit:** `feat(reports): dashboard KPI va kesimli hisobotlar`
 

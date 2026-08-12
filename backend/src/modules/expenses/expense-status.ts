@@ -123,6 +123,19 @@ export function findTransition(
   return TRANSITIONS.find((t) => t.from === from && t.action === action);
 }
 
+/**
+ * Sarf va hisobotlarga kiradigan statuslar: ikki bosqichdan o'tgan xarajatlar.
+ *
+ * Qisman yoki to'liq qaytarilgan yozuv ham shu ro'yxatda — uning **effektiv** summasi
+ * hisoblanadi (`amount − refundedAmount`), TZ 3.9, 3.10, 3.13. Ro'yxat bitta joyda:
+ * byudjet, tahrirlash va hisobotlar aynan shunga tayanadi.
+ */
+export const SPEND_COUNTED_STATUSES: readonly ExpenseStatus[] = [
+  ExpenseStatus.APPROVED,
+  ExpenseStatus.PARTIALLY_REFUNDED,
+  ExpenseStatus.REFUNDED,
+];
+
 /** Tasdiqlash navbatida turgan, ya'ni hali yakuniy qaror chiqmagan statuslar */
 export const PENDING_STATUSES: readonly ExpenseStatus[] = [
   ExpenseStatus.DIRECTOR_PENDING,
