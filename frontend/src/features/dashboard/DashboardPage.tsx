@@ -1,6 +1,5 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/features/auth/store';
 import { DynamicsChart, CategoryPieChart } from './components/Charts';
 import { useDashboardStats, useDashboardCharts } from './api';

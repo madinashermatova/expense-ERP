@@ -74,7 +74,7 @@ export class BotLauncherService implements OnModuleInit, OnApplicationShutdown {
     bot.catch((error) => {
       this.logger.error(
         `Telegraf xatosi: bot=${entry.botId}`,
-        error instanceof Error ? error.stack : undefined,
+        maskTokens(error instanceof Error ? (error.stack ?? '') : ''),
       );
     });
 
@@ -83,9 +83,15 @@ export class BotLauncherService implements OnModuleInit, OnApplicationShutdown {
      * uchun `await` qilinmaydi, aks holda ilova ishga tushishi shu yerda muzlab qolardi.
      */
     void bot.launch().catch((error: unknown) => {
+      /*
+       * Telegram xatosi ichida so'rov URL i, ya'ni token bo'lishi mumkin — log ga
+       * chiqishdan oldin niqoblanadi (`maskTokens`).
+       */
       this.logger.error(
-        `Bot ishga tushmadi: ${entry.botId}`,
-        error instanceof Error ? error.stack : undefined,
+        `Bot ishga tushmadi: bot=${entry.botId} — ${
+          error instanceof Error ? maskTokens(error.message) : "noma'lum xato"
+        }`,
+        maskTokens(error instanceof Error ? (error.stack ?? '') : ''),
       );
     });
 
@@ -139,4 +145,15 @@ export class BotLauncherService implements OnModuleInit, OnApplicationShutdown {
       fileSize: photo?.file_size ?? document?.file_size,
     };
   }
+}
+
+/**
+ * Matndan Telegram tokenini o'chiradi.
+ *
+ * Telegraf xatolari `https://api.telegram.org/bot<TOKEN>/getUpdates` ko'rinishidagi
+ * URL ni o'z ichiga oladi — u logga tushsa maxfiy qiymat oshkor bo'ladi. Loglarga
+ * chiqadigan har qanday matn shu funksiyadan o'tadi.
+ */
+export function maskTokens(text: string): string {
+  return text.replace(/\d{5,}:[A-Za-z0-9_-]{30,}/g, '<token>');
 }

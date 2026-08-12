@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useBranches, useArchiveBranch } from './api';
 import { Branch } from './schema';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
@@ -87,7 +87,7 @@ export const BranchesPage = () => {
                 <TableCell>{branch.code}</TableCell>
                 <TableCell>{branch.name}</TableCell>
                 <TableCell>
-                  <Badge variant={branch.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                  <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'neutral'}>
                     {branch.status === 'ACTIVE' ? 'Faol' : 'Arxivlangan'}
                   </Badge>
                 </TableCell>

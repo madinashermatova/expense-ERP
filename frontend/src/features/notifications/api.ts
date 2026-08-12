@@ -8,7 +8,7 @@ export const useNotifications = () => {
       try {
         const { data } = await apiClient.get('/notifications?isRead=false');
         return data.items || data;
-      } catch (e) {
+      } catch (_e) {
         return [];
       }
     },

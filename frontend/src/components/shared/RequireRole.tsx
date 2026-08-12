@@ -1,11 +1,10 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+
 import { useAuthStore } from '@/features/auth/store';
 import { Role } from '@/lib/permissions';
 
 export const RequireRole = ({ roles, children }: { roles: Role[], children: React.ReactNode }) => {
   const { user } = useAuthStore();
-  const location = useLocation();
+
 
   if (!user || !roles.includes(user.role)) {
     return (

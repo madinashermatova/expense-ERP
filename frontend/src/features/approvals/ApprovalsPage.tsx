@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '@/features/auth/store';
 import { usePendingExpenses, useApproveExpense, useRejectExpense, useBulkApproveExpenses } from './api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
@@ -30,13 +31,13 @@ export const ApprovalsPage = () => {
     setSelectedIds([]);
   }, [activeTab]);
 
-  const handleApprove = (id: string) => {
+  const handleApprove = React.useCallback((id: string) => {
     approveMutation.mutate(id, {
       onSuccess: () => setSelectedExpense(null)
     });
-  };
+  }, [approveMutation]);
 
-  const handleReject = (id: string) => {
+  const handleReject = React.useCallback((id: string) => {
     const reason = window.prompt("Rad etish sababini kiriting (kamida 10 belgi):");
     if (reason && reason.length >= 10) {
       rejectMutation.mutate({ id, reason }, {
@@ -45,7 +46,7 @@ export const ApprovalsPage = () => {
     } else if (reason) {
       alert("Sabab kamida 10 belgi bo'lishi kerak!");
     }
-  };
+  }, [rejectMutation]);
 
   const handleBulkApprove = () => {
     if (selectedIds.length === 0) return;

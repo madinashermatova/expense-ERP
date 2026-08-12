@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ import { useLogin, loginSchema, LoginFormData } from '../api';
 import styles from './LoginForm.module.css';
 
 export const LoginForm = () => {
-  const { register, handleSubmit, getValues, formState: { errors } } = useForm<LoginFormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema)
   });
   const loginMutation = useLogin();

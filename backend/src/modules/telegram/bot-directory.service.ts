@@ -35,19 +35,23 @@ export class BotDirectoryService {
     private readonly config: ConfigService<EnvironmentVariables, true>,
   ) {}
 
-  /** Umumiy bot id si — token bo'lmasa `shared` (bot o'chirilgan holat) */
+  /** Umumiy bot id si — token yo'q yoki formati noto'g'ri bo'lsa `null` */
   get sharedBotId(): string | null {
     const token = this.config.get('TELEGRAM_BOT_TOKEN', { infer: true });
-    return token ? botIdFromToken(token) : null;
+    return token && isValidBotToken(token) ? botIdFromToken(token) : null;
   }
 
   async load(): Promise<BotEntry[]> {
     const entries = new Map<string, BotEntry>();
 
     const sharedToken = this.config.get('TELEGRAM_BOT_TOKEN', { infer: true });
-    if (sharedToken) {
-      entries.set(botIdFromToken(sharedToken), {
-        botId: botIdFromToken(sharedToken),
+    if (
+      sharedToken &&
+      this.assertTokenShape(sharedToken, 'TELEGRAM_BOT_TOKEN')
+    ) {
+      const botId = botIdFromToken(sharedToken);
+      entries.set(botId, {
+        botId,
         token: sharedToken,
         companyId: null,
         companyName: null,
@@ -63,6 +67,9 @@ export class BotDirectoryService {
     for (const company of companies) {
       const token = this.decrypt(company.telegramBotToken!, company.id);
       if (!token) continue;
+      if (!this.assertTokenShape(token, `kompaniya ${company.id} tokeni`)) {
+        continue;
+      }
 
       const botId = botIdFromToken(token);
       // Kompaniya boti umumiy bot bilan bir xil token bo'lsa — sozlash xatosi
@@ -98,6 +105,23 @@ export class BotDirectoryService {
     return this.entries.get(botId)?.companyId ?? null;
   }
 
+  /**
+   * Token shakli tekshiriladi: `123456789:AA…`.
+   *
+   * Bu shunchaki qulaylik emas — `botId` token ning ikki nuqtaga qadar bo'lgan
+   * qismidan olinadi, ya'ni format buzilgan bo'lsa **maxfiy qism** `botId` ga
+   * tushib, loglarga chiqib ketishi mumkin. Shu sababli noto'g'ri token bu yerda
+   * to'xtatiladi va **qiymatning o'zi hech qachon log qilinmaydi**.
+   */
+  private assertTokenShape(token: string, source: string): boolean {
+    if (isValidBotToken(token)) return true;
+
+    this.logger.error(
+      `${source} formati noto'g'ri — kutilgan shakl «123456789:AA...». Bot ishga tushmaydi.`,
+    );
+    return false;
+  }
+
   private decrypt(stored: string, companyId: string): string | null {
     if (!this.encryption.isEncrypted(stored)) {
       // Shifrlanmagan token — sozlamalar orqali kelmagan, ishlatilmaydi
@@ -116,7 +140,14 @@ export class BotDirectoryService {
   }
 }
 
+/** `123456789:AA...` — Telegram tokeni shakli */
+const BOT_TOKEN_PATTERN = /^\d{5,}:[A-Za-z0-9_-]{30,}$/;
+
+export function isValidBotToken(token: string): boolean {
+  return BOT_TOKEN_PATTERN.test(token.trim());
+}
+
+/** Token ning ochiq qismi — Telegram dagi bot ning raqamli id si */
 export function botIdFromToken(token: string): string {
-  const [id] = token.split(':');
-  return id || token;
+  return token.trim().split(':')[0];
 }

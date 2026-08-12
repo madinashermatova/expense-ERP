@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '@/features/auth/store';
 import { useBranches, useCategories, useEmployees } from '@/features/expenses/api';
 import { useBudgets, useCurrencies } from './api';
@@ -17,9 +17,7 @@ import { CurrencyForm } from './components/CurrencyForm';
 
 export const SettingsPage = () => {
   const { user } = useAuthStore();
-  if (user?.role !== 'ADMIN' && user?.role !== 'PLATFORM_OWNER') {
-    return <Navigate to="/" />;
-  }
+
 
   const { t } = useTranslation(['settings', 'common']);
   const [activeTab, setActiveTab] = useState<'employees' | 'categories' | 'branches' | 'budgets' | 'currencies'>('employees');

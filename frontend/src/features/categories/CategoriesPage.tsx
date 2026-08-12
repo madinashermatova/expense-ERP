@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useCategories } from './api';
 import { Category } from './schema';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 export const CategoriesPage = () => {
   const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
-  const { data: categories, isLoading, refetch } = useCategories(statusFilter);
+  const { data: categories, isLoading } = useCategories(statusFilter);
   const queryClient = useQueryClient();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -64,7 +64,7 @@ export const CategoriesPage = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <span style={{ fontWeight: isChild ? 'normal' : 'bold' }}>{category.nameUz} / {category.nameRu}</span>
-            {category.receiptRequired && <Badge variant="secondary" style={{ marginLeft: '0.5rem' }}>Chek kerak</Badge>}
+            {category.receiptRequired && <Badge variant="info" style={{ marginLeft: '0.5rem' }}>Chek kerak</Badge>}
             {category.status === 'ARCHIVED' && <Badge variant="destructive" style={{ marginLeft: '0.5rem' }}>Arxivlangan</Badge>}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>

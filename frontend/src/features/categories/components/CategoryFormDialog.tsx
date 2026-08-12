@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useCreateCategory, useUpdateCategory } from '../api';
-import { categorySchema, CategoryFormData, Category } from '../schema';
+import { categorySchema, CategoryFormData, CategoryFormInput, Category } from '../schema';
 
 interface CategoryFormDialogProps {
   open: boolean;
@@ -15,8 +15,9 @@ interface CategoryFormDialogProps {
 }
 
 export const CategoryFormDialog = ({ open, onClose, categoryToEdit, parentId }: CategoryFormDialogProps) => {
-  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<CategoryFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<CategoryFormInput, unknown, CategoryFormData>({
     resolver: zodResolver(categorySchema),
+    defaultValues: { receiptRequired: false, commentRequired: false },
   });
 
   const createMutation = useCreateCategory();

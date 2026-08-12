@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { UploadCloud, File, X } from 'lucide-react';
 import styles from './Dropzone.module.css';
 

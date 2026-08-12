@@ -1,21 +1,8 @@
-import React from 'react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-const dynamicsData = [
-  { name: 'Yan', expense: 4000 },
-  { name: 'Fev', expense: 3000 },
-  { name: 'Mar', expense: 2000 },
-  { name: 'Apr', expense: 2780 },
-  { name: 'May', expense: 1890 },
-  { name: 'Iyn', expense: 2390 },
-];
 
-const categoryData = [
-  { name: 'Transport', value: 400 },
-  { name: 'Oziq-ovqat', value: 300 },
-  { name: 'Texnika', value: 300 },
-  { name: 'Ijara', value: 200 },
-];
+
+
 const COLORS = ['#2B55B4', '#218757', '#D68B07', '#CA2B2B'];
 
 export const DynamicsChart = ({ data }: { data: any[] }) => (
@@ -42,7 +29,7 @@ export const CategoryPieChart = ({ data }: { data: any[] }) => (
         paddingAngle={5}
         dataKey="value"
       >
-        {data.map((entry, index) => (
+        {data.map((_, index) => (
           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
         ))}
       </Pie>

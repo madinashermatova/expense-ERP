@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,14 +12,16 @@ const schema = z.object({
   receiptRequired: z.boolean().default(false),
 });
 
-type FormData = z.infer<typeof schema>;
+type FormInput = z.input<typeof schema>;
+type FormData = z.output<typeof schema>;
 
 export const CategoryForm = ({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) => {
   const { t } = useTranslation(['settings', 'common']);
   const createMutation = useCreateCategory();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema)
+  const { register, handleSubmit, formState: { errors } } = useForm<FormInput, unknown, FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { receiptRequired: false }
   });
 
   const onSubmit = (data: FormData) => {

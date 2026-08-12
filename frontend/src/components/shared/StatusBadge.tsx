@@ -1,4 +1,3 @@
-import React from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Circle, Clock, CheckCircle2, XCircle, Ban, Undo2 } from 'lucide-react';
 

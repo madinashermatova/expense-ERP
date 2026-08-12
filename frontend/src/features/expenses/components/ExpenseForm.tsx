@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
@@ -34,14 +34,14 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
     }
   });
 
-  const { fields: shareFields, append, remove, replace } = useFieldArray({
+  const { fields: shareFields, replace } = useFieldArray({
     control,
     name: "shares"
   });
 
   const watchBranchId = watch('branchId');
   const watchAmount = watch('amount');
-  const watchEmployeeIds = watch('employeeIds') || [];
+  const watchEmployeeIds = watch('employeeIds');
   const watchCategoryId = watch('categoryId');
 
   const { data: branches } = useBranches();
@@ -50,15 +50,15 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
 
   const selectedCategory = categories?.find((c: any) => c.id === watchCategoryId);
 
-  // Auto-distribute shares when employeeIds or amount changes
   useEffect(() => {
-    if (watchEmployeeIds.length > 1 && watchAmount) {
+    const currentEmpIds = watchEmployeeIds || [];
+    if (currentEmpIds.length > 1 && watchAmount) {
       const amountNum = parseFloat(watchAmount);
       if (!isNaN(amountNum)) {
-        const share = Math.floor((amountNum / watchEmployeeIds.length) * 100) / 100;
-        const remainder = Math.round((amountNum - (share * watchEmployeeIds.length)) * 100) / 100;
+        const share = Math.floor((amountNum / currentEmpIds.length) * 100) / 100;
+        const remainder = Math.round((amountNum - (share * currentEmpIds.length)) * 100) / 100;
         
-        replace(watchEmployeeIds.map((empId, index) => ({
+        replace(currentEmpIds.map((empId, index) => ({
           employeeId: empId,
           amount: index === 0 ? (share + remainder).toFixed(2) : share.toFixed(2)
         })));
@@ -137,7 +137,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: ExpenseFormProps) => {
             size={4}
             error={errors.employeeIds?.message}
             onChange={handleEmployeeChange}
-            value={watchEmployeeIds}
+            value={watchEmployeeIds || []}
           >
             {employees?.map((e: any) => (
               <option key={e.id} value={e.id}>{e.fullName}</option>

@@ -11,8 +11,9 @@ export const categorySchema = z.object({
 
 export const updateCategorySchema = categorySchema.partial();
 
-export type CategoryFormData = z.infer<typeof categorySchema>;
-export type UpdateCategoryFormData = z.infer<typeof updateCategorySchema>;
+export type CategoryFormInput = z.input<typeof categorySchema>;
+export type CategoryFormData = z.output<typeof categorySchema>;
+export type UpdateCategoryFormData = z.output<typeof updateCategorySchema>;
 
 export interface Category {
   id: string;

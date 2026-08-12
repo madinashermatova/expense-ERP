@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useEmployees, useResetEmployeePassword } from './api';
 import { Employee } from './schema';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
@@ -11,13 +11,11 @@ import toast from 'react-hot-toast';
 
 export const EmployeesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  
+      
   const { data, isLoading } = useEmployees({
     q: searchTerm,
-    branchId: branchFilter,
-    status: statusFilter,
+    branchId: '',
+    status: '',
     page: 1,
     limit: 50, // pagination could be added later
   });
@@ -99,7 +97,7 @@ export const EmployeesPage = () => {
                 <TableCell>{emp.email}</TableCell>
                 <TableCell>{emp.role}</TableCell>
                 <TableCell>
-                  <Badge variant={emp.isActive ? 'default' : 'secondary'}>
+                  <Badge variant={emp.isActive ? 'success' : 'neutral'}>
                     {emp.isActive ? 'Faol' : 'Nofaol'}
                   </Badge>
                   {emp.botBlocked && (

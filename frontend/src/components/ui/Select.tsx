@@ -1,4 +1,4 @@
-import React, { SelectHTMLAttributes, forwardRef } from 'react';
+import { SelectHTMLAttributes, forwardRef } from 'react';
 import styles from './Select.module.css';
 import { AlertCircle, ChevronDown } from 'lucide-react';
 

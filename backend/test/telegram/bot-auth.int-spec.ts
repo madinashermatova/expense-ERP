@@ -292,7 +292,8 @@ describe('Telegram bot: kompaniya boti (TZ 3.16.5)', () => {
   let alfa: SeededCompany;
   let beta: SeededCompany;
 
-  const COMPANY_BOT_TOKEN = '777000:AA-company-bot-token';
+  // Haqiqiy Telegram tokeni shakli: raqamli id + ':' + 35 belgi (`isValidBotToken`)
+  const COMPANY_BOT_TOKEN = '777000:AAHkompaniyaBotTokeniTestUchun1234';
   const COMPANY_BOT_ID = '777000';
 
   beforeAll(async () => {

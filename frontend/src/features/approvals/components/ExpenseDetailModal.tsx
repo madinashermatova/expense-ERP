@@ -15,15 +15,15 @@ interface ExpenseDetailModalProps {
 }
 
 export const ExpenseDetailModal = ({ expense, open, onClose, onApprove, onReject, isPending }: ExpenseDetailModalProps) => {
-  if (!expense) return null;
 
-  const handleApprove = () => {
-    onApprove(expense.id);
-  };
 
-  const handleReject = () => {
-    onReject(expense.id);
-  };
+  const handleApprove = React.useCallback(() => {
+    if (expense) onApprove(expense.id);
+  }, [expense, onApprove]);
+
+  const handleReject = React.useCallback(() => {
+    if (expense) onReject(expense.id);
+  }, [expense, onReject]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -40,6 +40,8 @@ export const ExpenseDetailModal = ({ expense, open, onClose, onApprove, onReject
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, handleApprove, handleReject]);
+
+  if (!expense) return null;
 
   return (
     <Dialog open={open} onClose={onClose} title={`Xarajat: ${expense.globalNumber}`}>
