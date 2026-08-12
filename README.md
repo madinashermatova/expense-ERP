@@ -8,6 +8,7 @@ Xarajatlar boshqaruvi tizimi — Web ERP + Telegram bot, multi-tenant (SaaS-read
 |---|---|
 | [`docs/TZ.md`](docs/TZ.md) | Asosiy texnik topshiriq (backend + bot + web) |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Ishlar rejasi: backend S0–S18, frontend F1–F10 |
+| [`docs/API.md`](docs/API.md) | **API ma'lumotnomasi** — endpointlar, xato kodlari, misollar |
 | [`docs/FRONTEND-TZ.md`](docs/FRONTEND-TZ.md) | Frontend ishlab chiquvchi uchun topshiriq |
 | [`docs/DESIGN-TZ.md`](docs/DESIGN-TZ.md) | Dizayn tizimi va UI qoidalari |
 
