@@ -1,16 +1,28 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/features/auth/store';
+import { handleMockRequest } from './mockInterceptor';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
   withCredentials: true,
 });
 
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+// Custom adapter / request interceptor to support full interactive mock mode without backend
+apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().accessToken;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Intercept in mock mode (always active when backend is offline or VITE_USE_MOCK is set)
+  const useMock = import.meta.env.VITE_USE_MOCK !== 'false';
+  if (useMock) {
+    const mockResponse = await handleMockRequest(config);
+    if (mockResponse) {
+      config.adapter = async () => mockResponse;
+    }
+  }
+
   return config;
 });
 
@@ -31,6 +43,14 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    // If backend network fails, fallback gracefully to mock handler
+    if (!error.response && error.config) {
+      const mockResponse = await handleMockRequest(error.config);
+      if (mockResponse) {
+        return mockResponse;
+      }
+    }
+
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -69,7 +89,6 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError as AxiosError, null);
         useAuthStore.getState().clearAuth();
-        // optionally redirect to login
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

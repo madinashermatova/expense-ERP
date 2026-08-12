@@ -1,9 +1,20 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 
 export interface ExpenseListParams {
-  page: number;
-  limit: number;
+  page?: number;
+  limit?: number;
+  branchId?: string;
+  categoryId?: string;
+  employeeId?: string;
+  status?: string | string[];
+  minAmount?: number;
+  maxAmount?: number;
+  paymentMethod?: string;
+  currency?: string;
+  q?: string;
+  from?: string;
+  to?: string;
 }
 
 export const useExpenses = (params: ExpenseListParams) => {
@@ -16,12 +27,12 @@ export const useExpenses = (params: ExpenseListParams) => {
   });
 };
 
-export const useBranches = () => {
+export const useBranches = (status: string = 'active') => {
   return useQuery({
-    queryKey: ['branches'],
+    queryKey: ['branches', status],
     queryFn: async () => {
-      const response = await apiClient.get('/branches');
-      return response.data.items || response.data; // fallback for old mock
+      const response = await apiClient.get('/branches', { params: { status } });
+      return response.data.items || response.data;
     }
   });
 };
@@ -31,7 +42,7 @@ export const useCategories = () => {
     queryKey: ['categories'],
     queryFn: async () => {
       const response = await apiClient.get('/categories');
-      return response.data; // returns array directly
+      return response.data;
     }
   });
 };
@@ -47,3 +58,68 @@ export const useEmployees = (branchId?: string) => {
   });
 };
 
+export const useApproveExpense = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.post(`/expenses/${id}/approve`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+    }
+  });
+};
+
+export const useRejectExpense = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const response = await apiClient.post(`/expenses/${id}/reject`, { reason });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    }
+  });
+};
+
+export const useRequestFixExpense = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const response = await apiClient.post(`/expenses/${id}/request-fix`, { reason });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    }
+  });
+};
+
+export const useBulkApproveExpenses = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response = await apiClient.post('/expenses/bulk-approve', { ids });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    }
+  });
+};
+
+export const useCreateExport = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { type: string; format: 'xlsx' | 'pdf'; filters: any }) => {
+      const response = await apiClient.post('/exports', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exports'] });
+    }
+  });
+};

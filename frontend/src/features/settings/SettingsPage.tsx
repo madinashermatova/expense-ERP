@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '@/features/auth/store';
-import { useBranches, useCategories, useEmployees } from '@/features/expenses/api';
-import { useBudgets, useCurrencies } from './api';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
-import { Dialog } from '@/components/ui/Dialog';
-import { Plus } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Navigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import styles from './SettingsPage.module.css';
-import { EmployeeForm } from './components/EmployeeForm';
-import { BranchForm } from './components/BranchForm';
-import { CategoryForm } from './components/CategoryForm';
-import { BudgetForm } from './components/BudgetForm';
-import { CurrencyForm } from './components/CurrencyForm';
+import {
+  Settings,
+  Coins,
+  Calendar,
+  Globe,
+  Bell,
+  Clock,
+  Save,
+  CheckCircle2
+} from 'lucide-react';
 
 export const SettingsPage = () => {
   const { user } = useAuthStore();
@@ -21,218 +21,229 @@ export const SettingsPage = () => {
     return <Navigate to="/" />;
   }
 
-  const { t } = useTranslation(['settings', 'common']);
-  const [activeTab, setActiveTab] = useState<'employees' | 'categories' | 'branches' | 'budgets' | 'currencies'>('employees');
-  
-  const [isEmployeeOpen, setIsEmployeeOpen] = useState(false);
-  const [isBranchOpen, setIsBranchOpen] = useState(false);
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const [isBudgetOpen, setIsBudgetOpen] = useState(false);
-  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  // Settings State
+  const [currencyBase, setCurrencyBase] = useState('UZS');
+  const [reportPeriodStartDay, setReportPeriodStartDay] = useState(1);
+  const [defaultLanguage, setDefaultLanguage] = useState('uz');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [reminderHour, setReminderHour] = useState(18);
+  const [editWindowHours, setEditWindowHours] = useState(24);
 
-  const { data: branches, isLoading: loadingBranches } = useBranches();
-  const { data: categories, isLoading: loadingCategories } = useCategories();
-  const { data: employees, isLoading: loadingEmployees } = useEmployees();
-  const { data: budgets, isLoading: loadingBudgets } = useBudgets();
-  const { data: currencies, isLoading: loadingCurrencies } = useCurrencies();
+  const [isDirty, setIsDirty] = useState(false);
+  const [savedToast, setSavedToast] = useState(false);
 
-  const handleCreateClick = () => {
-    if (activeTab === 'employees') setIsEmployeeOpen(true);
-    if (activeTab === 'branches') setIsBranchOpen(true);
-    if (activeTab === 'categories') setIsCategoryOpen(true);
-    if (activeTab === 'budgets') setIsBudgetOpen(true);
-    if (activeTab === 'currencies') setIsCurrencyOpen(true);
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (reportPeriodStartDay < 1 || reportPeriodStartDay > 28) {
+      alert("Hisobot davri boshlanish kuni 1 dan 28 gacha bo'lishi kerak!");
+      return;
+    }
+
+    setIsDirty(false);
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 3500);
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>{t('title')}</h1>
-        <Button style={{ gap: '8px' }} onClick={handleCreateClick}>
-          <Plus size={16} /> {t('common:actions.create')}
-        </Button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '840px' }}>
+      {/* Toast */}
+      {savedToast && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          padding: '14px 20px',
+          borderRadius: '10px',
+          backgroundColor: '#059669',
+          color: 'white',
+          fontWeight: 600,
+          boxShadow: 'var(--shadow-xl)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <CheckCircle2 size={20} />
+          Tizim sozlamalari muvaffaqiyatli saqlandi!
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2 style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.02em' }}>Tizim sozlamalari</h2>
+          <span style={{ fontSize: '13px', color: 'rgb(var(--muted-foreground))' }}>
+            Hisob-kitob qoidalari, standart parametrlar va bildirishnoma muddatlari
+          </span>
+        </div>
       </div>
 
-      <div className={styles.tabs} style={{ display: 'flex', overflowX: 'auto' }}>
-        <button className={`${styles.tab} ${activeTab === 'employees' ? styles.activeTab : ''}`} onClick={() => setActiveTab('employees')}>
-          {t('tabs.employees')}
-        </button>
-        <button className={`${styles.tab} ${activeTab === 'categories' ? styles.activeTab : ''}`} onClick={() => setActiveTab('categories')}>
-          {t('tabs.categories')}
-        </button>
-        <button className={`${styles.tab} ${activeTab === 'branches' ? styles.activeTab : ''}`} onClick={() => setActiveTab('branches')}>
-          {t('tabs.branches')}
-        </button>
-        <button className={`${styles.tab} ${activeTab === 'budgets' ? styles.activeTab : ''}`} onClick={() => setActiveTab('budgets')}>
-          Byudjetlar
-        </button>
-        <button className={`${styles.tab} ${activeTab === 'currencies' ? styles.activeTab : ''}`} onClick={() => setActiveTab('currencies')}>
-          Valyutalar
-        </button>
-      </div>
-
-      <div style={{ backgroundColor: 'rgb(var(--card))', borderRadius: 'var(--radius)', border: '1px solid rgb(var(--border))' }}>
-        {activeTab === 'employees' && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('employees.fullName')}</TableHead>
-                <TableHead>{t('employees.branch')}</TableHead>
-                <TableHead style={{ textAlign: 'right' }}>{t('common:actions.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loadingEmployees ? (
-                <TableRow><TableCell colSpan={3}>{t('common:status.loading')}</TableCell></TableRow>
-              ) : employees?.map((e: any) => (
-                <TableRow key={e.id}>
-                  <TableCell>{e.fullName}</TableCell>
-                  <TableCell>{branches?.find((b: any) => b.id === e.branchId)?.name || e.branchId}</TableCell>
-                  <TableCell style={{ textAlign: 'right' }}><Button variant="ghost" size="sm">{t('common:actions.edit')}</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-
-        {activeTab === 'categories' && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('categories.name')}</TableHead>
-                <TableHead>{t('categories.limit')}</TableHead>
-                <TableHead>{t('categories.receiptRequired')}</TableHead>
-                <TableHead style={{ textAlign: 'right' }}>{t('common:actions.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loadingCategories ? (
-                <TableRow><TableCell colSpan={4}>{t('common:status.loading')}</TableCell></TableRow>
-              ) : categories?.map((c: any) => (
-                <TableRow key={c.id}>
-                  <TableCell>{c.name}</TableCell>
-                  <TableCell>{c.maxAmountPerEntry ? `${new Intl.NumberFormat('uz-UZ').format(Number(c.maxAmountPerEntry))} so'm` : '-'}</TableCell>
-                  <TableCell>{c.receiptRequired ? 'Ha' : "Yo'q"}</TableCell>
-                  <TableCell style={{ textAlign: 'right' }}><Button variant="ghost" size="sm">{t('common:actions.edit')}</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-
-        {activeTab === 'branches' && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('branches.code')}</TableHead>
-                <TableHead>{t('branches.name')}</TableHead>
-                <TableHead style={{ textAlign: 'right' }}>{t('common:actions.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loadingBranches ? (
-                <TableRow><TableCell colSpan={3}>{t('common:status.loading')}</TableCell></TableRow>
-              ) : branches?.map((b: any) => (
-                <TableRow key={b.id}>
-                  <TableCell>{b.code}</TableCell>
-                  <TableCell>{b.name}</TableCell>
-                  <TableCell style={{ textAlign: 'right' }}><Button variant="ghost" size="sm">{t('common:actions.edit')}</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-
-        {activeTab === 'budgets' && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('budgets.scope')}</TableHead>
-                <TableHead>{t('budgets.period')}</TableHead>
-                <TableHead>{t('budgets.limit')}</TableHead>
-                <TableHead>{t('budgets.actual')}</TableHead>
-                <TableHead>{t('budgets.progress')}</TableHead>
-                <TableHead style={{ textAlign: 'right' }}>{t('common:actions.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loadingBudgets ? (
-                <TableRow><TableCell colSpan={6}>{t('common:status.loading')}</TableCell></TableRow>
-              ) : budgets?.map((b: any) => (
-                <TableRow key={b.id}>
-                  <TableCell>{b.scopeType} ({b.scopeId})</TableCell>
-                  <TableCell>{b.period}</TableCell>
-                  <TableCell>{new Intl.NumberFormat('uz-UZ').format(Number(b.amountLimit))}</TableCell>
-                  <TableCell>{new Intl.NumberFormat('uz-UZ').format(Number(b.actualAmount))}</TableCell>
-                  <TableCell>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '100%', height: '8px', backgroundColor: 'rgb(var(--muted))', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.min(100, (b.actualAmount / b.amountLimit) * 100)}%`, backgroundColor: (b.actualAmount / b.amountLimit) > 1 ? 'red' : ((b.actualAmount / b.amountLimit) > 0.8 ? 'orange' : 'green') }}></div>
-                      </div>
-                      <span style={{ fontSize: '12px' }}>{Math.round((b.actualAmount / b.amountLimit) * 100)}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell style={{ textAlign: 'right' }}><Button variant="ghost" size="sm">{t('common:actions.edit')}</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-
-        {activeTab === 'currencies' && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('currencies.date')}</TableHead>
-                <TableHead>{t('currencies.currency')}</TableHead>
-                <TableHead>{t('currencies.rate')}</TableHead>
-                <TableHead style={{ textAlign: 'right' }}>{t('common:actions.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loadingCurrencies ? (
-                <TableRow><TableCell colSpan={4}>{t('common:status.loading')}</TableCell></TableRow>
-              ) : currencies?.map((c: any) => (
-                <TableRow key={c.id}>
-                  <TableCell>{c.date}</TableCell>
-                  <TableCell>{c.currency}</TableCell>
-                  <TableCell>{new Intl.NumberFormat('uz-UZ').format(Number(c.rate))}</TableCell>
-                  <TableCell style={{ textAlign: 'right' }}><Button variant="ghost" size="sm">{t('common:actions.edit')}</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-
-      <Dialog open={isEmployeeOpen} onClose={() => setIsEmployeeOpen(false)} title={t('employees.newEmployee')}>
-        <EmployeeForm onSuccess={(pass) => { setIsEmployeeOpen(false); if (pass) setTempPassword(pass); }} onCancel={() => setIsEmployeeOpen(false)} />
-      </Dialog>
-      <Dialog open={isBranchOpen} onClose={() => setIsBranchOpen(false)} title={t('branches.newBranch')}>
-        <BranchForm onSuccess={() => setIsBranchOpen(false)} onCancel={() => setIsBranchOpen(false)} />
-      </Dialog>
-      <Dialog open={isCategoryOpen} onClose={() => setIsCategoryOpen(false)} title={t('categories.newCategory')}>
-        <CategoryForm onSuccess={() => setIsCategoryOpen(false)} onCancel={() => setIsCategoryOpen(false)} />
-      </Dialog>
-      <Dialog open={isBudgetOpen} onClose={() => setIsBudgetOpen(false)} title={t('budgets.newBudget')}>
-        <BudgetForm onSuccess={() => setIsBudgetOpen(false)} onCancel={() => setIsBudgetOpen(false)} />
-      </Dialog>
-      <Dialog open={isCurrencyOpen} onClose={() => setIsCurrencyOpen(false)} title={t('currencies.newCurrency')}>
-        <CurrencyForm onSuccess={() => setIsCurrencyOpen(false)} onCancel={() => setIsCurrencyOpen(false)} />
-      </Dialog>
-
-      <Dialog open={!!tempPassword} onClose={() => setTempPassword(null)} title="Vaqtinchalik parol">
-        <div style={{ textAlign: 'center', padding: '24px' }}>
-          <p>{t('employees.tempPasswordDesc')}</p>
-          <div style={{ padding: '16px', backgroundColor: 'rgb(var(--muted))', borderRadius: 'var(--radius)', fontSize: '24px', fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: '2px', margin: '16px 0' }}>
-            {tempPassword}
+      <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Section 1: Currency & Finance */}
+        <div style={{
+          backgroundColor: 'rgb(var(--card))',
+          border: '1px solid rgb(var(--card-border))',
+          borderRadius: 'var(--radius)',
+          padding: '22px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid rgb(var(--border))' }}>
+            <Coins size={20} color="rgb(var(--primary))" />
+            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Valyuta va moliyaviy hisob-kitob</h3>
           </div>
-          <Button onClick={() => { navigator.clipboard.writeText(tempPassword || ''); setTempPassword(null); }}>
-            Nusxalash va yopish
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                Asosiy hisob valyutasi (Baza)
+              </label>
+              <select
+                value={currencyBase}
+                onChange={(e) => { setCurrencyBase(e.target.value); setIsDirty(true); }}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid rgb(var(--border))',
+                  backgroundColor: 'rgb(var(--background))',
+                  color: 'rgb(var(--foreground))',
+                  fontSize: '13.5px',
+                  outline: 'none'
+                }}
+              >
+                <option value="UZS">UZS — O'zbekiston so'mi</option>
+                <option value="USD">USD — AQSH dollari</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                Hisobot davri boshlanish kuni (1–28)
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={28}
+                value={reportPeriodStartDay}
+                onChange={(e) => { setReportPeriodStartDay(parseInt(e.target.value) || 1); setIsDirty(true); }}
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Localization & Language */}
+        <div style={{
+          backgroundColor: 'rgb(var(--card))',
+          border: '1px solid rgb(var(--card-border))',
+          borderRadius: 'var(--radius)',
+          padding: '22px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid rgb(var(--border))' }}>
+            <Globe size={20} color="rgb(var(--primary))" />
+            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Til va hududiylik</h3>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+              Standart tizim tili
+            </label>
+            <select
+              value={defaultLanguage}
+              onChange={(e) => { setDefaultLanguage(e.target.value); setIsDirty(true); }}
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: 'var(--radius)',
+                border: '1px solid rgb(var(--border))',
+                backgroundColor: 'rgb(var(--background))',
+                color: 'rgb(var(--foreground))',
+                fontSize: '13.5px',
+                outline: 'none'
+              }}
+            >
+              <option value="uz">O'zbekcha (Lotin)</option>
+              <option value="ru">Русский</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Section 3: Deadlines & Notifications */}
+        <div style={{
+          backgroundColor: 'rgb(var(--card))',
+          border: '1px solid rgb(var(--card-border))',
+          borderRadius: 'var(--radius)',
+          padding: '22px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid rgb(var(--border))' }}>
+            <Clock size={20} color="rgb(var(--primary))" />
+            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Muddatlar va bildirishnomalar</h3>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                Xarajatni tahrirlash oynasi (soatda)
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={72}
+                value={editWindowHours}
+                onChange={(e) => { setEditWindowHours(parseInt(e.target.value) || 24); setIsDirty(true); }}
+                required
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                Kunlik eslatma yuborish vaqti (soat)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={23}
+                value={reminderHour}
+                onChange={(e) => { setReminderHour(parseInt(e.target.value) || 18); setIsDirty(true); }}
+                required
+              />
+            </div>
+          </div>
+
+          <div style={{ paddingTop: '6px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={notificationsEnabled}
+                onChange={(e) => { setNotificationsEnabled(e.target.checked); setIsDirty(true); }}
+              />
+              Telegram bot orqali bildirishnomalar yuborish yoqilgan bo'lsin
+            </label>
+          </div>
+        </div>
+
+        {/* Save Bar */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <Button
+            type="submit"
+            disabled={!isDirty}
+            style={{ gap: '8px', padding: '10px 24px' }}
+          >
+            <Save size={16} /> Sozlamalarni saqlash
           </Button>
         </div>
-      </Dialog>
+      </form>
     </div>
   );
 };

@@ -10,7 +10,7 @@ import { useCreateCategory } from '../api';
 const schema = z.object({
   name: z.string().min(1, 'Nomi majburiy'),
   maxAmountPerEntry: z.string().optional(),
-  receiptRequired: z.boolean().default(false),
+  receiptRequired: z.boolean(),
 });
 
 type FormData = z.infer<typeof schema>;

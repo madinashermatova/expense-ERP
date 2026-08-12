@@ -7,12 +7,18 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { ExpensesPage } from '@/features/expenses/ExpensesPage';
 import { ExpenseCreatePage } from '@/features/expenses/ExpenseCreatePage';
 import { ApprovalsPage } from '@/features/approvals/ApprovalsPage';
-import { SettingsPage } from '@/features/settings/SettingsPage';
 import { RefundsPage } from '@/features/refunds/RefundsPage';
 import { EditRequestsPage } from '@/features/edit-requests/EditRequestsPage';
+import { BranchesPage } from '@/features/branches/BranchesPage';
+import { EmployeesPage } from '@/features/employees/EmployeesPage';
+import { CategoriesPage } from '@/features/categories/CategoriesPage';
+import { BudgetsPage } from '@/features/budgets/BudgetsPage';
 import { ReportsPage } from '@/features/reports/ReportsPage';
+import { CurrencyPage } from '@/features/currency/CurrencyPage';
+import { UsersPage } from '@/features/users/UsersPage';
 import { AuditPage } from '@/features/audit/AuditPage';
 import { ExportHistoryPage } from '@/features/exports/ExportHistoryPage';
+import { SettingsPage } from '@/features/settings/SettingsPage';
 import { ProfilePage } from '@/features/profile/ProfilePage';
 
 export const router = createBrowserRouter([
@@ -45,8 +51,32 @@ export const router = createBrowserRouter([
         element: <EditRequestsPage />,
       },
       {
+        path: 'branches',
+        element: <BranchesPage />,
+      },
+      {
+        path: 'employees',
+        element: <EmployeesPage />,
+      },
+      {
+        path: 'categories',
+        element: <CategoriesPage />,
+      },
+      {
+        path: 'budgets',
+        element: <BudgetsPage />,
+      },
+      {
         path: 'reports',
         element: <ReportsPage />,
+      },
+      {
+        path: 'currency',
+        element: <CurrencyPage />,
+      },
+      {
+        path: 'users',
+        element: <UsersPage />,
       },
       {
         path: 'audit',
@@ -64,7 +94,6 @@ export const router = createBrowserRouter([
         path: 'profile',
         element: <ProfilePage />,
       }
-      // ... boshqa modullar shu yerda qo'shiladi
     ],
   },
   {
@@ -79,6 +108,33 @@ export const router = createBrowserRouter([
   },
   {
     path: '*',
-    element: <div>404 sahifa topilmadi</div>
+    element: (
+      <div style={{
+        minHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        gap: '16px'
+      }}>
+        <h1 style={{ fontSize: '72px', fontWeight: 800, color: 'rgb(var(--primary))', margin: 0 }}>404</h1>
+        <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Sahifa topilmadi</h2>
+        <p style={{ color: 'rgb(var(--muted-foreground))' }}>Siz qidirayotgan sahifa mavjud emas yoki ko'chirilgan.</p>
+        <a href="/" style={{ textDecoration: 'none' }}>
+          <button style={{
+            padding: '10px 20px',
+            borderRadius: '8px',
+            backgroundColor: 'rgb(var(--primary))',
+            color: 'white',
+            border: 'none',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}>
+            Bosh sahifaga qaytish
+          </button>
+        </a>
+      </div>
+    )
   }
 ]);

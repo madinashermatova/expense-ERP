@@ -5,12 +5,85 @@
 }
 
 .errorAlert {
-  background-color: rgb(var(--destructive-subtle));
-  color: rgb(var(--destructive));
-  padding: 12px;
-  border-radius: var(--radius);
-  font-size: 13px;
   display: flex;
   align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background-color: rgb(var(--destructive-subtle));
+  border: 1px solid rgba(var(--destructive), 0.3);
+  color: rgb(var(--destructive-foreground));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.demoBox {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px dashed rgb(var(--border));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.demoTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgb(var(--muted-foreground));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demoGrid {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 8px;
+}
+
+.demoCard {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--border));
+  background-color: rgba(var(--muted), 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.demoCard:hover {
+  background-color: rgb(var(--primary-subtle));
+  border-color: rgb(var(--primary-border));
+  transform: translateY(-1px);
+}
+
+.demoInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.demoRole {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgb(var(--foreground));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.demoCreds {
+  font-size: 11.5px;
+  color: rgb(var(--muted-foreground));
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.demoArrow {
+  color: rgb(var(--primary));
+  font-size: 12px;
+  font-weight: 600;
 }
