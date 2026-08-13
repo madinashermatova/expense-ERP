@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useCreateEmployee, useUpdateEmployee } from '../api';
 import { employeeSchema, EmployeeFormData, Employee } from '../schema';
-import { useBranches } from '@/features/branches/api';
+import { useBranchList } from '@/features/branches/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/features/auth/store';
 
@@ -25,7 +25,7 @@ export const EmployeeFormDialog = ({ open, onClose, employeeToEdit, onSuccessCre
     }
   });
 
-  const { data: branches } = useBranches('active');
+  const { data: branches } = useBranchList('active');
   const createMutation = useCreateEmployee();
   const updateMutation = useUpdateEmployee();
   

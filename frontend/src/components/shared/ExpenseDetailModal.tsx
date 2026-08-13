@@ -22,9 +22,9 @@ interface ExpenseDetailModalProps {
   expense: any;
   open: boolean;
   onClose: () => void;
-  onApprove?: (id: string) => void;
-  onReject?: (id: string, reason: string) => void;
-  onRequestFix?: (id: string, reason: string) => void;
+  onApprove?: (id: string, version?: number) => void;
+  onReject?: (id: string, reason: string, version?: number) => void;
+  onRequestFix?: (id: string, reason: string, version?: number) => void;
   isPending?: boolean;
 }
 
@@ -62,9 +62,9 @@ export const ExpenseDetailModal = ({
       return;
     }
     if (reasonModalType === 'REJECT' && onReject) {
-      onReject(expense.id, reasonText);
+      onReject(expense.id, reasonText, expense.version);
     } else if (reasonModalType === 'FIX' && onRequestFix) {
-      onRequestFix(expense.id, reasonText);
+      onRequestFix(expense.id, reasonText, expense.version);
     }
     setReasonModalType(null);
     setReasonText('');
@@ -331,7 +331,7 @@ export const ExpenseDetailModal = ({
 
               <Button
                 style={{ backgroundColor: 'rgb(var(--success))', color: 'white', gap: '6px' }}
-                onClick={() => onApprove && onApprove(expense.id)}
+                onClick={() => onApprove && onApprove(expense.id, expense.version)}
                 disabled={isPending || isOwnExpense}
               >
                 <CheckCircle2 size={15} /> Tasdiqlash

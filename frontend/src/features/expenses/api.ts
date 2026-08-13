@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { ENDPOINTS } from '@/lib/api/endpoints';
-import { Paginated, BranchView, CategoryView, EmployeeView } from '@/lib/api/types';
+import { Paginated, BranchView, CategoryView, EmployeeView, BulkApproveResult } from '@/lib/api/types';
 
 export interface ExpenseListParams {
   page?: number;
@@ -76,9 +76,14 @@ export const useCreateExpense = () => {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       }
-      
-      const finalRes = await apiClient.post(ENDPOINTS.EXPENSE_SUBMIT(expenseId));
-      return finalRes.data;
+
+      // POST /expenses already lands non-receipt categories in DIRECTOR_PENDING/ADMIN_PENDING;
+      // only DRAFT (receipt-required categories awaiting file upload) needs an explicit submit.
+      if (expenseRes.data.status === 'DRAFT') {
+        const finalRes = await apiClient.post(ENDPOINTS.EXPENSE_SUBMIT(expenseId));
+        return finalRes.data;
+      }
+      return expenseRes.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
@@ -91,8 +96,8 @@ export const useCreateExpense = () => {
 export const useApproveExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiClient.post(`/expenses/${id}/approve`);
+    mutationFn: async ({ id, version }: { id: string; version?: number }) => {
+      const response = await apiClient.post(`/expenses/${id}/approve`, { version });
       return response.data;
     },
     onSuccess: () => {
@@ -106,8 +111,8 @@ export const useApproveExpense = () => {
 export const useRejectExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const response = await apiClient.post(`/expenses/${id}/reject`, { reason });
+    mutationFn: async ({ id, reason, version }: { id: string; reason: string; version?: number }) => {
+      const response = await apiClient.post(`/expenses/${id}/reject`, { reason, version });
       return response.data;
     },
     onSuccess: () => {
@@ -120,8 +125,8 @@ export const useRejectExpense = () => {
 export const useRequestFixExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const response = await apiClient.post(`/expenses/${id}/request-fix`, { reason });
+    mutationFn: async ({ id, reason, version }: { id: string; reason: string; version?: number }) => {
+      const response = await apiClient.post(`/expenses/${id}/request-fix`, { reason, version });
       return response.data;
     },
     onSuccess: () => {
@@ -135,7 +140,7 @@ export const useBulkApproveExpenses = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const response = await apiClient.post('/expenses/bulk-approve', { ids });
+      const response = await apiClient.post<BulkApproveResult>('/expenses/bulk-approve', { ids });
       return response.data;
     },
     onSuccess: () => {
@@ -160,10 +165,13 @@ export const useCreateExport = () => {
 
 export const useExpenseAction = (id: string) => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ action, reason }: { action: 'approve' | 'reject' | 'request-fix' | 'cancel' | 'submit', reason?: string }) => {
-      const res = await apiClient.post(`/expenses/${id}/${action}`, { reason });
+    mutationFn: async ({ action, reason, version }: { action: 'approve' | 'reject' | 'request-fix' | 'cancel' | 'submit', reason?: string, version?: number }) => {
+      const body: { reason?: string; version?: number } = {};
+      if (action === 'reject' || action === 'request-fix') body.reason = reason;
+      if (action === 'approve' || action === 'reject' || action === 'request-fix') body.version = version;
+      const res = await apiClient.post(`/expenses/${id}/${action}`, body);
       return res.data;
     },
     onSuccess: () => {

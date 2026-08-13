@@ -5,16 +5,22 @@ import i18n from '@/i18n';
 import toast from 'react-hot-toast';
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://erp-api-l99l.onrender.com/api',
   withCredentials: true,
 });
 
-// Custom adapter / request interceptor to support full interactive mock mode without backend
+// Custom adapter / request interceptor to inject Authorization and x-lang headers
 apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().accessToken;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  if (config.headers) {
+    const currentLang = i18n.language || 'uz';
+    config.headers['x-lang'] = currentLang.toLowerCase().startsWith('ru') ? 'ru' : 'uz';
+  }
+  
   return config;
 });
 
@@ -46,6 +52,11 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Don't retry if the 401 came from login or refresh itself
+      if (originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/refresh')) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -62,15 +73,25 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      const currentLang = i18n.language || 'uz';
+      const langHeader = currentLang.toLowerCase().startsWith('ru') ? 'ru' : 'uz';
+
       try {
         const response = await axios.post(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/refresh`,
+          `${import.meta.env.VITE_API_URL || 'https://erp-api-l99l.onrender.com/api'}/auth/refresh`,
           {},
-          { withCredentials: true }
+          { 
+            withCredentials: true,
+            headers: { 'x-lang': langHeader }
+          }
         );
 
         const newAccessToken = response.data.accessToken;
+        const newUser = response.data.user;
         useAuthStore.getState().setAccessToken(newAccessToken);
+        if (newUser) {
+          useAuthStore.getState().setUser(newUser);
+        }
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = 'Bearer ' + newAccessToken;
@@ -116,9 +137,7 @@ apiClient.interceptors.response.use(
         if (!isLogin) toast.error(errData.message || fallback('tooManyRequests'));
       } else if (errData.code === 'ALREADY_PROCESSED') {
         toast.error(errData.message || fallback('generic'));
-        // Componentlar o'zlari invalidateQueries qiladi yoki biz bu yerda global event tashlashimiz mumkin
       } else if (errData.code === 'PLAN_LIMIT_EXCEEDED') {
-        // Todo: oyna ochish kerak
         toast.error(errData.message || fallback('generic'));
       } else if (!silentCodes.includes(errData.code) && !isLogin) {
         toast.error(errData.message || fallback('generic'));

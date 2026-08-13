@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/features/auth/store';
-import { usePendingExpenses, useApproveExpense, useRejectExpense, useBulkApproveExpenses } from './api';
+import { usePendingExpenses, useApproveExpense, useRejectExpense, useRequestFixExpense, useBulkApproveExpenses } from './api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -32,6 +32,7 @@ export const ApprovalsPage = () => {
   const { data, isLoading } = usePendingExpenses(activeTab);
   const approveMutation = useApproveExpense();
   const rejectMutation = useRejectExpense();
+  const fixMutation = useRequestFixExpense();
   const bulkApproveMutation = useBulkApproveExpenses();
 
   const items = data?.items || [];
@@ -41,16 +42,16 @@ export const ApprovalsPage = () => {
     setSelectedIds([]);
   }, [activeTab]);
 
-  const handleApprove = useCallback((id: string) => {
-    approveMutation.mutate(id, {
+  const handleApprove = useCallback((id: string, version?: number) => {
+    approveMutation.mutate({ id, version }, {
       onSuccess: () => setSelectedExpense(null)
     });
   }, [approveMutation]);
 
-  const handleReject = useCallback((id: string, reason?: string) => {
+  const handleReject = useCallback((id: string, reason?: string, version?: number) => {
     const finalReason = reason || window.prompt("Rad etish sababini kiriting (kamida 10 belgi):");
     if (finalReason && finalReason.length >= 10) {
-      rejectMutation.mutate({ id, reason: finalReason }, {
+      rejectMutation.mutate({ id, reason: finalReason, version }, {
         onSuccess: () => setSelectedExpense(null)
       });
     } else if (finalReason) {
@@ -58,22 +59,22 @@ export const ApprovalsPage = () => {
     }
   }, [rejectMutation]);
 
+  const handleRequestFix = useCallback((id: string, reason: string, version?: number) => {
+    fixMutation.mutate({ id, reason, version }, {
+      onSuccess: () => setSelectedExpense(null)
+    });
+  }, [fixMutation]);
+
   const handleBulkApprove = () => {
     if (selectedIds.length === 0) return;
     setBulkErrors([]);
     bulkApproveMutation.mutate(selectedIds, {
-      onSuccess: (resData: any) => {
-        if (resData?.errors && resData.errors.length > 0) {
-          setBulkErrors(resData.errors);
-        } else {
-          setSelectedIds([]);
+      onSuccess: (result) => {
+        if (result.failed.length > 0) {
+          setBulkErrors(result.failed);
         }
+        setSelectedIds(result.failed.map(f => f.id));
         setSelectedExpense(null);
-      },
-      onError: (err: any) => {
-        if (err?.response?.data?.details) {
-          setBulkErrors(err.response.data.details);
-        }
       }
     });
   };
@@ -84,14 +85,14 @@ export const ApprovalsPage = () => {
       if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
       if (selectedExpense) {
         if (e.key.toLowerCase() === 'a') {
-          handleApprove(selectedExpense.id);
+          handleApprove(selectedExpense.id, selectedExpense.version);
         } else if (e.key.toLowerCase() === 'r') {
-          handleReject(selectedExpense.id);
+          handleReject(selectedExpense.id, undefined, selectedExpense.version);
         }
       } else if (items.length > 0) {
         const firstItem = items[0];
         if (e.key.toLowerCase() === 'a' && firstItem) {
-          handleApprove(firstItem.id);
+          handleApprove(firstItem.id, firstItem.version);
         } else if (e.key.toLowerCase() === 'r' && firstItem) {
           setSelectedExpense(firstItem);
         }
@@ -313,7 +314,7 @@ export const ApprovalsPage = () => {
                     <Button
                       size="sm"
                       style={{ backgroundColor: 'rgb(var(--success))', color: 'white', padding: '6px 12px' }}
-                      onClick={() => handleApprove(item.id)}
+                      onClick={() => handleApprove(item.id, item.version)}
                       disabled={isOwn || approveMutation.isPending}
                       title="Tasdiqlash"
                     >
@@ -381,7 +382,7 @@ export const ApprovalsPage = () => {
                       <Button
                         size="sm"
                         style={{ backgroundColor: 'rgb(var(--success))', color: 'white' }}
-                        onClick={() => handleApprove(item.id)}
+                        onClick={() => handleApprove(item.id, item.version)}
                         disabled={approveMutation.isPending}
                       >
                         <CheckCircle2 size={16} />
@@ -402,7 +403,8 @@ export const ApprovalsPage = () => {
         onClose={() => setSelectedExpense(null)}
         onApprove={handleApprove}
         onReject={handleReject}
-        isPending={approveMutation.isPending || rejectMutation.isPending}
+        onRequestFix={handleRequestFix}
+        isPending={approveMutation.isPending || rejectMutation.isPending || fixMutation.isPending}
       />
 
       <Dialog open={bulkErrors.length > 0} onClose={() => setBulkErrors([])} title="Ommaviy tasdiqlash xatolari">
@@ -412,11 +414,14 @@ export const ApprovalsPage = () => {
             <span>Ba'zi xarajatlarni tasdiqlashda xatolik yuz berdi:</span>
           </div>
           <ul style={{ paddingLeft: '1.5rem', listStyle: 'disc' }}>
-            {bulkErrors.map((err, i) => (
-              <li key={i} style={{ marginBottom: '0.5rem' }}>
-                <b>{err.globalNumber || err.id || 'Noma\'lum xarajat'}:</b> {err.message || 'Xatolik yuz berdi'}
-              </li>
-            ))}
+            {bulkErrors.map((err, i) => {
+              const item = items.find((it: any) => it.id === err.id);
+              return (
+                <li key={i} style={{ marginBottom: '0.5rem' }}>
+                  <b>{item?.globalNumber || err.id}:</b> {err.message || err.code || 'Xatolik yuz berdi'}
+                </li>
+              );
+            })}
           </ul>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button onClick={() => setBulkErrors([])}>Yopish</Button>

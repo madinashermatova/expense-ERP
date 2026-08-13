@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store';
-import { useLogout } from '@/features/auth/api';
+import { useLogin, useLogout, useAuthMe } from '@/features/auth/api';
 import { useThemeStore } from '@/lib/themeStore';
 import { useTranslation } from 'react-i18next';
 import {
@@ -34,8 +34,10 @@ import { NotificationBell } from '@/features/notifications/NotificationBell';
 import styles from './AppLayout.module.css';
 
 export const AppLayout = () => {
-  const { accessToken, user, loginAsDemo } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const logoutMutation = useLogout();
+  const loginMutation = useLogin();
+  useAuthMe(); // Automatically verifies and synchronizes user profile via GET /api/auth/me
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useThemeStore();
@@ -92,14 +94,14 @@ export const AppLayout = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <Button
-              onClick={() => loginAsDemo('ADMIN')}
+              onClick={() => loginMutation.mutate({ login: 'admin1@alfa.uz', password: 'Parol123!' })}
               style={{ width: '100%', gap: '8px' }}
             >
               <UserCheck size={16} /> Admin sifatida sinab ko'rish
             </Button>
             <Button
               variant="secondary"
-              onClick={() => loginAsDemo('DIRECTOR')}
+              onClick={() => loginMutation.mutate({ login: 'director.chl@alfa.uz', password: 'Parol123!' })}
               style={{ width: '100%' }}
             >
               Direktor sifatida sinab ko'rish
@@ -120,7 +122,13 @@ export const AppLayout = () => {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'PLATFORM_OWNER';
 
   const handleRoleChange = (role: 'ADMIN' | 'DIRECTOR' | 'WORKER') => {
-    loginAsDemo(role);
+    if (role === 'ADMIN') {
+      loginMutation.mutate({ login: 'admin1@alfa.uz', password: 'Parol123!' });
+    } else if (role === 'DIRECTOR') {
+      loginMutation.mutate({ login: 'director.chl@alfa.uz', password: 'Parol123!' });
+    } else {
+      loginMutation.mutate({ login: 'worker1@alfa.uz', password: 'Parol123!' });
+    }
   };
 
   const handleLanguageToggle = () => {
@@ -130,7 +138,7 @@ export const AppLayout = () => {
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
-      onSuccess: () => navigate('/login')
+      onSettled: () => navigate('/login')
     });
   };
 

@@ -206,9 +206,14 @@ export const ExpensesPage = () => {
     if (ids.length === 0) return;
     if (window.confirm(`${ids.length} ta tanlangan xarajatni tasdiqlamoqchimisiz?`)) {
       bulkApproveMutation.mutate(ids, {
-        onSuccess: () => {
+        onSuccess: (result) => {
           table.resetRowSelection();
-          alert(`${ids.length} ta xarajat muvaffaqiyatli tasdiqlandi!`);
+          if (result.failed.length === 0) {
+            alert(`${result.approved.length} ta xarajat muvaffaqiyatli tasdiqlandi!`);
+          } else {
+            const failureList = result.failed.map(f => `• ${f.message}`).join('\n');
+            alert(`${result.approved.length} ta tasdiqlandi, ${result.failed.length} ta xatolik bilan yakunlandi:\n${failureList}`);
+          }
         }
       });
     }
@@ -500,18 +505,18 @@ export const ExpensesPage = () => {
         expense={selectedExpense}
         open={!!selectedExpense}
         onClose={() => setSelectedExpense(null)}
-        onApprove={(id) => {
-          approveMutation.mutate(id, {
+        onApprove={(id, version) => {
+          approveMutation.mutate({ id, version }, {
             onSuccess: () => setSelectedExpense(null)
           });
         }}
-        onReject={(id, reason) => {
-          rejectMutation.mutate({ id, reason }, {
+        onReject={(id, reason, version) => {
+          rejectMutation.mutate({ id, reason, version }, {
             onSuccess: () => setSelectedExpense(null)
           });
         }}
-        onRequestFix={(id, reason) => {
-          fixMutation.mutate({ id, reason }, {
+        onRequestFix={(id, reason, version) => {
+          fixMutation.mutate({ id, reason, version }, {
             onSuccess: () => setSelectedExpense(null)
           });
         }}

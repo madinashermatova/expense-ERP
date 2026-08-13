@@ -131,6 +131,12 @@ export interface ExpenseView {
   employees: { id: string; fullName: string }[];
   paymentMethod: string;
   hasReceipt: boolean;
+  version: number;
+}
+
+export interface BulkApproveResult {
+  approved: string[];
+  failed: { id: string; code: string; message: string }[];
 }
 
 export interface EditRequestView {
@@ -169,6 +175,31 @@ export interface NotificationView {
   readAt: string | null;
   sentAt: string | null;
   createdAt: string;
+}
+
+export interface AuditChange {
+  field: string;
+  old: unknown;
+  new: unknown;
+}
+
+export interface AuditEntryView {
+  id: string;
+  createdAt: string;
+  userId: string | null;
+  userName: string | null;
+  userRole: 'PLATFORM_OWNER' | 'ADMIN' | 'DIRECTOR' | 'WORKER' | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  changes: AuditChange[] | null;
+  ip: string | null;
+  channel: 'WEB' | 'TELEGRAM' | 'SYSTEM';
+}
+
+export interface AuditFacets {
+  actions: string[];
+  entityTypes: string[];
 }
 
 export interface ExportJobView {

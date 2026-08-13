@@ -41,14 +41,14 @@ export const ExpenseDetailsPage = () => {
           <Button variant="ghost" onClick={() => navigate('/expenses')}>Orqaga</Button>
           {(expense.status === 'DIRECTOR_PENDING' || expense.status === 'ADMIN_PENDING') && (
             <>
-              <Button onClick={() => actionMutation.mutate({ action: 'approve' })}>Tasdiqlash</Button>
+              <Button onClick={() => actionMutation.mutate({ action: 'approve', version: expense.version })}>Tasdiqlash</Button>
               <Button variant="destructive" onClick={() => {
                 const reason = prompt("Rad etish sababi:");
-                if (reason) actionMutation.mutate({ action: 'reject', reason });
+                if (reason) actionMutation.mutate({ action: 'reject', reason, version: expense.version });
               }}>Rad etish</Button>
               <Button variant="secondary" onClick={() => {
                 const reason = prompt("Tuzatish so'rash sababi:");
-                if (reason) actionMutation.mutate({ action: 'request-fix', reason });
+                if (reason) actionMutation.mutate({ action: 'request-fix', reason, version: expense.version });
               }}>Tuzatish so'rash</Button>
             </>
           )}
